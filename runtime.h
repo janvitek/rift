@@ -1,29 +1,29 @@
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
-struct IntVector {
+struct IV {
     int length;
     int * data;
-    IntVector(int size) {
+    IV(int size) {
         data = new int[size];
     }
 
-    ~IntVector() {
+    ~IV() {
         delete [] data;
     }
 };
 
-IntVector * createIntVector(int size);
+IV * createIV(int size);
 
-IntVector * concatIntVector(int size, ...);
+IV * concatIV(int size, ...);
 
-void deleteIntVector(IntVector * v);
+void deleteIV(IV * v);
 
-void setIntVectorElement(IntVector * v, int index, int value);
+void setIVElem(IV * v, int index, int value);
 
-int getIntVectorElement(IntVector * v, int index);
+int getIVElem(IV * v, int index);
 
-int getIntVectorSize(IntVector * v);
+int getIVSize(IV * v);
 
 #endif // RUNTIME_H
 

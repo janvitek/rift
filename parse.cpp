@@ -7,7 +7,7 @@ using namespace llvm;
 using std::cout;
 
 
-static Module *theModule;
+Module *theModule;
 static IRBuilder<> builder(getGlobalContext());
 static std::map<std::string, Value*> namedValues;
 
@@ -138,70 +138,4 @@ Exp* Parser::parseBinExp(Exp* l) {
 Exp* Parser::parse() {
   Exp* e = parseSequence();
   return e;
-}
-
-
-namespace {
-
-Type * t_Int;
-PointerType * p_IntVector;
-
-Function * f_createIntVector;
-Function * f_concatIntVector;
-Function * f_deleteIntVector;
-Function * f_setIntVectorElement;
-Function * f_getIntVectorElement;
-Function * f_getIntVectorSize;
-
-Module * initializeModule(std::string const & name) {
-    Module * m = new Module(name, getGlobalContext());
-    // now we must create the type declarations required in the runtime functions
-    t_Int = IntegerType::get(getGlobalContext(), 32);
-    StructType * t_IntVector = StructType::create(getGlobalContext(), "IntVector");
-    std::vector<Type *> fields;
-    fields.push_back(t_Int); // length
-    fields.push_back(PointerType::get(t_Int, 0));
-    t_IntVector->setBody(fields, false);
-    p_IntVector = PointerType::get(t_IntVector, 0);
-    // create the function types from the API
-    fields = { t_Int };
-    FunctionType * intVec_Int = FunctionType::get(p_IntVector, fields, false);
-    FunctionType * intVec_intVargs = FunctionType::get(p_IntVector, fields, true);
-    fields = { p_IntVector };
-    FunctionType * void_intVec = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
-    FunctionType * int_intVec = FunctionType::get(t_Int, fields, false);
-    fields = { p_IntVector, t_Int };
-    FunctionType * int_intVecInt = FunctionType::get(t_Int, fields, false);
-    fields = { p_IntVector, t_Int, t_Int };
-    FunctionType * void_intVecIntInt = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
-    // and finally create the function declarations
-    f_createIntVector = Function::Create(intVec_Int, Function::ExternalLinkage, "createIntVector", m);
-    f_concatIntVector = Function::Create(intVec_intVargs, Function::ExternalLinkage, "concatIntVector", m);
-    f_deleteIntVector = Function::Create(void_intVec, Function::ExternalLinkage, "deleteIntVector", m);
-    f_setIntVectorElement = Function::Create(void_intVecIntInt, Function::ExternalLinkage, "setIntVectorElement", m);
-    f_getIntVectorElement = Function::Create(int_intVecInt, Function::ExternalLinkage, "getIntVectorElement", m);
-    f_getIntVectorSize = Function::Create(int_intVec, Function::ExternalLinkage, "getIntVectorSize", m);
-    // done
-    return m;
-}
-
-
-
-} // namespace
-
-
-int main(int n, char** argv) {
-    // initialize the JIT
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-    LLVMInitializeNativeAsmParser();
-    // create the module
-    theModule = initializeModule("rift");
-
-
-
-  File file(argv[1]);
-  Parser parse(file);
-  Exp* e = parse.parse();
-  cout << *e << endl;
 }

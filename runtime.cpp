@@ -5,23 +5,23 @@
 #include <vector>
 #include "runtime.h"
 
-IntVector * createIntVector(int size) {
-    return new IntVector(size);
+IV * createIV(int size) {
+    return new IV(size);
 }
 
-IntVector * concatIintVector(int size, ...) {
+IV * concatIV(int size, ...) {
     va_list ap;
     va_start(ap, size);
-    std::vector<IntVector*> inputs;
+    std::vector<IV*> inputs;
     int length = 0;
     for (int i = 0; i <= size; ++i) {
-        inputs.push_back(va_arg(ap, IntVector*));
+        inputs.push_back(va_arg(ap, IV*));
         length += inputs.back()->length;
     }
     va_end(ap);
-    IntVector * result = new IntVector(length);
+    IV * result = new IV(length);
     size = 0;
-    for (IntVector * iv : inputs) {
+    for (IV * iv : inputs) {
         memcpy(result->data + size,iv->data, iv->length);
         size += iv->length;
     }
@@ -29,23 +29,27 @@ IntVector * concatIintVector(int size, ...) {
 }
 
 
-void deleteIntVector(IntVector * v) {
+void deleteIntVector(IV * v) {
     delete v;
 }
 
 
 
-void setIntVectorElement(IntVector * v, int index, int value) {
+void deleteIV(IV * v) {
+    delete v;
+}
+
+void setIVElem(IV * v, int index, int value) {
     assert(index >= 0 and index < v->length and "Out of bounds");
     v->data[index] = value;
 }
 
-int getIntVectorElement(IntVector * v, int index) {
+int getIVElem(IV * v, int index) {
     assert(index >= 0 and index < v->length and "Out of bounds");
     return v->data[index];
 
 }
 
-int getIntVectorSize(IntVector * v) {
+int getIVSize(IV * v) {
     return v->length;
 }
