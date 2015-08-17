@@ -26,3 +26,13 @@
 *.exe
 *.out
 *.app
+
+rift.dSYM/Contents/Info.plist
+
+rift.dSYM/Contents/Resources/DWARF/rift
+
+rift
+
+*.h#
+
+.#parse.h

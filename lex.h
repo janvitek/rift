@@ -1,16 +1,4 @@
-#include <assert.h>  
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <vector>
-
-using std::cout;
-using std::endl;
-using std::ifstream;
-using std::ios;
 using std::string;
-
-using namespace std;
 
 enum Token {
   END = -1,
@@ -43,7 +31,6 @@ void error(const char* s);
 
 void error(const char* s, const char* s2);
 
-
 class File  {
   int state;
   char* buffer;
@@ -66,5 +53,3 @@ public:
   string* ident_or_string;
   float number;
 };
-
-

@@ -3,7 +3,7 @@
 #include <fstream>
 #include <cstring>
 #include <vector>
-#include <unordered_map>
+
 #include "lex.h"
 
 using std::cout;
@@ -155,3 +155,24 @@ void File::read_identifier_or_number() {
     number = std::stof( str);
   }
 }
+
+
+/** Read in entire file 'name'.
+ * If all went well, good() holds.
+ */
+File::File(const char* name) {
+  if (name == NULL) { state = -1; return; }
+  ifstream fin(name);
+  if (! fin.good() ) { state = -1; return; }
+  fin.seekg(0, ios::end);
+  size = fin.tellg();
+  buffer = new char[size];
+  fin.seekg(0);
+  fin.read(buffer, size); 
+  fin.close();
+  tok = END;
+  cursor = tok_start = 0;
+  state = 1; // good()
+}
+
+
