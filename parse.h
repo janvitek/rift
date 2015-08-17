@@ -19,21 +19,22 @@ class Exp {
 public:
   virtual ~Exp(){}
   virtual void print(std::ostream& os) = 0;
-  virtual llvm::Value *codegen() { return nullptr; } // FIXME
+  virtual llvm::Value *codegen() { return nullptr; }
   friend std::ostream& operator<<(std::ostream& os, Exp& e);
 };
 
 std::ostream& operator<<(std::ostream& os, Exp& e);
 
 class Num : public Exp {
-  double value;
 public:
+  double value;
   Num(double v) : value(v) {}
   void print(std::ostream& os) { os << value; }
-  virtual llvm::Value *codegen() {
+  llvm::Value *codegen() override {
     return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(value));
   }
 };
+
 
 class Str : public Exp {
   string* value;
@@ -98,9 +99,9 @@ public:
 };
 
 class Call : public Exp {
+public:
   Var* name;
   std::vector<Exp*>* args;
-public:
   Call(Var* n, std::vector<Exp*>* a) : name(n), args(a) {}
   void print(std::ostream& os) {  
     os << *name << "(";
