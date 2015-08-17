@@ -8,7 +8,6 @@ using std::cout;
 
 extern  Module *theModule;
 extern  IRBuilder<> builder;
-extern  std::map<std::string, Value*> namedValues;
 
 
 namespace {
