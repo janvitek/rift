@@ -15,6 +15,8 @@ struct IntVector {
 
 IntVector * createIntVector(int size);
 
+IntVector * concatIntVector(int size, ...);
+
 void deleteIntVector(IntVector * v);
 
 void setIntVectorElement(IntVector * v, int index, int value);

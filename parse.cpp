@@ -147,6 +147,7 @@ Type * t_Int;
 PointerType * p_IntVector;
 
 Function * f_createIntVector;
+Function * f_concatIntVector;
 Function * f_deleteIntVector;
 Function * f_setIntVectorElement;
 Function * f_getIntVectorElement;
@@ -165,6 +166,7 @@ Module * initializeModule(std::string const & name) {
     // create the function types from the API
     fields = { t_Int };
     FunctionType * intVec_Int = FunctionType::get(p_IntVector, fields, false);
+    FunctionType * intVec_intVargs = FunctionType::get(p_IntVector, fields, true);
     fields = { p_IntVector };
     FunctionType * void_intVec = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
     FunctionType * int_intVec = FunctionType::get(t_Int, fields, false);
@@ -174,6 +176,7 @@ Module * initializeModule(std::string const & name) {
     FunctionType * void_intVecIntInt = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
     // and finally create the function declarations
     f_createIntVector = Function::Create(intVec_Int, Function::ExternalLinkage, "createIntVector", m);
+    f_concatIntVector = Function::Create(intVec_intVargs, Function::ExternalLinkage, "concatIntVector", m);
     f_deleteIntVector = Function::Create(void_intVec, Function::ExternalLinkage, "deleteIntVector", m);
     f_setIntVectorElement = Function::Create(void_intVecIntInt, Function::ExternalLinkage, "setIntVectorElement", m);
     f_getIntVectorElement = Function::Create(int_intVecInt, Function::ExternalLinkage, "getIntVectorElement", m);
@@ -181,6 +184,8 @@ Module * initializeModule(std::string const & name) {
     // done
     return m;
 }
+
+
 
 } // namespace
 
