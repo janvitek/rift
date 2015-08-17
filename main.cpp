@@ -6,9 +6,6 @@ using namespace llvm;
 
 using std::cout;
 
-
-
-
 int main(int n, char** argv) {
   // initialize the JIT
   LLVMInitializeNativeTarget();
