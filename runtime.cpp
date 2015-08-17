@@ -2,25 +2,25 @@
 
 #include "runtime.h"
 
-IntVector * createIntVector(int size) {
-    return new IntVector(size);
+IV * createIV(int size) {
+    return new IV(size);
 }
 
-void deleteIntVector(IntVector * v) {
+void deleteIV(IV * v) {
     delete v;
 }
 
-void setIntVectorElement(IntVector * v, int index, int value) {
+void setIVElem(IV * v, int index, int value) {
     assert(index >= 0 and index < v->length and "Out of bounds");
     v->data[index] = value;
 }
 
-int getIntVectorElement(IntVector * v, int index) {
+int getIVElem(IV * v, int index) {
     assert(index >= 0 and index < v->length and "Out of bounds");
     return v->data[index];
 
 }
 
-int getIntVectorSize(IntVector * v) {
+int getIVSize(IV * v) {
     return v->length;
 }
