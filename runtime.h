@@ -21,7 +21,7 @@ void setIntVectorElement(IntVector * v, int index, int value);
 
 int getIntVectorElement(IntVector * v, int index);
 
-int getVectorSize(IntVector * v);
+int getIntVectorSize(IntVector * v);
 
 #endif // RUNTIME_H
 

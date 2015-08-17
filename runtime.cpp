@@ -21,7 +21,6 @@ int getIntVectorElement(IntVector * v, int index) {
 
 }
 
-int getVectorSize(IntVector * v) {
+int getIntVectorSize(IntVector * v) {
     return v->length;
 }
-
