@@ -1,29 +1,30 @@
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
-struct IV {
+struct DV {
     int length;
-    int * data;
-    IV(int size) {
-        data = new int[size];
+    double * data;
+    DV(int size) {
+        data = new double[size];
     }
 
-    ~IV() {
+    ~DV() {
         delete [] data;
     }
 };
 
-IV * createIV(int size);
+// I am using doubles in the API to spare you the need to cast them in LLVM IR, which might make more sense in the long run
+DV * createIV(double size);
 
-IV * concatIV(int size, ...);
+DV * concatIV(int size, ...);
 
-void deleteIV(IV * v);
+void deleteIV(DV * v);
 
-void setIVElem(IV * v, int index, int value);
+void setIVElem(DV * v, double index, double value);
 
-int getIVElem(IV * v, int index);
+double getIVElem(DV * v, double index);
 
-int getIVSize(IV * v);
+double getIVSize(DV * v);
 
 #endif // RUNTIME_H
 

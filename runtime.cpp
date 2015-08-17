@@ -5,51 +5,44 @@
 #include <vector>
 #include "runtime.h"
 
-IV * createIV(int size) {
-    return new IV(size);
+DV * createIV(double size) {
+    return new DV(size);
 }
 
-IV * concatIV(int size, ...) {
+DV * concatIV(int size, ...) {
     va_list ap;
     va_start(ap, size);
-    std::vector<IV*> inputs;
+    std::vector<DV*> inputs;
     int length = 0;
     for (int i = 0; i <= size; ++i) {
-        inputs.push_back(va_arg(ap, IV*));
+        inputs.push_back(va_arg(ap, DV*));
         length += inputs.back()->length;
     }
     va_end(ap);
-    IV * result = new IV(length);
+    DV * result = new DV(length);
     size = 0;
-    for (IV * iv : inputs) {
-        memcpy(result->data + size,iv->data, iv->length);
-        size += iv->length;
+    for (DV * dv : inputs) {
+        memcpy(result->data + size,dv->data, dv->length);
+        size += dv->length;
     }
     return result;
 }
 
-
-void deleteIntVector(IV * v) {
+void deleteIV(DV * v) {
     delete v;
 }
 
-
-
-void deleteIV(IV * v) {
-    delete v;
-}
-
-void setIVElem(IV * v, int index, int value) {
+void setIVElem(DV * v, double index, double value) {
     assert(index >= 0 and index < v->length and "Out of bounds");
-    v->data[index] = value;
+    v->data[static_cast<int>(index)] = value;
 }
 
-int getIVElem(IV * v, int index) {
+double getIVElem(DV * v, double index) {
     assert(index >= 0 and index < v->length and "Out of bounds");
-    return v->data[index];
+    return v->data[static_cast<int>(index)];
 
 }
 
-int getIVSize(IV * v) {
+double getIVSize(DV * v) {
     return v->length;
 }

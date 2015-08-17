@@ -14,40 +14,46 @@ extern  std::map<std::string, Value*> namedValues;
 namespace {
 
 Type * t_Int;
-PointerType * p_IV;
+Type * t_Double;
+PointerType * p_DV;
 
-Function * f_createIV;
-Function * f_deleteIV;
-Function * f_setIVElem;
-Function * f_getIVElem;
-Function * f_getIVSize;
+Function * f_createDV;
+Function * f_concatDV;
+Function * f_deleteDV;
+Function * f_setDVElem;
+Function * f_getDVElem;
+Function * f_getDVSize;
 
 Module * initializeModule(std::string const & name) {
     Module * m = new Module(name, getGlobalContext());
     // now we must create the type declarations required in the runtime functions
     t_Int = IntegerType::get(getGlobalContext(), 32);
-    StructType * t_IV = StructType::create(getGlobalContext(), "IV");
+    t_Double = Type::getDoubleTy(getGlobalContext());
+    StructType * t_DV = StructType::create(getGlobalContext(), "DV");
     std::vector<Type *> fields;
     fields.push_back(t_Int); // length
-    fields.push_back(PointerType::get(t_Int, 0));
-    t_IV->setBody(fields, false);
-    p_IV = PointerType::get(t_IV, 0);
+    fields.push_back(PointerType::get(t_Double, 0));
+    t_DV->setBody(fields, false);
+    p_DV = PointerType::get(t_DV, 0);
     // create the function types from the API
+    fields = { t_Double };
+    FunctionType * dv_double = FunctionType::get(p_DV, fields, false);
     fields = { t_Int };
-    FunctionType * intVec_Int = FunctionType::get(p_IV, fields, false);
-    fields = { p_IV };
-    FunctionType * void_intVec = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
-    FunctionType * int_intVec = FunctionType::get(t_Int, fields, false);
-    fields = { p_IV, t_Int };
-    FunctionType * int_intVecInt = FunctionType::get(t_Int, fields, false);
-    fields = { p_IV, t_Int, t_Int };
-    FunctionType * void_intVecIntInt = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
+    FunctionType * dv_intvargs = FunctionType::get(p_DV, fields, true);
+    fields = { p_DV };
+    FunctionType * void_dv = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
+    FunctionType * double_dv = FunctionType::get(t_Double, fields, false);
+    fields = { p_DV, t_Double };
+    FunctionType * double_dvdouble = FunctionType::get(t_Double, fields, false);
+    fields = { p_DV, t_Double, t_Double };
+    FunctionType * void_dvdoubledouble = FunctionType::get(Type::getVoidTy(getGlobalContext()), fields, false);
     // and finally create the function declarations
-    f_createIV = Function::Create(intVec_Int, Function::ExternalLinkage, "createIV", m);
-    f_deleteIV = Function::Create(void_intVec, Function::ExternalLinkage, "deleteIV", m);
-    f_setIVElem = Function::Create(void_intVecIntInt, Function::ExternalLinkage, "setIVElem", m);
-    f_getIVElem = Function::Create(int_intVecInt, Function::ExternalLinkage, "getIVElem", m);
-    f_getIVSize = Function::Create(int_intVec, Function::ExternalLinkage, "getIVSize", m);
+    f_createDV = Function::Create(dv_double, Function::ExternalLinkage, "createDV", m);
+    f_concatDV = Function::Create(dv_intvargs, Function::ExternalLinkage, "concatDV", m);
+    f_deleteDV = Function::Create(void_dv, Function::ExternalLinkage, "deleteDV", m);
+    f_setDVElem = Function::Create(void_dvdoubledouble, Function::ExternalLinkage, "setDVElem", m);
+    f_getDVElem = Function::Create(double_dvdouble, Function::ExternalLinkage, "getDVElem", m);
+    f_getDVSize = Function::Create(double_dv, Function::ExternalLinkage, "getDVSize", m);
     return m;
 }
 
