@@ -1,4 +1,5 @@
-using std::string;
+#ifndef H_LEX
+#define H_LEX
 
 enum Token {
   END = -1,
@@ -25,11 +26,9 @@ enum Token {
   COM = 22,
 };
 
-const char* tok_to_str(Token tok);
-
-void error(const char* s);
-
-void error(const char* s, const char* s2);
+char const* tok_to_str(Token tok);
+void error(char const* s);
+void error(char const * s, char const* s2);
 
 class File  {
   int state;
@@ -46,10 +45,12 @@ class File  {
   void read_identifier_or_number();
 
 public:
-  File(const char* name);
-  int good();
+  File(char const* name);
+  bool good();
   Token next();
-  string* token_as_string();
-  string* ident_or_string;
+  std::string* token_as_string();
+  std::string* ident_or_string;
   float number;
 };
+
+#endif

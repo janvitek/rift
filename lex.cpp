@@ -14,16 +14,16 @@ using std::string;
 
 using namespace std;
 
-void error(const char* s) {
+void error(char const* s) {
   cout << s << endl;  exit(-1);
 }
 
-void error(const char* s, const char* s2) {
+void error(char const* s, char const* s2) {
   cout << s << s2 << endl;  exit(-1);
 }
 
 
-const char* tok_to_str(Token tok) {
+char const* tok_to_str(Token tok) {
   switch (tok) {
   case  END:    return "$"; 
   case  ASS: return "<-";
@@ -51,7 +51,7 @@ const char* tok_to_str(Token tok) {
 }
 
 /** True if we managed to read the input file. */
-int File::good() { 
+bool File::good() { 
   return state == 1; 
 }
 
@@ -160,8 +160,8 @@ void File::read_identifier_or_number() {
 /** Read in entire file 'name'.
  * If all went well, good() holds.
  */
-File::File(const char* name) {
-  if (name == NULL) { state = -1; return; }
+File::File(char const* name) {
+  if (name == nullptr) { state = -1; return; }
   ifstream fin(name);
   if (! fin.good() ) { state = -1; return; }
   fin.seekg(0, ios::end);

@@ -1,5 +1,12 @@
 #include "parse.h"
 
+using namespace std;
+
+using namespace llvm;
+
+using std::cout;
+
+
 static Module *theModule;
 static IRBuilder<> builder(getGlobalContext());
 static std::map<std::string, Value*> namedValues;
@@ -21,8 +28,8 @@ string* Parser::string_value() {
   return strings.at(cursor);
 }
 
-float Parser::float_value() {
-  return floats.at(cursor);
+double Parser::double_value() {
+  return doubles.at(cursor);
 }
 
 #define EAT(T) \
@@ -51,13 +58,13 @@ Seq* Parser::parseSequence() {
 }
 
 Exp* Parser::parsePrimaryExp(){
-  Exp * e = NULL;
+  Exp * e = nullptr;
   Token t = token();
   if ( t == STR ) { 
     e = new Str(string_value());
     EAT(STR);
   } else if ( t == NUM ) { 
-    e = new Num(float_value());
+    e = new Num(double_value());
     EAT(NUM);
   } else if ( t == FUN ) {
     EAT2( FUN, OPAR);
@@ -114,7 +121,7 @@ Exp* Parser::parsePrimaryExp(){
     } else 
       e = v;    
   }
-  if ( e == NULL ) error("Failed to parse Primary");
+  if ( e == nullptr ) error("Failed to parse Primary");
   return e;
 }
 
