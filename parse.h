@@ -6,59 +6,50 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
-
 #include <iostream>
 #include <unordered_map>
-
 #include "lex.h"
 
 using std::endl;
 using std::string;
 
+class Visitor;
+
 class Exp {
 public:
-  virtual ~Exp(){}
-  virtual void print(std::ostream& os) = 0;
-  virtual llvm::Value *codegen() { return nullptr; }
-  friend std::ostream& operator<<(std::ostream& os, Exp& e);
+  ~Exp(){}
+  virtual void accept(Visitor*  v);
+  virtual llvm::Value *codegen() { return nullptr; }  
+  void print();
 };
-
-std::ostream& operator<<(std::ostream& os, Exp& e);
 
 class Num : public Exp {
 public:
   double value;
   Num(double v) : value(v) {}
-  void print(std::ostream& os) { os << value; }
-  llvm::Value *codegen() override {
-    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(value));
-  }
+  void accept(Visitor* v) override;
 };
 
-
 class Str : public Exp {
-  string* value;
 public:
+  string* value;
   Str(string* v) : value(v) {}
-  void print(std::ostream& os) {
-    os << "\"" << *value << "\"";
-  }
+  void accept(Visitor* v) override;
 };
 
 class Var : public Exp {
-  string* value;
 public:
+  string* value;
   Var(string* v) : value(v) {}
-  void print(std::ostream& os) { os << *value; }
+  void accept(Visitor* v) override;
+  ~Var() { }
 };
 
 class Seq : public Exp {
-  std::vector<Exp*> * exps;
 public:
+  std::vector<Exp*> * exps;
   Seq(std::vector<Exp*>* v) : exps(v) {}
-  void print(std::ostream& os) {
-    for(Exp* e : *exps) os << *e << endl;
-  }
+  void accept(Visitor* v) override;
   ~Seq() {
     exps->clear();
     delete exps;
@@ -67,15 +58,11 @@ public:
 
 
 class Fun : public Exp {
+public:
   std::vector<Var*> *params;
   Seq* body;
-public:
   Fun(std::vector<Var*> *params, Seq *body) : params(params), body(body) {}
-  void print(std::ostream& os) {
-  os << "function (";
-  for (Var* v : *params) os <<  *v << ",";
-  os << ") {\n"; body->print(os); os << "}\n";
-  }
+  void accept(Visitor* v) override;
   ~Fun() {
     params->clear();
     delete params;
@@ -84,14 +71,11 @@ public:
 };
 
 class BinExp : public Exp {
+public:
   Exp *left, *right;
   Token op;
-public:
   BinExp(Exp* l, Token op, Exp* r) : left(l), op(op), right(r) {}
-  void print(std::ostream& os) {
-    left->print(os);  os << " " <<tok_to_str(op) << " ";
-    right->print(os);
-  }
+  void accept(Visitor* v) override;
   ~BinExp() {
     delete left; 
     delete right;
@@ -103,11 +87,7 @@ public:
   Var* name;
   std::vector<Exp*>* args;
   Call(Var* n, std::vector<Exp*>* a) : name(n), args(a) {}
-  void print(std::ostream& os) {  
-    os << *name << "(";
-    for (Exp* v : *args)  os <<  *v << ",";
-    os <<")";
-  }
+  void accept(Visitor* v) override;
   ~Call() {
     delete name;
     delete args;
@@ -115,14 +95,12 @@ public:
 };
 
 class Idx : public Exp {
+public:
   Var *name;
   Exp *body;
-public:
-  Idx(Var* n, Exp* b) : name(n), body(b) {}
-  void print(std::ostream& os) {
-    os << *name << "[";  body->print(os);  os << "]";
-  }
-  ~Idx() {
+  Idx(Var* n, Exp* b) : name(n), body(b) {} 
+  void accept(Visitor* v) override;
+ ~Idx() {
     delete name;
     delete body;
   }
@@ -132,13 +110,11 @@ public:
 class Assign : public Exp { };
 
 class SimpleAssign : public Assign {
+public:
   Var* name;
   Exp* rhs;
-public:
-  SimpleAssign(Var* n, Exp* r) : name(n), rhs(r) {}
-  void print(std::ostream& os) {
-    name->print(os); os << " <- " ; rhs->print(os);
-  }
+ SimpleAssign(Var* v, Exp* e) : name(v), rhs(e) {}
+  void accept(Visitor* v) override;
   ~SimpleAssign() {
     delete name;
     delete rhs;
@@ -146,13 +122,11 @@ public:
 };
 
 class IdxAssign : public Assign {
+public:
   Idx *lhs;
   Exp *rhs;
-public:
-  IdxAssign(Idx* l, Exp* r) : lhs(l), rhs(r) {}
-  void print(std::ostream& os) {
-    lhs->print(os); os << " <- " ; rhs->print(os);
-  }
+ IdxAssign(Idx* e, Exp* e2) : lhs(e), rhs(e2) {}
+  void accept(Visitor* v) override;
   ~IdxAssign() {
     delete lhs;
     delete rhs;
@@ -160,21 +134,32 @@ public:
 };
 
 class IfElse : public Exp {
+public:
   Exp *guard;
   Seq *ifclause, *elseclause;
- 
-public:
-  IfElse(Exp* g, Seq* i, Seq* e) : guard(g), ifclause(i), elseclause(e) {}
-  void print(std::ostream& os) {
-    os << "if ( "; guard->print(os);  os << " ) {\n";  
-    ifclause->print(os);  os << "\n} else {\n";  
-    elseclause->print(os);   os << "\n}";
-  }
+ IfElse(Exp* g, Seq* i, Seq* e) : guard(g), ifclause(i), elseclause(e) {}
+  void accept(Visitor* v) override;
   ~IfElse() {
     delete guard;
     delete ifclause;
     delete elseclause;
   }
+};
+
+
+class Visitor {
+ public:
+  virtual void visit(Num * x)          =0;
+  virtual void visit(Str * x)          =0;
+  virtual void visit(Var * x)          =0;
+  virtual void visit(Fun * x)          =0;
+  virtual void visit(BinExp * x)       =0;
+  virtual void visit(Seq * x)          =0;
+  virtual void visit(Call * x)         =0;
+  virtual void visit(Idx * x)          =0;
+  virtual void visit(SimpleAssign * x) =0;
+  virtual void visit(IdxAssign * x)    =0;
+  virtual void visit(IfElse * x)       =0;
 };
 
 

@@ -1,7 +1,6 @@
 #include "parse.h"
 
 using namespace std;
-
 using namespace llvm;
 
 using std::cout;
@@ -15,5 +14,6 @@ int main(int n, char** argv) {
   File file(argv[1]);
   Parser parse(file);
   Exp* e = parse.parse();
-  cout << *e << endl;
+  e->print();
+  cout<<endl;
 }

@@ -5,11 +5,11 @@
 #include <vector>
 #include "runtime.h"
 
-DV * createIV(double size) {
+DV * createDV(double size) {
     return new DV(size);
 }
 
-DV * concatIV(int size, ...) {
+DV * concatDV(int size, ...) {
     va_list ap;
     va_start(ap, size);
     std::vector<DV*> inputs;
@@ -28,21 +28,21 @@ DV * concatIV(int size, ...) {
     return result;
 }
 
-void deleteIV(DV * v) {
+void deleteDV(DV * v) {
     delete v;
 }
 
-void setIVElem(DV * v, double index, double value) {
+void setDVElem(DV * v, double index, double value) {
     assert(index >= 0 and index < v->length and "Out of bounds");
     v->data[static_cast<int>(index)] = value;
 }
 
-double getIVElem(DV * v, double index) {
+double getDVElem(DV * v, double index) {
     assert(index >= 0 and index < v->length and "Out of bounds");
     return v->data[static_cast<int>(index)];
 
 }
 
-double getIVSize(DV * v) {
+double getDVSize(DV * v) {
     return v->length;
 }

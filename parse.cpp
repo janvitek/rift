@@ -1,20 +1,84 @@
 #include "parse.h"
 
+
 using namespace std;
-
-using namespace llvm;
-
 using std::cout;
 
 
-Module *theModule;
-static IRBuilder<> builder(getGlobalContext());
-static std::map<std::string, Value*> namedValues;
+llvm::Module *theModule;
+static llvm::IRBuilder<> builder(llvm::getGlobalContext());
+static std::map<std::string, llvm::Value*> namedValues;
 
-ostream& operator<<(ostream& os, Exp& e) {
-  e.print(os);
-  return os;
+
+void Num::accept(Visitor* v)  { v->visit(this); }
+void Str::accept(Visitor* v)  { v->visit(this); }
+void Var::accept(Visitor* v)  { v->visit(this); }
+void Fun::accept(Visitor* v)  { v->visit(this); }
+void BinExp::accept(Visitor* v)  { v->visit(this); }
+void Seq::accept(Visitor* v)  { v->visit(this); }
+void Call::accept(Visitor* v)  { v->visit(this); }
+void Idx::accept(Visitor* v)  { v->visit(this); }
+void SimpleAssign::accept(Visitor* v)  { v->visit(this); }
+void IdxAssign::accept(Visitor* v)  { v->visit(this); }
+void IfElse::accept(Visitor* v)  { v->visit(this); }
+
+class Printer: public Visitor {
+ public:
+  Printer() {}
+  void visit(Num*  x) override { 
+    cout << x->value; 
+  }
+  void visit(Str* x)  override { 
+    cout << "\"" << *(x->value) << "\""; 
+  }
+  void visit(Var* x)  override { 
+    cout << *(x->value); 
+  }
+  void visit(Fun * x)  override { 
+    cout << "function (";
+    for (Var* v : *(x->params)) { v->accept(this); cout << ","; }
+    cout << ") {\n"; x->body->accept(this); cout << "}\n";
+  }
+  void visit(BinExp * x)  override {
+    x->left->accept(this);
+    cout << " " << tok_to_str(x->op) << " ";
+    x->right->accept(this);
+  }
+  void visit(Seq * x)  override { 
+    for(Exp* e : *(x->exps)) {
+      e->accept(this); cout << endl; 
+    }
+  }
+  void visit(Call * x) override  { 
+    x->name->accept(this) ; cout << "(";
+    for (Exp* v : *(x->args))  {
+      v->accept(this); cout << ",";
+    }
+    cout <<")";
+  }
+  void visit(Idx * x) override  { 
+    x->name->accept(this); cout << "[";  x->body->accept(this); cout << "]"; 
+  }
+  void visit(SimpleAssign * x)  override {
+    x->name->accept(this); cout<<" <- ";
+    x->rhs->accept(this); 
+  }
+  void visit(IdxAssign * x)  override { 
+    x->lhs->accept(this); cout << " <- " ; x->rhs->accept(this); 
+  }
+  void visit(IfElse * x)  override { 
+    cout << "if ( "; x->guard->accept(this);  cout << " ) {\n";  
+    x->ifclause->accept(this);  cout << "\n} else {\n";  
+    x->elseclause->accept(this);   cout << "\n}";
+  }
+};
+
+
+void Exp::print() { 
+  Printer p;
+  this->accept(&p); 
 }
+
 
 Token Parser::token() {
   return tokens.at(cursor);

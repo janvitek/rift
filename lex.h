@@ -1,6 +1,7 @@
 #ifndef H_LEX
 #define H_LEX
 
+
 enum Token {
   END = -1,
   ASS = 1,
