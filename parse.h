@@ -1,14 +1,12 @@
 #ifndef H_PARSE
 #define H_PARSE
 
-#include "llvm/IR/Verifier.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
+#include <vector>
 #include <iostream>
 #include <unordered_map>
 #include "lex.h"
+
+using namespace std;
 
 using std::endl;
 using std::string;
@@ -19,7 +17,7 @@ class Exp {
 public:
   ~Exp(){}
   virtual void accept(Visitor*  v);
-  virtual llvm::Value *codegen() { return nullptr; }  
+
   void print();
 };
 

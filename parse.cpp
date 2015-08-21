@@ -1,15 +1,9 @@
 #include "parse.h"
 
-
 using namespace std;
 using std::cout;
 
-
-llvm::Module *theModule;
-static llvm::IRBuilder<> builder(llvm::getGlobalContext());
-static std::map<std::string, llvm::Value*> namedValues;
-
-
+// Implementing the visitor pattern...
 void Num::accept(Visitor* v)  { v->visit(this); }
 void Str::accept(Visitor* v)  { v->visit(this); }
 void Var::accept(Visitor* v)  { v->visit(this); }
@@ -22,6 +16,7 @@ void SimpleAssign::accept(Visitor* v)  { v->visit(this); }
 void IdxAssign::accept(Visitor* v)  { v->visit(this); }
 void IfElse::accept(Visitor* v)  { v->visit(this); }
 
+// To print an expression e, call e.print()...
 class Printer: public Visitor {
  public:
   Printer() {}
