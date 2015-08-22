@@ -67,44 +67,40 @@ Module * initializeModule(std::string const & name) {
 
 #define ARGS(...) std::vector<Value *>({ __VA_ARGS__ })
 
-class Compiler {
+class Compiler : public Visitor {
   Module * m;
   BasicBlock * bb;
+  Value* result;
 
   /** Numeric constant is converted to a vector of size 1. Better way
       would be to have a single API call for it, but this nicely shows how
-      to actually work with the calls.
+m      to actually work with the calls.
   */
-  Value * compile(Num const & e) {
+  void visit(Num const & e) {
     // create a vector of size 1
-    Value * result = CallInst::Create(f_createDV, ARGS(constant(1)), 
-				      "", bb);
+    result = CallInst::Create(f_createDV, ARGS(constant(1)), "", bb);
     // set its first element to the given double
-    CallInst::Create(f_setDVElem, ARGS(result, constant(0), 
-				       constant(e.value)), 
-		     "", bb);
-    return result;
+    CallInst::Create(f_setDVElem, ARGS(result, constant(0), constant(e.value)), "", bb);
   }
 
-  /** Compiles a call to c() function.
-   */
-  Value * compileC(Call const & e) {
+  /** Compiles a call to c() function.  */
+  void visit(Call const & e) {
     std::vector<Value *> args;
     args.push_back(constant(static_cast<int>(e.args->size()))); 
     // number of arguments
     for (Exp * arg : *e.args)
       args.push_back(arg->codegen()); 
     // this will not be codegen but a visitor pattern
-    return CallInst::Create(f_concatDV, args, "", bb);
+    result = CallInst::Create(f_concatDV, args, "", bb);
   }
 
-  Value * constant(int value) {
-    return ConstantInt::get(getGlobalContext(), APInt(value, 32));
+  void constant(int value) {
+    result = ConstantInt::get(getGlobalContext(), APInt(value, 32));
   }
 
-    Value * constant(double value) {
-        return ConstantFP::get(getGlobalContext(), APFloat(value));
-    }
+  void constant(double value) {
+    result = ConstantFP::get(getGlobalContext(), APFloat(value));
+  }
 };
 
 

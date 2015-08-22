@@ -36,3 +36,5 @@ rift
 *.h#
 
 .#parse.h
+
+#compiler.cpp#
