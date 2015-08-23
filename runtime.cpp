@@ -1,12 +1,10 @@
 #include <cassert>
 #include <cstdarg>
 #include <cstring>
-
-
 #include <vector>
-#include "runtime.h"
-
 #include <iostream>
+
+#include "runtime.h"
 
 using std::cout;
 
@@ -50,12 +48,8 @@ Env *r_env_def(Env* env,  void *sym) {
   return env;
 }
 
-// if sym is not defined, add to the current env
-void  r_env_set(Env* env, void* sym, RVal* val) {
-
-}
-
-void  env_set(Env* env, void* sym, RVal* val, Env *original) {
+// helper function
+static void  env_set(Env* env, void* sym, RVal* val, Env *original) {
   for (int i = 0; i < env->size; i++) 
     if (env->bindings[i].symbol == sym) {
       env->bindings[i].data = val;
@@ -69,6 +63,11 @@ void  env_set(Env* env, void* sym, RVal* val, Env *original) {
   }
 }
 
+// if sym is not defined, add to the current env
+void  r_env_set(Env* env, void* sym, RVal* val) {
+  env_set(env, sym, val, env);
+}
+
 // For local variables, access by offset
 void  r_env_set_at(Env *env, int at, RVal *val) {
   env->bindings[at].data = val;
@@ -79,9 +78,8 @@ RVal *r_env_get_at(Env *env, int at) {
   return env->bindings[at].data;
 }
 
-
 void  r_env_del(Env* env) {
-  free(env->bindings);
+  delete env->bindings;
   delete env;
 }
 
@@ -100,26 +98,26 @@ Fun *r_fun_mk(Env *env, void *code) {
 /////-- Character vectors
 //////////////////////////////////////////////////////////////////////
 
-CV    *r_cv_mk(int size) {
+CV *r_cv_mk(int size) {
   CV *r = new CV();
   r->data = new char[size];
   r->size = size;
   return r;  
 }
 
-CV    *r_cv_c(int size, ...) {
+CV *r_cv_c(int size, ...) {
   return nullptr; // TODO - finish
 }
 
-void   r_cv_del(CV *v) {
+void r_cv_del(CV *v) {
   delete v->data;
   delete v;
 }
-void   r_cv_set(CV *v, int index, char value) {
+void r_cv_set(CV *v, int index, char value) {
   v->data[index] = value;
 }
 
-char   r_cv_get(CV *v, int index) {
+char r_cv_get(CV *v, int index) {
   return v->data[index];
 }
 
@@ -127,7 +125,7 @@ int r_cv_size(CV *v) {
   return v->size;
 }
 
-CV    *r_cv_paste(CV *v1, CV *v2) { 
+CV *r_cv_paste(CV *v1, CV *v2) { 
   int size = v1->size + v2->size;
   CV *r = new CV();
   r->data = new char[size];
@@ -234,9 +232,11 @@ Fun  *r_rv_as_fun(RVal *v) {
 }
 
 
+// helper enum
 enum class OP { PLUS, TIMES, DIVIDE, MINUS };
 
-RVal *op_OP(OP op, RVal* v1, RVal *v2) {
+// helper function
+static RVal *op_OP(OP op, RVal* v1, RVal *v2) {
   if (v1->kind != v2->kind) {
     return nullptr; // should convert?
   } 
@@ -337,7 +337,7 @@ int  isa_fun(RVal *v) { return v->kind == KIND::FUN; }
 int  isa_dv(RVal *v)  { return v->kind == KIND::DV; }
 int  isa_cv(RVal *v)  { return v->kind == KIND::CV; }
 
-void  print(RVal *v) {
+RVal *print(RVal *v) {
   if ( isa_cv(v) ) {
     cout << v->cv->data << "\n";
   } else if ( isa_dv(v) ) {
@@ -345,6 +345,7 @@ void  print(RVal *v) {
   } else {
     cout << "Fun\n"; // TODO: better print
   }
+  return v;
 }
 
 
@@ -360,3 +361,20 @@ RVal *paste(RVal *v1, RVal *v2) {
     return nullptr; // Adding functions is not defined
   }
 }
+
+
+RVal *eval(RVal *v) {
+  return nullptr; // TODO -- how do we do this one?
+}
+
+
+// TODO:  is a nullptr  a valid rift value ?  we have no way of writing it.
+//        perhaps we should never see that at the user level
+
+// TODO:  there are some runtime functions that are internal to the runtime
+//        system;  other can be called by from the user level
+//        Should the ones that are user-callable take an environment as 
+//        arugment or some kind of context?
+
+
+

@@ -5,7 +5,6 @@
  *  vectors and double vectors. Environments are used to look up variables.
  */
 
-
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 
@@ -96,7 +95,7 @@ struct RVal {
 
 RVal *r_rv_mk_dv(DV *v);
 RVal *r_rv_mk_cv(CV *v);
-RVal *r_rv_mk_fun(Env *v);
+RVal *r_rv_mk_fun(Fun *v);
 
 DV   *r_rv_as_dv(RVal *v);
 CV   *r_rv_as_cv(RVal *v);
@@ -113,10 +112,13 @@ int   isa_dv(RVal *v);
 int   isa_cv(RVal *v);
 
 // print any value
-void  print(RVal *v);
+RVal *print(RVal *v);
 
 // concatenate the two arguments
 RVal *paste(RVal *v1, RVal *v2);
+
+// eval
+RVal *eval(RVal *v);
 
 #endif // RUNTIME_H
 
