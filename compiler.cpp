@@ -74,7 +74,7 @@ class Compiler : public Visitor {
 
   /** Numeric constant is converted to a vector of size 1. Better way
       would be to have a single API call for it, but this nicely shows how
-m      to actually work with the calls.
+      to actually work with the calls.
   */
   void visit(Num const & e) {
     // create a vector of size 1

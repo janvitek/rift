@@ -5,67 +5,118 @@
  *  vectors and double vectors. Environments are used to look up variables.
  */
 
+
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
 struct RVal;
+
+/** Bindings in an environment */
+struct Binding {
+  void *symbol; 
+  RVal *data;
+};
 
 /** Environment */
 struct Env {
-  Env* parent;
-  RVal lookup(char * c);
+  Env     *parent;   // parent environemtn
+  Binding *bindings; // bindings in this environment
+  int      size;     // number of bindings in the environment
+  int      length;   // length of the binding array
 };
+
+Env  *r_env_mk(Env* parent);
+RVal *r_env_get(Env* env, void *sym);
+Env  *r_env_def(Env* env,  void *sym);
+void  r_env_set(Env* env, void* sym, RVal* val);
+void  r_env_set_at(Env *env, int at, RVal *val);
+RVal *r_env_get_at(Env *env, int at);
+void  r_env_del(Env* env);
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 
 /** Closure */
 struct Fun {
   Env *env;
-  char *code; 
+  void *code; // TODO - what is the type of the code?
 };
 
+Fun *r_fun_mk(Env* env, void *code);
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 
 /** Character vector */
 struct CV {
-  int length;
-  char* data;
-  CV(int size) {
-    data = new char[size];
-  } 
-  ~CV() {
-    delete [] data;
-  }
+  int   size;
+  char *data;
 };
+
+CV    *r_cv_mk(int size);
+CV    *r_cv_c(int size, ...);
+void   r_cv_del(CV *v);
+void   r_cv_set(CV *v, int index, char value);
+char   r_cv_get(CV *v, int index);
+int    r_cv_size(CV *v);
+CV    *r_cv_paste(CV *v1, CV *v2);
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 
 /** Double vector */
 struct DV {
-  int length;
+  int      size;
   double * data;
-  DV(int size) {
-    data = new double[size];
-  } 
-  ~DV() {
-    delete [] data;
-  }
 };
 
+DV    *r_dv_mk(int size);
+DV    *r_dv_c(int size, ...);
+void   r_dv_del(DV *v);
+void   r_dv_set(DV *v, int index, double value);
+double r_dv_get(DV *v, int index);
+int    r_dv_size(DV *v);
+DV    *r_dv_paste(DV *v1, DV *v2);
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+enum class KIND { FUN, CV, DV };
+
 struct RVal {
-  int kind;
-  union u {
-    Fun fun;
-    CV  cv;
-    DV  dv;
+  KIND kind;
+  union {
+    Fun *fun;
+    CV  *cv;
+    DV  *dv;
   };
 };
 
-DV *createDV(double size);
-DV *concatDV(int size, ...);
-void deleteDV(DV *v);
-void setDVElem(DV *v, double index, double value);
-double getDVElem(DV *v, double index);
-double getDVSize(DV *v);
 
-CV *createCV(double size);
-CV *concatCV(int size, ...);
-void deleteCV(CV *v);
-void setCVElem(CV *v, double index, char value);
-double getCVElem(CV *v, double index);
-double getCVSize(CV *v);
+RVal *r_rv_mk_dv(DV *v);
+RVal *r_rv_mk_cv(CV *v);
+RVal *r_rv_mk_fun(Env *v);
+
+DV   *r_rv_as_dv(RVal *v);
+CV   *r_rv_as_cv(RVal *v);
+Fun  *r_rv_as_fun(RVal *v);
+
+RVal *op_plus(RVal* v1, RVal *v2);
+RVal *op_minus(RVal* v1, RVal *v2);
+RVal *op_times(RVal* v1, RVal *v2);
+RVal *op_divide(RVal* v1, RVal *v2);
+
+// type testing function
+int   isa_fun(RVal *v);
+int   isa_dv(RVal *v);
+int   isa_cv(RVal *v);
+
+// print any value
+void  print(RVal *v);
+
+// concatenate the two arguments
+RVal *paste(RVal *v1, RVal *v2);
 
 #endif // RUNTIME_H
 
