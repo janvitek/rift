@@ -1,8 +1,11 @@
-#include "llvm/IR/Verifier.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
+#include <llvm/IR/Verifier.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/Support/raw_ostream.h>
+#include "llvm/Analysis/Passes.h"
 
 #include "parse.h"
 
@@ -11,7 +14,7 @@ namespace {
 
 using namespace llvm;
 
-using Function;
+using llvm::Function;
 
 #define DEF_BASE_TYPE( name , code ) \
   Type *init_ ## name() { return code; }  \
@@ -21,7 +24,7 @@ using Function;
 #define DEF_FUNCTION( name, signature ) \
   Function *fun_ ## name; \
   void init_function_ ## name (Module *module) {  \
-    fun_ ## name = Create( signature, ExternalLinkage,\
+    fun_ ## name = Function::Create( signature, Function::ExternalLinkage,\
                              " ## name ## ", module); \
   }
 
