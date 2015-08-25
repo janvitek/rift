@@ -132,7 +132,7 @@ public:
   DEF_BASE_TYPE( V,  Type::getVoidTy(getGlobalContext()));
   DEF_BASE_TYPE( I,  IntegerType::get(getGlobalContext(), 32));
   DEF_BASE_TYPE( D,  Type::getDoubleTy(getGlobalContext()));
-  DEF_BASE_TYPE( C,  Type::getDoubleTy(getGlobalContext()));
+  DEF_BASE_TYPE( C, IntegerType::get(getGlobalContext(), 8));
 
 
   /* LLVM does not have void* type, changed to int. */
@@ -294,7 +294,12 @@ public:
   }
 
   Value *r_const(string const & value) {
-    ConstantDataArray::getString(gc, value.c_str(), true);
+      ArrayType * arrayType = ArrayType::get(IntegerType::get(gc, 8), value.size() + 1);
+      GlobalVariable * gvar = new GlobalVariable(*m, arrayType, true, GlobalVariable::PrivateLinkage, 0, value);
+      Constant * cstr = ConstantDataArray::getString(gc, value.c_str(), true);
+      gvar->setInitializer(cstr);
+      std::vector<Value*> indices({ r_const(0), r_const(0) });
+      return ConstantExpr::getGetElementPtr(gvar, indices);
   }
 
   /** Numeric constant is converted to a vector of size 1. Better way
@@ -325,6 +330,7 @@ public:
   void visit(Str * x)  {
     result = CallInst::Create(m->fun_r_cv_mk_from_char, 
                   ARGS(r_const(*(x->value))), "", bb);
+    result = CallInst::Create(m->fun_r_rv_mk_cv, ARGS(result), "", bb);
   }
    void visit(Var * x)  {}
    void visit(Fun * x)  {}

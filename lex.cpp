@@ -110,7 +110,7 @@ Token File::next() {
     advance();
     while( cur_char() != '"') advance();
     tok = STR;
-    ident_or_string = token_as_string();
+    ident_or_string = token_as_stringLiteral();
     advance();
     break;
   }
@@ -123,6 +123,10 @@ Token File::next() {
 
 string* File:: token_as_string() {
   return new string( &buffer[tok_start], cursor - tok_start);
+}
+
+string * File::token_as_stringLiteral() {
+    return new string( &buffer[tok_start + 1], cursor - tok_start - 1);
 }
 
 void File::read_identifier_or_number() {
