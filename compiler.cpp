@@ -102,6 +102,9 @@ class RiftModule : public Module {
   } \
   StructType * name = init_ ## name();
 
+//How to deal with recursive types in LLVM 3+
+//http://blog.llvm.org/2011/11/llvm-30-type-system-rewrite.html
+
 #define FILL_STRUCT2( name , a1, a2 )	\
   int init_ ## name () { \
     std::vector<Type *> fields; \
@@ -261,7 +264,7 @@ class Compiler : public Visitor {
       would be to have a single API call for it, but this nicely shows how
       to actually work with the calls.
   */
-  void visit(Num const & e) {
+  void visit(Num  const & e) {
     // create a vector of size 1
     result = CallInst::Create(rm->fun_r_dv_mk, ARGS(constant(1)), "", bb);
     // set its first element to the given double
@@ -288,7 +291,7 @@ class Compiler : public Visitor {
     result = ConstantFP::get(getGlobalContext(), APFloat(value));
     return result;
   }
-};
 
+};
 
 } // namespace
