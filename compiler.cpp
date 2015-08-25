@@ -319,7 +319,28 @@ public:
    void visit(Var * x)  {}
    void visit(Fun * x)  {}
 
-   void visit(BinExp * x) {} 
+   void visit(BinExp * x) {
+       x->left->accept(this);
+       Value * lhs = result;
+       x->right->accept(this);
+       Value * rhs = result;
+       Function * target = nullptr;
+       switch (x->op) {
+       case Token::PLUS:
+           target = m->fun_op_plus;
+           break;
+       case Token::MIN:
+           target = m->fun_op_minus;
+           break;
+       case Token::MUL:
+           target = m->fun_op_times;
+           break;
+       case Token::DIV:
+           target = m->fun_op_divide;
+       }
+       result = CallInst::Create(target, ARGS(lhs, rhs), "", bb);
+   }
+
    void visit(Seq * x) {
        for (Exp * e : *(x->exps))
            e->accept(this);
