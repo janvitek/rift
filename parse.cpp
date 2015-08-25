@@ -1,8 +1,69 @@
 #include "parse.h"
 
 using namespace std;
-using std::cout;
+using namespace rift;
 
+namespace {
+
+// To print an expression e, call e.print()...
+class Printer: public Visitor {
+ public:
+  Printer() {}
+
+  void visit(Num*  x) override {
+    cout << x->value;
+  }
+  void visit(Str* x)  override {
+    cout << "\"" << *(x->value) << "\"";
+  }
+  void visit(Var* x)  override {
+    cout << *(x->value);
+  }
+  void visit(Fun * x)  override {
+    cout << "function (";
+    for (Var* v : *(x->params)) { v->accept(this); cout << ","; }
+    cout << ") {\n"; x->body->accept(this); cout << "}\n";
+  }
+  void visit(BinExp * x)  override {
+    x->left->accept(this);
+    cout << " " << tok_to_str(x->op) << " ";
+    x->right->accept(this);
+  }
+  void visit(Seq * x)  override {
+    for(Exp* e : *(x->exps)) {
+      e->accept(this); cout << endl;
+    }
+  }
+  void visit(Call * x) override  {
+    x->name->accept(this) ; cout << "(";
+    for (Exp* v : *(x->args))  {
+      v->accept(this); cout << ",";
+    }
+    cout <<")";
+  }
+  void visit(Idx * x) override  {
+    x->name->accept(this); cout << "[";  x->body->accept(this); cout << "]";
+  }
+  void visit(SimpleAssign * x)  override {
+    x->name->accept(this); cout<<" <- ";
+    x->rhs->accept(this);
+  }
+  void visit(IdxAssign * x)  override {
+    x->lhs->accept(this); cout << " <- " ; x->rhs->accept(this);
+  }
+  void visit(IfElse * x)  override {
+    cout << "if ( "; x->guard->accept(this);  cout << " ) {\n";
+    x->ifclause->accept(this);  cout << "\n} else {\n";
+    x->elseclause->accept(this);   cout << "\n}";
+  }
+};
+
+} // namespace
+
+
+
+
+namespace rift {
 // Implementing the visitor pattern...
 void Num::accept(Visitor* v)  { v->visit(this); }
 void Str::accept(Visitor* v)  { v->visit(this); }
@@ -15,59 +76,6 @@ void Idx::accept(Visitor* v)  { v->visit(this); }
 void SimpleAssign::accept(Visitor* v)  { v->visit(this); }
 void IdxAssign::accept(Visitor* v)  { v->visit(this); }
 void IfElse::accept(Visitor* v)  { v->visit(this); }
-
-// To print an expression e, call e.print()...
-class Printer: public Visitor {
- public:
-  Printer() {}
-
-  void visit(Num*  x) override { 
-    cout << x->value; 
-  }
-  void visit(Str* x)  override { 
-    cout << "\"" << *(x->value) << "\""; 
-  }
-  void visit(Var* x)  override { 
-    cout << *(x->value); 
-  }
-  void visit(Fun * x)  override { 
-    cout << "function (";
-    for (Var* v : *(x->params)) { v->accept(this); cout << ","; }
-    cout << ") {\n"; x->body->accept(this); cout << "}\n";
-  }
-  void visit(BinExp * x)  override {
-    x->left->accept(this);
-    cout << " " << tok_to_str(x->op) << " ";
-    x->right->accept(this);
-  }
-  void visit(Seq * x)  override { 
-    for(Exp* e : *(x->exps)) {
-      e->accept(this); cout << endl; 
-    }
-  }
-  void visit(Call * x) override  { 
-    x->name->accept(this) ; cout << "(";
-    for (Exp* v : *(x->args))  {
-      v->accept(this); cout << ",";
-    }
-    cout <<")";
-  }
-  void visit(Idx * x) override  { 
-    x->name->accept(this); cout << "[";  x->body->accept(this); cout << "]"; 
-  }
-  void visit(SimpleAssign * x)  override {
-    x->name->accept(this); cout<<" <- ";
-    x->rhs->accept(this); 
-  }
-  void visit(IdxAssign * x)  override { 
-    x->lhs->accept(this); cout << " <- " ; x->rhs->accept(this); 
-  }
-  void visit(IfElse * x)  override { 
-    cout << "if ( "; x->guard->accept(this);  cout << " ) {\n";  
-    x->ifclause->accept(this);  cout << "\n} else {\n";  
-    x->elseclause->accept(this);   cout << "\n}";
-  }
-};
 
 
 void Exp::print() { 
@@ -199,3 +207,4 @@ Exp* Parser::parse() {
   Exp* e = parseSequence();
   return e;
 }
+} // namespace rift

@@ -24,7 +24,7 @@ struct Env {
   int      length;   // length of the binding array
 };
 
-Env  *r_env_mk(Env* parent);
+Env  *r_env_mk(Env* parent, int length);
 RVal *r_env_get(Env* env, void *sym);
 Env  *r_env_def(Env* env,  void *sym);
 void  r_env_set(Env* env, void* sym, RVal* val);
@@ -119,6 +119,7 @@ RVal *paste(RVal *v1, RVal *v2);
 
 // eval
 RVal *eval(RVal *v);
+
 
 #endif // RUNTIME_H
 

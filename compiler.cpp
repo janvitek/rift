@@ -9,10 +9,11 @@
 
 #include "parse.h"
 
+using namespace llvm;
+using namespace rift;
 
 namespace {
 
-using namespace llvm;
 
 class RiftModule : public Module {
 

@@ -6,7 +6,7 @@
 
 #include "runtime.h"
 
-using std::cout;
+using namespace std;
 
 
 /////////////////////////////////////////////////////////////////
@@ -375,6 +375,3 @@ RVal *eval(RVal *v) {
 //        system;  other can be called by from the user level
 //        Should the ones that are user-callable take an environment as 
 //        arugment or some kind of context?
-
-
-

@@ -11,6 +11,8 @@ using namespace std;
 using std::endl;
 using std::string;
 
+namespace rift {
+
 class Visitor;
 
 class Exp {
@@ -164,7 +166,6 @@ class Visitor {
 };
 
 
-
 class Parser {
   File file;
   std::vector<Token> tokens;
@@ -206,5 +207,5 @@ public:
   Exp* parse();
 };
 
-
+} // namespace rift
 #endif

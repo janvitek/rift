@@ -1,10 +1,12 @@
-#include "parse.h"
-
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+
+#include "parse.h"
+#include "runtime.h"
+
 
 using namespace std;
 using namespace llvm;
@@ -18,8 +20,17 @@ int main(int n, char** argv) {
   LLVMInitializeNativeAsmParser();
 
   File file(argv[1]);
-  Parser parse(file);
-  Exp* e = parse.parse();
+  rift::Parser parse(file);
+  rift::Exp* e = parse.parse();
+  // now we need the compiler
+
+
+  // create the global environment
+  Env * globalEnv = r_env_mk(nullptr, 0);
+
   e->print();
-  cout<<endl;
+
+  delete globalEnv;
+  cout << endl;
+
 }
