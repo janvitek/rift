@@ -293,8 +293,8 @@ public:
     return ConstantFP::get(gc, APFloat(value));
   }
 
-  Value *r_const(string value) {
-    return nullptr;
+  Value *r_const(string const & value) {
+    ConstantDataArray::getString(gc, value.c_str(), true);
   }
 
   /** Numeric constant is converted to a vector of size 1. Better way
@@ -324,7 +324,7 @@ public:
 
   void visit(Str * x)  {
     result = CallInst::Create(m->fun_r_cv_mk_from_char, 
-			      ARGS(r_const(x->value)), "", bb);
+                  ARGS(r_const(*(x->value))), "", bb);
   }
    void visit(Var * x)  {}
    void visit(Fun * x)  {}
