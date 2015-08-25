@@ -132,8 +132,17 @@ Fun *r_fun_mk(Env *env, FunPtr code) {
 
 CV *r_cv_mk(int size) {
   CV *r = new CV();
-  r->data = new char[size];
+  r->data = new char[size + 1];
   r->size = size;
+  return r;  
+}
+
+CV *r_cv_mk_from_char(char* data) {
+  CV *r = new CV();
+  int size = strlen(data);
+  r->data = new char[size + 1];
+  r->size = size;
+  strncpy(r->data, data, size + 1);
   return r;  
 }
 
