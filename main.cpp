@@ -11,7 +11,9 @@
 using namespace std;
 using namespace llvm;
 
-using std::cout;
+
+void test_compileFunction(rift::Fun * f);
+
 
 int main(int n, char** argv) {
   // initialize the JIT
@@ -21,14 +23,14 @@ int main(int n, char** argv) {
 
   File file(argv[1]);
   rift::Parser parse(file);
-  rift::Exp* e = parse.parse();
+  rift::Seq* e = parse.parse();
   // now we need the compiler
-
+  test_compileFunction(new rift::Fun(new std::vector<rift::Var*>(), e));
 
   // create the global environment
   Env * globalEnv = r_env_mk(nullptr, 0);
 
-  e->print();
+  //e->print();
 
   delete globalEnv;
   cout << endl;

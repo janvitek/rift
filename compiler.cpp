@@ -35,7 +35,7 @@ class RiftModule : public Module {
 #define DEF_FUNCTION( name, signature ) \
   Function *init_function_ ## name (Module *module) {		\
     return Function::Create( signature, Function::ExternalLinkage,\
-                             " ## name ## ", module); \
+                             #name, module); \
   } \
   Function *fun_ ## name = init_function_ ## name ( this );
 
@@ -77,11 +77,11 @@ class RiftModule : public Module {
     init_funtype_ ## returntype ## __ ## at1 ## _ ## at2 ## _ ## at3();
  
 #define DEF_STRUCT0( name  )	\
-  StructType * name = StructType::create(getGlobalContext(), " ## E ## ");
+  StructType * name = StructType::create(getGlobalContext(), #name);
  
 #define DEF_STRUCT2( name , a1, a2 )	\
   StructType * init_ ## name () { \
-    StructType * t = StructType::create(getGlobalContext(), " ## E ## ");\
+    StructType * t = StructType::create(getGlobalContext(), #name);\
     std::vector<Type *> fields; \
     fields.push_back(a1);\
     fields.push_back(a2);\
@@ -135,7 +135,8 @@ public:
   DEF_BASE_TYPE( C,  Type::getDoubleTy(getGlobalContext()));
 
 
-  DEF_PTR_TYPE( pV, PointerType::get(V, 0));
+  /* LLVM does not have void* type, changed to int. */
+  DEF_PTR_TYPE( pI, PointerType::get(I, 0));
   DEF_PTR_TYPE( pC, PointerType::get(C, 0));
   DEF_PTR_TYPE( pD, PointerType::get(D, 0));
 
@@ -159,9 +160,9 @@ public:
 	       I,  // this is an enum.
 	       F); // this a union, F is likely the largest
 
-  FILL_STRUCT2( B, pV, pRV);
+  FILL_STRUCT2( B, pI, pRV);
   FILL_STRUCT4( E, pE, pB, I, I);
-  FILL_STRUCT2( F, pE, pV);
+  FILL_STRUCT2( F, pE, pI);
 
   DEF_FUNTYPE1( V, pE);
   DEF_FUNTYPE1( V, pCV);
@@ -169,7 +170,7 @@ public:
   DEF_FUNTYPE3( V, pE, I, pRV);
   DEF_FUNTYPE3( V, pCV, I, C);
   DEF_FUNTYPE3( V, pDV, I, D);
-  DEF_FUNTYPE3( V, pE, pV, pRV);
+  DEF_FUNTYPE3( V, pE, pI, pRV);
 
   DEF_FUNTYPE1( I, pRV);
   DEF_FUNTYPE1( I, pCV);
@@ -179,7 +180,7 @@ public:
   DEF_FUNTYPE2( C, pCV, I);
 
   DEF_FUNTYPE1( pE, pE);
-  DEF_FUNTYPE2( pE, pE, pV);
+  DEF_FUNTYPE2( pE, pE, pI);
 
   DEF_FUNTYPE1( pRV, pDV);
   DEF_FUNTYPE1( pRV, pCV);
@@ -187,8 +188,10 @@ public:
   DEF_FUNTYPE1( pRV, pRV);
   DEF_FUNTYPE2( pRV, pRV, pRV);
   DEF_FUNTYPE2( pRV, pE, I);
+  // rift function
+  DEF_FUNTYPE1( pRV, pE);
 
-  DEF_FUNTYPE2( pF, pE, pV);
+  DEF_FUNTYPE2( pF, pE, pI);
   DEF_FUNTYPE1( pF, pRV);
 
   DEF_FUNTYPE1( pCV, I);
@@ -203,14 +206,14 @@ public:
   DEF_FUNTYPEV( pDV, D);
 
   DEF_FUNCTION( r_env_mk,     funtype_pE__pE);
-  DEF_FUNCTION( r_env_get,    funtype_pE__pE_pV);
-  DEF_FUNCTION( r_env_def,    funtype_pE__pE_pV);
-  DEF_FUNCTION( r_env_set,    funtype_V__pE_pV_pRV);
+  DEF_FUNCTION( r_env_get,    funtype_pE__pE_pI);
+  DEF_FUNCTION( r_env_def,    funtype_pE__pE_pI);
+  DEF_FUNCTION( r_env_set,    funtype_V__pE_pI_pRV);
   DEF_FUNCTION( r_env_set_at, funtype_V__pE_I_pRV);
   DEF_FUNCTION( r_env_get_at, funtype_pRV__pE_I);
   DEF_FUNCTION( r_env_del,    funtype_V__pE);
 
-  DEF_FUNCTION( r_fun_mk,     funtype_pF__pE_pV);
+  DEF_FUNCTION( r_fun_mk,     funtype_pF__pE_pI);
 
   DEF_FUNCTION( r_cv_mk,      funtype_pCV__I);
   DEF_FUNCTION( r_cv_c,       funtype_pCV__C_v);
@@ -256,14 +259,30 @@ public:
 #define ARGS(...) std::vector<Value *>({ __VA_ARGS__ })
 
 class Compiler : public Visitor {
-  Module      *m;
+public:
+    Compiler(std::string const & moduleName):
+        m(new RiftModule(moduleName)) {}
+
+    Function * compileFunction(Fun * function) {
+        f = Function::Create(m->funtype_pRV__pE, Function::ExternalLinkage, "riftFunction", m);
+        bb = BasicBlock::Create(gc, "functionStart", f, nullptr);
+        // compile the function's body
+        function->body->accept(this);
+        ReturnInst::Create(gc, result, bb);
+        f->dump();
+        return f;
+    }
+
+
+
+    Function * f;
   BasicBlock  *bb;
   Value       *result;
-  RiftModule  *rm;
-  LLVMContext &gc = getGlobalContext();
+  RiftModule  *m;
+  LLVMContext & gc = getGlobalContext();
 
   Value *r_const(int value) {
-    return ConstantInt::get(gc, APInt(value, 32));
+    return ConstantInt::get(gc, APInt(32, value));
   }
 
   Value *r_const(double value) {
@@ -275,8 +294,8 @@ class Compiler : public Visitor {
       to actually work with the calls.
   */
   void visit(Num *e) {
-    result = CallInst::Create(rm->fun_r_dv_mk, ARGS(r_const(1)), "", bb);
-    CallInst::Create(rm->fun_r_dv_set, 
+    result = CallInst::Create(m->fun_r_dv_mk, ARGS(r_const(1)), "", bb);
+    CallInst::Create(m->fun_r_dv_set,
 		     ARGS(result, r_const(0), r_const(e->value)), 
 		     "", 
 		     bb);
@@ -290,7 +309,7 @@ class Compiler : public Visitor {
       arg->accept(this);
       args.push_back(result);
     }
-    result = CallInst::Create(rm->fun_r_dv_c, args, "", bb);
+    result = CallInst::Create(m->fun_r_dv_c, args, "", bb);
   }
 
 
@@ -298,7 +317,11 @@ class Compiler : public Visitor {
    void visit(Var * x)  {}
    void visit(Fun * x)  {}
    void visit(BinExp * x) {} 
-   void visit(Seq * x)    {} 
+   void visit(Seq * x) {
+       for (Exp * e : *(x->exps))
+           e->accept(this);
+   }
+
    void visit(Idx * x)    {} 
    void visit(SimpleAssign * x) {}
    void visit(IdxAssign * x) {}
@@ -306,4 +329,11 @@ class Compiler : public Visitor {
 
 };
 
+
 } // namespace
+
+void test_compileFunction(Fun * f) {
+    Compiler c("test");
+    c.compileFunction(f);
+}
+

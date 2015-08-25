@@ -87,7 +87,7 @@ void  r_env_del(Env* env) {
 //-- Closures
 //////////////////////////////////////////////////////////////////
 
-Fun *r_fun_mk(Env *env, void *code) {
+Fun *r_fun_mk(Env *env, FunPtr code) {
   Fun *f = new Fun();
   f->env = env;
   f->code = code;

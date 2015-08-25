@@ -206,7 +206,7 @@ public:
   string* string_value();
   double  double_value();
   void advance();
-  Exp* parse();
+  Seq * parse();
 };
 
 } // namespace rift

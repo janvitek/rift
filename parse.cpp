@@ -203,8 +203,7 @@ Exp* Parser::parseBinExp(Exp* l) {
   return parseBinExp(new BinExp(l, t, r));    
 }
 
-Exp* Parser::parse() {
-  Exp* e = parseSequence();
-  return e;
+Seq* Parser::parse() {
+  return  parseSequence();
 }
 } // namespace rift
