@@ -188,13 +188,14 @@ public:
   DEF_FUNTYPE1( pRV, pRV);
   DEF_FUNTYPE2( pRV, pRV, pRV);
   DEF_FUNTYPE2( pRV, pE, I);
-  // rift function
+
   DEF_FUNTYPE1( pRV, pE);
 
   DEF_FUNTYPE2( pF, pE, pI);
   DEF_FUNTYPE1( pF, pRV);
 
   DEF_FUNTYPE1( pCV, I);
+  DEF_FUNTYPE1( pCV, pC);
   DEF_FUNTYPE1( pCV, pRV);
   DEF_FUNTYPE2( pCV, pCV, pCV);
 
@@ -216,6 +217,8 @@ public:
   DEF_FUNCTION( r_fun_mk,     funtype_pF__pE_pI);
 
   DEF_FUNCTION( r_cv_mk,      funtype_pCV__I);
+  DEF_FUNCTION( r_cv_mk_from_char, 
+		              funtype_pCV__pC);
   DEF_FUNCTION( r_cv_c,       funtype_pCV__C_v);
   DEF_FUNCTION( r_cv_del,     funtype_V__pCV);
   DEF_FUNCTION( r_cv_set,     funtype_V__pCV_I_C);
@@ -290,6 +293,10 @@ public:
     return ConstantFP::get(gc, APFloat(value));
   }
 
+  Value *r_const(string value) {
+    return nullptr;
+  }
+
   /** Numeric constant is converted to a vector of size 1. Better way
       would be to have a single API call for it, but this nicely shows how
       to actually work with the calls.
@@ -315,7 +322,10 @@ public:
   }
 
 
-  void visit(Str * x)  {}
+  void visit(Str * x)  {
+    result = CallInst::Create(m->fun_r_cv_mk_from_char, 
+			      ARGS(r_const(x->value)), "", bb);
+  }
    void visit(Var * x)  {}
    void visit(Fun * x)  {}
 

@@ -64,7 +64,8 @@ struct CV {
 
 extern "C" {
 CV    *r_cv_mk(int size);
-CV    *r_cv_c(int size, ...);
+CV    *r_cv_mk_from_char(char *);
+CV    *r_cv_c(int size, ...); // TODO: not sure this function makes sense for cv
 void   r_cv_del(CV *v);
 void   r_cv_set(CV *v, int index, char value);
 char   r_cv_get(CV *v, int index);
@@ -119,6 +120,9 @@ RVal *op_plus(RVal* v1, RVal *v2);
 RVal *op_minus(RVal* v1, RVal *v2);
 RVal *op_times(RVal* v1, RVal *v2);
 RVal *op_divide(RVal* v1, RVal *v2);
+
+RVal *op_lt(RVal* v1, RVal *v2);
+RVal *op_eq(RVal* v1, RVal *v2);
 
 // type testing function
 int   isa_fun(RVal *v);
