@@ -35,16 +35,6 @@ rift
 
 *.h#
 
-.#parse.h
+.#*
 
-#compiler.cpp#
-
-.#runtime.h
-
-#compiler.cpp#
-
-.#compiler.cpp
-
-#compiler.cpp#
-
-#compiler.cpp#
+#*
