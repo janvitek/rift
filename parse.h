@@ -41,7 +41,9 @@ public:
   string* value;
   Var(string* v) : value(v) {}
   void accept(Visitor* v) override;
-  ~Var() { }
+  ~Var() {
+      delete value;
+  }
 };
 
 class Seq : public Exp {
@@ -50,7 +52,8 @@ public:
   Seq(std::vector<Exp*>* v) : exps(v) {}
   void accept(Visitor* v) override;
   ~Seq() {
-    exps->clear();
+    for (Exp * e : *exps)
+       delete e;
     delete exps;
   }
 };
@@ -63,7 +66,8 @@ public:
   Fun(std::vector<Var*> *params, Seq *body) : params(params), body(body) {}
   void accept(Visitor* v) override;
   ~Fun() {
-    params->clear();
+      for (Var * v : *params)
+          delete v;
     delete params;
     delete body;
   }
@@ -89,6 +93,8 @@ public:
   void accept(Visitor* v) override;
   ~Call() {
     delete name;
+      for (Exp * e : *args)
+          delete e;
     delete args;
   }
 };
