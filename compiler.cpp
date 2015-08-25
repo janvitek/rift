@@ -137,9 +137,9 @@ class RiftModule : public Module {
   int _IGNORE_ ## name = init_ ## name();
 
 public:
-  DEF_BASE_TYPE( V,  Type::getVoidTy(getGlobalContext()));
-  DEF_BASE_TYPE( I,  IntegerType::get(getGlobalContext(), 32));
-  DEF_BASE_TYPE( D,  Type::getDoubleTy(getGlobalContext()));
+  DEF_BASE_TYPE( V, Type::getVoidTy(getGlobalContext()));
+  DEF_BASE_TYPE( I, IntegerType::get(getGlobalContext(), 32));
+  DEF_BASE_TYPE( D, Type::getDoubleTy(getGlobalContext()));
   DEF_BASE_TYPE( C, IntegerType::get(getGlobalContext(), 8));
 
 
@@ -325,18 +325,18 @@ public:
   }
 
   Value *r_const(string const & value) {
-      ArrayType * arrayType = ArrayType::get(IntegerType::get(gc, 8), value.size() + 1);
-      GlobalVariable * gvar = new GlobalVariable(*m, arrayType, true, GlobalVariable::PrivateLinkage, 0, value);
+    ArrayType * arrayType = ArrayType::get(IntegerType::get(gc, 8), 
+					   value.size() + 1);
+      GlobalVariable * gvar = 
+	new GlobalVariable(*m, arrayType, true, 
+			   GlobalVariable::PrivateLinkage, 0, value);
       Constant * cstr = ConstantDataArray::getString(gc, value.c_str(), true);
       gvar->setInitializer(cstr);
       std::vector<Value*> indices({ r_const(0), r_const(0) });
       return ConstantExpr::getGetElementPtr(gvar, indices);
   }
 
-  /** Numeric constant is converted to a vector of size 1. Better way
-      would be to have a single API call for it, but this nicely shows how
-      to actually work with the calls.
-  */
+  /** Numeric constant is converted to a vector of size 1. */
   void visit(Num *e) {
     result = CallInst::Create(m->fun_r_dv_mk, ARGS(r_const(1)), "", bb);
     CallInst::Create(m->fun_r_dv_set,
@@ -401,7 +401,6 @@ public:
    void visit(SimpleAssign * x) {}
    void visit(IdxAssign * x) {}
    void visit(IfElse * x) {}
-
 };
 
 
