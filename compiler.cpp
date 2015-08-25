@@ -142,7 +142,6 @@ public:
   DEF_BASE_TYPE( D, Type::getDoubleTy(getGlobalContext()));
   DEF_BASE_TYPE( C, IntegerType::get(getGlobalContext(), 8));
 
-
   /* LLVM does not have void* type, changed to int. */
   DEF_PTR_TYPE( pI, PointerType::get(I, 0));
   DEF_PTR_TYPE( pC, PointerType::get(C, 0));
@@ -165,8 +164,8 @@ public:
   DEF_PTR_TYPE( pB, PointerType::get(B, 0) );
 
   FILL_STRUCT2( RV, 
-	       I,  // this is an enum.
-	       F); // this a union, F is likely the largest
+	       I,  // an enum.
+	       F); // a union, F is the largest
 
   FILL_STRUCT2( B, pI, pRV);
   FILL_STRUCT4( E, pE, pB, I, I);
