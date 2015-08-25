@@ -20,6 +20,7 @@ void IfElse::accept(Visitor* v)  { v->visit(this); }
 class Printer: public Visitor {
  public:
   Printer() {}
+
   void visit(Num*  x) override { 
     cout << x->value; 
   }

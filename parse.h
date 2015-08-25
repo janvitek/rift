@@ -15,8 +15,11 @@ class Visitor;
 
 class Exp {
 public:
-  ~Exp(){}
-  virtual void accept(Visitor*  v);
+  virtual ~Exp() {}
+  virtual void accept(Visitor*  v) = 0;
+
+  // TODO DUMMY
+  llvm::Value * codegen() { return nullptr; }
 
   void print();
 };

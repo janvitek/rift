@@ -16,7 +16,7 @@ set(CMAKE_BUILD_TYPE Debug)
 
 
 # build the shared library for the JIT
-file(GLOB SRC "*.cpp" "*.h")
+file(GLOB SRC "*.cpp" "*.h" "tests/*.ri")
 add_executable(${PROJECT_NAME} ${SRC})
 
 # Find the libraries that correspond to the LLVM components
