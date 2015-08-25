@@ -24,9 +24,9 @@ class RiftModule : public Module {
   PointerType *init_ ## name() { return code; }  \
   PointerType * name = init_ ## name();
 
-#define DEF_OPAQUE_PTR_TYPE ( name ) \
+#define DEF_OPAQUE_PTR_TYPE( name ) \
   PointerType *init_opaque_ ## name() { \
-     PATypeHolder opaqueStructTy = OpaqueType::get(); \
+  llvm::PATypeHolder opaqueStructTy = OpaqueType::get();	\
      return PointerType::getUnqual(opaqueStructTy); \
   }; \
   PointerType * name = init_opaque_ ## name ();
@@ -75,6 +75,9 @@ class RiftModule : public Module {
   FunctionType * funtype_ ## returntype ## __ ## at1 ## _ ## at2 ## _ ## at3 = \
     init_funtype_ ## returntype ## __ ## at1 ## _ ## at2 ## _ ## at3();
  
+#define DEF_STRUCT0( name  )	\
+  StructType * name = StructType::create(getGlobalContext(), " ## E ## ");
+ 
 #define DEF_STRUCT2( name , a1, a2 )	\
   StructType * init_ ## name () { \
     StructType * t = StructType::create(getGlobalContext(), " ## E ## ");\
@@ -99,6 +102,28 @@ class RiftModule : public Module {
   } \
   StructType * name = init_ ## name();
 
+#define FILL_STRUCT2( name , a1, a2 )	\
+  int init_ ## name () { \
+    std::vector<Type *> fields; \
+    fields.push_back(a1);\
+    fields.push_back(a2);\
+    name->setBody(fields, false);\
+    return 0;\
+  } \
+  int _IGNORE_ ## name = init_ ## name();
+
+#define FILL_STRUCT4( name , a1, a2, a3, a4 )	\
+  int init_ ## name () { \
+    std::vector<Type *> fields; \
+    fields.push_back(a1);\
+    fields.push_back(a2);\
+    fields.push_back(a3);\
+    fields.push_back(a4);\
+    name->setBody(fields, false);\
+    return 0;\
+  } \
+  int _IGNORE_ ## name = init_ ## name();
+
 public:
   DEF_BASE_TYPE( V,  Type::getVoidTy(getGlobalContext()));
   DEF_BASE_TYPE( I,  IntegerType::get(getGlobalContext(), 32));
@@ -116,33 +141,24 @@ public:
   DEF_PTR_TYPE( pCV, PointerType::get(CV, 0) );
   DEF_PTR_TYPE( pDV, PointerType::get(DV, 0) );
 
-  DEF_OPAQUE_PTR_TYPE( pE );
-  DEF_OPAQUE_PTR_TYPE( pRV );
-  DEF_OPAQUE_PTR_TYPE( pF );
-  DEF_OPAQUE_PTR_TYPE( pB );
+  DEF_STRUCT0( RV);
+  DEF_STRUCT0( B);
+  DEF_STRUCT0( E);
+  DEF_STRUCT0( F);
 
-  DEF_STRUCT2( RV, 
+  DEF_PTR_TYPE( pE, PointerType::get(E, 0));
+  DEF_PTR_TYPE( pRV, PointerType::get(RV, 0) );
+  DEF_PTR_TYPE( pF, PointerType::get(F, 0) );
+  DEF_PTR_TYPE( pB, PointerType::get(B, 0) );
+
+  FILL_STRUCT2( RV, 
 	       I,  // this is an enum.
 	       F); // this a union, F is likely the largest
 
-  DEF_STRUCT2( B, pV, pRV);
-  DEF_STRUCT4( E, pE, pB, I, I);
-  DEF_STRUCT2( F, pE, pV);
+  FILL_STRUCT2( B, pV, pRV);
+  FILL_STRUCT4( E, pE, pB, I, I);
+  FILL_STRUCT2( F, pE, pV);
 
-  int tie_up_the_knot() {
-    // Opaque types are used to build recursive types, and they
-    // are refined to ties everything together...
-    // http://llvm.org/releases/2.9/docs/ProgrammersManual.html#PATypeHolder
-
-    cast<OpaqueType>(pRV->getElementType()->get())->refineAbstractTypeTo(RV);
-    cast<OpaqueType>(pE->getElementType()->get())->refineAbstractTypeTo(E);
-    cast<OpaqueType>(pF->getElementType()->get())->refineAbstractTypeTo(F);
-    cast<OpaqueType>(pB->getElementType()->get())->refineAbstractTypeTo(B);
-
-
-  }
-  int _ignore_ = tie_up_the_knot();
- 
   DEF_FUNTYPE1( V, pE);
   DEF_FUNTYPE1( V, pCV);
   DEF_FUNTYPE1( V, pDV);
@@ -230,8 +246,6 @@ public:
   DEF_FUNCTION( eval,          funtype_pRV__pRV);
 
   RiftModule(std::string const & name) : Module( name, getGlobalContext()) {
-
-
   }
 };    
 
@@ -241,6 +255,7 @@ class Compiler : public Visitor {
   Module * m;
   BasicBlock * bb;
   Value* result;
+  RiftModule* rm;
 
   /** Numeric constant is converted to a vector of size 1. Better way
       would be to have a single API call for it, but this nicely shows how
@@ -248,9 +263,9 @@ class Compiler : public Visitor {
   */
   void visit(Num const & e) {
     // create a vector of size 1
-    result = CallInst::Create(f_createDV, ARGS(constant(1)), "", bb);
+    result = CallInst::Create(rm->fun_r_dv_mk, ARGS(constant(1)), "", bb);
     // set its first element to the given double
-    CallInst::Create(f_setDVElem, ARGS(result, constant(0), constant(e.value)), "", bb);
+    CallInst::Create(rm->fun_r_dv_set, ARGS(result, constant(0), constant(e.value)), "", bb);
   }
 
   /** Compiles a call to c() function.  */
@@ -261,7 +276,7 @@ class Compiler : public Visitor {
     for (Exp * arg : *e.args)
       args.push_back(arg->codegen()); 
     // this will not be codegen but a visitor pattern
-    result = CallInst::Create(f_concatDV, args, "", bb);
+    result = CallInst::Create(rm->fun_r_dv_c, args, "", bb);
   }
 
   void constant(int value) {
