@@ -293,7 +293,7 @@ public:
     return ConstantFP::get(gc, APFloat(value));
   }
 
-  Value *r_const(string value) {
+  Value *r_const(string * value) {
     return nullptr;
   }
 
