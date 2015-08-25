@@ -265,20 +265,19 @@ class Compiler : public Visitor {
   Function   * f;
   BasicBlock * bb;
   Value      * result;
-  RiftModule * m;
   LLVMContext& gc = getGlobalContext();
 
-
 public:
+  RiftModule * m;
+
   Compiler(std::string const & moduleName):
     m(new RiftModule(moduleName)) {}
 
   Function * compileFunction(Fun * function) {
-    f = Function::Create(m->funtype_pRV__pE, Function::ExternalLinkage, "riftFunction", m);
+    f = Function::Create(m->funtype_pRV__pE, Function::ExternalLinkage, 
+			 "r_fun", m);
     bb = BasicBlock::Create(gc, "functionStart", f, nullptr);
-    // compile the function's body
     function->body->accept(this);
-    //Value * r = new BitCastInst(result, m->pRV, "", bb);
     ReturnInst::Create(gc, result, bb);
     f->dump();
     return f;
