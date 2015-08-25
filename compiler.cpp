@@ -255,42 +255,53 @@ public:
 #define ARGS(...) std::vector<Value *>({ __VA_ARGS__ })
 
 class Compiler : public Visitor {
-  Module * m;
-  BasicBlock * bb;
-  Value* result;
-  RiftModule* rm;
+  Module      *m;
+  BasicBlock  *bb;
+  Value       *result;
+  RiftModule  *rm;
+  LLVMContext &gc = getGlobalContext();
+
+  Value *r_const(int value) {
+    return ConstantInt::get(gc, APInt(value, 32));
+  }
+
+  Value *r_const(double value) {
+    return ConstantFP::get(gc, APFloat(value));
+  }
 
   /** Numeric constant is converted to a vector of size 1. Better way
       would be to have a single API call for it, but this nicely shows how
       to actually work with the calls.
   */
-  void visit(Num  const & e) {
-    // create a vector of size 1
-    result = CallInst::Create(rm->fun_r_dv_mk, ARGS(constant(1)), "", bb);
-    // set its first element to the given double
-    CallInst::Create(rm->fun_r_dv_set, ARGS(result, constant(0), constant(e.value)), "", bb);
+  void visit(Num *e) {
+    result = CallInst::Create(rm->fun_r_dv_mk, ARGS(r_const(1)), "", bb);
+    CallInst::Create(rm->fun_r_dv_set, 
+		     ARGS(result, r_const(0), r_const(e->value)), 
+		     "", 
+		     bb);
   }
 
   /** Compiles a call to c() function.  */
-  void visit(Call const & e) {
+  void visit(Call *e) {
     std::vector<Value *> args;
-    args.push_back(constant(static_cast<int>(e.args->size()))); 
-    // number of arguments
-    for (Exp * arg : *e.args)
-      args.push_back(arg->codegen()); 
-    // this will not be codegen but a visitor pattern
+    args.push_back(r_const(static_cast<int>(e->args->size()))); 
+    for (Exp * arg : *e->args) {
+      arg->accept(this);
+      args.push_back(result);
+    }
     result = CallInst::Create(rm->fun_r_dv_c, args, "", bb);
   }
 
-  Value * constant(int value) {
-    result = ConstantInt::get(getGlobalContext(), APInt(value, 32));
-    return result;
-  }
 
-  Value * constant(double value) {
-    result = ConstantFP::get(getGlobalContext(), APFloat(value));
-    return result;
-  }
+  void visit(Str * x)  {}
+   void visit(Var * x)  {}
+   void visit(Fun * x)  {}
+   void visit(BinExp * x) {} 
+   void visit(Seq * x)    {} 
+   void visit(Idx * x)    {} 
+   void visit(SimpleAssign * x) {}
+   void visit(IdxAssign * x) {}
+   void visit(IfElse * x) {}
 
 };
 
