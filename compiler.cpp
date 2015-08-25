@@ -279,12 +279,14 @@ class Compiler : public Visitor {
     result = CallInst::Create(rm->fun_r_dv_c, args, "", bb);
   }
 
-  void constant(int value) {
+  Value * constant(int value) {
     result = ConstantInt::get(getGlobalContext(), APInt(value, 32));
+    return result;
   }
 
-  void constant(double value) {
+  Value * constant(double value) {
     result = ConstantFP::get(getGlobalContext(), APFloat(value));
+    return result;
   }
 };
 
