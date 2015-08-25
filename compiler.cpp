@@ -268,6 +268,7 @@ public:
         bb = BasicBlock::Create(gc, "functionStart", f, nullptr);
         // compile the function's body
         function->body->accept(this);
+        //Value * r = new BitCastInst(result, m->pRV, "", bb);
         ReturnInst::Create(gc, result, bb);
         f->dump();
         return f;
@@ -299,6 +300,7 @@ public:
 		     ARGS(result, r_const(0), r_const(e->value)), 
 		     "", 
 		     bb);
+    result = CallInst::Create(m->fun_r_rv_mk_dv, ARGS(result), "", bb);
   }
 
   /** Compiles a call to c() function.  */
@@ -316,6 +318,7 @@ public:
   void visit(Str * x)  {}
    void visit(Var * x)  {}
    void visit(Fun * x)  {}
+
    void visit(BinExp * x) {} 
    void visit(Seq * x) {
        for (Exp * e : *(x->exps))
@@ -332,8 +335,13 @@ public:
 
 } // namespace
 
-void test_compileFunction(Fun * f) {
+
+void * test_compileFunction(Fun * f) {
     Compiler c("test");
-    c.compileFunction(f);
+    Function * result = c.compileFunction(f);
+    // now try to JIT it
+    ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(c.m)).create();
+    engine->finalizeObject();
+    return engine->getPointerToFunction(result);
 }
 

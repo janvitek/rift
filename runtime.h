@@ -24,6 +24,7 @@ struct Env {
   int      length;   // length of the binding array
 };
 
+extern "C" {
 Env  *r_env_mk(Env* parent, int length);
 RVal *r_env_get(Env* env, void *sym);
 Env  *r_env_def(Env* env,  void *sym);
@@ -31,6 +32,7 @@ void  r_env_set(Env* env, void* sym, RVal* val);
 void  r_env_set_at(Env *env, int at, RVal *val);
 RVal *r_env_get_at(Env *env, int at);
 void  r_env_del(Env* env);
+}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -44,9 +46,11 @@ typedef RVal * (*FunPtr)(Env *);
 struct Fun {
   Env *env;
   FunPtr code;
+  void print();
 };
-
+extern "C" {
 Fun *r_fun_mk(Env* env, FunPtr code);
+}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -55,8 +59,10 @@ Fun *r_fun_mk(Env* env, FunPtr code);
 struct CV {
   int   size;
   char *data;
+  void print();
 };
 
+extern "C" {
 CV    *r_cv_mk(int size);
 CV    *r_cv_c(int size, ...);
 void   r_cv_del(CV *v);
@@ -64,6 +70,7 @@ void   r_cv_set(CV *v, int index, char value);
 char   r_cv_get(CV *v, int index);
 int    r_cv_size(CV *v);
 CV    *r_cv_paste(CV *v1, CV *v2);
+}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -72,8 +79,9 @@ CV    *r_cv_paste(CV *v1, CV *v2);
 struct DV {
   int      size;
   double * data;
+  void print();
 };
-
+extern "C" {
 DV    *r_dv_mk(int size);
 DV    *r_dv_c(int size, ...);
 void   r_dv_del(DV *v);
@@ -81,6 +89,7 @@ void   r_dv_set(DV *v, int index, double value);
 double r_dv_get(DV *v, int index);
 int    r_dv_size(DV *v);
 DV    *r_dv_paste(DV *v1, DV *v2);
+}
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -94,9 +103,10 @@ struct RVal {
     CV  *cv;
     DV  *dv;
   };
+  void print();
 };
 
-
+extern "C" {
 RVal *r_rv_mk_dv(DV *v);
 RVal *r_rv_mk_cv(CV *v);
 RVal *r_rv_mk_fun(Fun *v);
@@ -123,7 +133,7 @@ RVal *paste(RVal *v1, RVal *v2);
 
 // eval
 RVal *eval(RVal *v);
-
+}
 
 #endif // RUNTIME_H
 

@@ -8,10 +8,42 @@
 
 using namespace std;
 
-
+extern "C" {
 /////////////////////////////////////////////////////////////////
 // --- Environemnts ---
 /////////////////////////////////////////////////////////////////
+
+void RVal::print() {
+    switch (kind) {
+    case KIND::CV:
+        cv->print();
+        break;
+    case KIND::DV:
+        dv->print();
+        break;
+    case KIND::FUN:
+        fun->print();
+        break;
+    }
+}
+
+void DV::print() {
+    cout << "double";
+    for (int i = 0; i < size; ++i)
+        cout << " " << data[i];
+    cout << endl;
+}
+
+void CV::print() {
+    cout << "char";
+    for (int i = 0; i < size; ++i)
+        cout << " " << data[i];
+    cout << endl;
+}
+
+void Fun::print() {
+    cout << "I am a function" << endl;
+}
 
 Env*  r_env_mk(Env* parent, int length) {
   Env *r = new Env();
@@ -138,7 +170,6 @@ CV *r_cv_paste(CV *v1, CV *v2) {
 //////////////////////////////////////////////////////////////////////
 /////-- Double vectors
 //////////////////////////////////////////////////////////////////////
-
 
 DV *r_dv_mk(int size) {
   DV *r = new DV();
@@ -367,6 +398,7 @@ RVal *eval(RVal *v) {
   return nullptr; // TODO -- how do we do this one?
 }
 
+} // extern "C"
 
 // TODO:  is a nullptr  a valid rift value ?  we have no way of writing it.
 //        perhaps we should never see that at the user level

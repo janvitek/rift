@@ -12,7 +12,7 @@ using namespace std;
 using namespace llvm;
 
 
-void test_compileFunction(rift::Fun * f);
+FunPtr test_compileFunction(rift::Fun * f);
 
 
 int main(int n, char** argv) {
@@ -25,12 +25,13 @@ int main(int n, char** argv) {
   rift::Parser parse(file);
   rift::Seq* e = parse.parse();
   // now we need the compiler
-  test_compileFunction(new rift::Fun(new std::vector<rift::Var*>(), e));
-
+  FunPtr x = reinterpret_cast<FunPtr>(test_compileFunction(new rift::Fun(new std::vector<rift::Var*>(), e)));
   // create the global environment
   Env * globalEnv = r_env_mk(nullptr, 0);
 
+  RVal * result = x(globalEnv);
   //e->print();
+  result->print();
 
   delete globalEnv;
   cout << endl;
