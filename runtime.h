@@ -49,7 +49,7 @@ struct Fun {
   void print();
 };
 extern "C" {
-Fun *r_fun_mk(Env* env, FunPtr code);
+Fun *r_fun_mk(Env* env, int index);
 }
 
 /////////////////////////////////////////////////////////////////////

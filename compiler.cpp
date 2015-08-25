@@ -12,6 +12,14 @@
 using namespace llvm;
 using namespace rift;
 
+
+struct RVal;
+struct Env;
+
+typedef RVal * (*FunPtr)(Env *);
+extern std::vector<FunPtr> registeredFunctions;
+
+
 namespace {
 
 
@@ -192,6 +200,7 @@ public:
   DEF_FUNTYPE1( pRV, pE);
 
   DEF_FUNTYPE2( pF, pE, pI);
+  DEF_FUNTYPE2( pF, pE, I);
   DEF_FUNTYPE1( pF, pRV);
 
   DEF_FUNTYPE1( pCV, I);
@@ -214,7 +223,7 @@ public:
   DEF_FUNCTION( r_env_get_at, funtype_pRV__pE_I);
   DEF_FUNCTION( r_env_del,    funtype_V__pE);
 
-  DEF_FUNCTION( r_fun_mk,     funtype_pF__pE_pI);
+  DEF_FUNCTION( r_fun_mk,     funtype_pF__pE_I);
 
   DEF_FUNCTION( r_cv_mk,      funtype_pCV__I);
   DEF_FUNCTION( r_cv_mk_from_char, 
@@ -261,24 +270,46 @@ public:
 
 #define ARGS(...) std::vector<Value *>({ __VA_ARGS__ })
 
+
+
 class Compiler : public Visitor {
 public:
     Compiler(std::string const & moduleName):
         m(new RiftModule(moduleName)) {}
 
-    Function * compileFunction(Fun * function) {
+    FunPtr compileAndJIT(Fun * function) {
+        int result = compileFunction(function);
+        ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).create();
+        engine->finalizeObject();
+        for (FunPtr & i : registeredFunctions)
+            i = reinterpret_cast<FunPtr>(engine->getPointerToFunction(reinterpret_cast<Function*>(i)));
+        return registeredFunctions[result];
+    }
+
+
+    int compileFunction(Fun * function) {
+        Function * oldf = f;
+        BasicBlock * oldbb = bb;
+        Value * oldenv = env;
         f = Function::Create(m->funtype_pRV__pE, Function::ExternalLinkage, "riftFunction", m);
         bb = BasicBlock::Create(gc, "functionStart", f, nullptr);
+        Function::arg_iterator args = f->arg_begin();
+        env = args++;
+        env->setName("env");
         // compile the function's body
         function->body->accept(this);
         //Value * r = new BitCastInst(result, m->pRV, "", bb);
         ReturnInst::Create(gc, result, bb);
         f->dump();
-        return f;
+        registeredFunctions.push_back(reinterpret_cast<FunPtr>(f));
+        f = oldf;
+        bb = oldbb;
+        env = oldenv;
+        return registeredFunctions.size() - 1;
     }
 
 
-
+    Value * env;
     Function * f;
   BasicBlock  *bb;
   Value       *result;
@@ -333,7 +364,11 @@ public:
     result = CallInst::Create(m->fun_r_rv_mk_cv, ARGS(result), "", bb);
   }
    void visit(Var * x)  {}
-   void visit(Fun * x)  {}
+
+   void visit(Fun * x)  {
+       int fi = compileFunction(x);
+       result = CallInst::Create(m->fun_r_fun_mk, ARGS(env, r_const(fi)), "", bb);
+   }
 
    void visit(BinExp * x) {
        x->left->accept(this);
@@ -373,12 +408,8 @@ public:
 } // namespace
 
 
-void * test_compileFunction(Fun * f) {
+FunPtr test_compileFunction(Fun * f) {
     Compiler c("test");
-    Function * result = c.compileFunction(f);
-    // now try to JIT it
-    ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(c.m)).create();
-    engine->finalizeObject();
-    return engine->getPointerToFunction(result);
+    return c.compileAndJIT(f);
 }
 

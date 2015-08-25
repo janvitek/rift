@@ -8,6 +8,10 @@
 
 using namespace std;
 
+
+std::vector<FunPtr> registeredFunctions;
+
+
 extern "C" {
 /////////////////////////////////////////////////////////////////
 // --- Environemnts ---
@@ -119,10 +123,11 @@ void  r_env_del(Env* env) {
 //-- Closures
 //////////////////////////////////////////////////////////////////
 
-Fun *r_fun_mk(Env *env, FunPtr code) {
+
+Fun *r_fun_mk(Env *env, int index) {
   Fun *f = new Fun();
   f->env = env;
-  f->code = code;
+  f->code = registeredFunctions[index];
   return f;
 }
 
@@ -408,6 +413,10 @@ RVal *eval(RVal *v) {
 }
 
 } // extern "C"
+
+
+
+
 
 // TODO:  is a nullptr  a valid rift value ?  we have no way of writing it.
 //        perhaps we should never see that at the user level
