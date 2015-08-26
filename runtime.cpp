@@ -524,6 +524,21 @@ void r_setIndex(RVal * target, RVal * index, RVal * value) {
 
 }
 
+int r_guard(RVal * value) {
+    if (value == nullptr)
+        return 0;
+    switch (value->kind) {
+    case KIND::FUN:
+        return 1;
+    case KIND::CV:
+        return value->cv->size != 0;
+    case KIND::DV:
+        if (value->dv->size == 0)
+            return 0;
+        return value->dv->data[0] != 0;
+    }
+    return 0;
+}
 
 
 

@@ -149,6 +149,8 @@ RVal * r_c(int size, ...);
 RVal * r_getIndex(RVal * source, RVal * index);
 void r_setIndex(RVal * target, RVal * index, RVal * value);
 
+int r_guard(RVal * value);
+
 }
 
 #endif // RUNTIME_H

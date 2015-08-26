@@ -301,6 +301,8 @@ public:
   DEF_FUNCTION( r_getIndex, funtype_pRV__pRV_pRV);
   DEF_FUNCTION( r_setIndex, funtype_pRV__pRV_pRV_pRV);
 
+  DEF_FUNCTION( r_guard, funtype_I__pRV);
+
   RiftModule(std::string const & name) : Module( name, getGlobalContext()) {
   }
 };    
@@ -462,6 +464,15 @@ public:
    }
 
    void visit(Seq * x) {
+       if (x->exps.size() == 0) {
+           // return 0 if the sequence is empty
+           result = CallInst::Create(m->fun_r_dv_mk, ARGS(r_const(1)), "", bb);
+           CallInst::Create(m->fun_r_dv_set,
+                    ARGS(result, r_const(0), r_const(0)),
+                    "",
+                    bb);
+           result = CallInst::Create(m->fun_r_rv_mk_dv, ARGS(result), "", bb);
+       }
        for (Exp * e : x->exps)
            e->accept(this);
    }
@@ -486,7 +497,28 @@ public:
        result = CallInst::Create(m->fun_r_setIndex, ARGS(target, index, result), "", bb);
    }
 
-   void visit(IfElse * x) {}
+   void visit(IfElse * x) {
+       x->guard->accept(this);
+       Value * cond = CallInst::Create(m->fun_r_guard, ARGS(result), "", bb);
+       BasicBlock * ifTrue = BasicBlock::Create(getGlobalContext(), "ifTrue", f, nullptr);
+       BasicBlock * ifFalse = BasicBlock::Create(getGlobalContext(), "ifFalse", f, nullptr);
+       BasicBlock * next = BasicBlock::Create(getGlobalContext(), "next", f, nullptr);
+       ICmpInst * test = new ICmpInst(*bb, ICmpInst::ICMP_EQ, cond, r_const(1), "condition");
+       BranchInst::Create(ifTrue, ifFalse, test, bb);
+       bb = ifTrue;
+       x->ifclause->accept(this);
+       BranchInst::Create(next,bb);
+       Value * trueResult = result;
+       bb = ifFalse;
+       x->elseclause->accept(this);
+       BranchInst::Create(next,bb);
+       Value * falseResult = result;
+       bb = next;
+       PHINode * phi = PHINode::Create(m->pRV, 2, "", bb);
+       phi->addIncoming(trueResult, ifTrue);
+       phi->addIncoming(falseResult, ifFalse);
+       result = phi;
+   }
 };
 
 
