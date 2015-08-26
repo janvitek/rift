@@ -164,19 +164,12 @@ void File::read_identifier_or_number() {
 /** Read in entire file 'name'.
  * If all went well, good() holds.
  */
-File::File(char const* name) {
-  if (name == nullptr) { state = -1; return; }
-  ifstream fin(name);
-  if (! fin.good() ) { state = -1; return; }
-  fin.seekg(0, ios::end);
-  size = fin.tellg();
-  buffer = new char[size];
-  fin.seekg(0);
-  fin.read(buffer, size); 
-  fin.close();
-  tok = END;
-  cursor = tok_start = 0;
-  state = 1; // good()
+File::File(int size, char * buffer) {
+    this->buffer = buffer;
+    this->size = size;
+    tok = END;
+    cursor = tok_start = 0;
+    state = 1; // good()
 }
 
 

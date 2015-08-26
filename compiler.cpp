@@ -34,6 +34,7 @@ int registerSymbol(char const * c) {
 
 namespace symbol {
     int const c = registerSymbol("c");
+    int const eval = registerSymbol("eval");
 
 
 }
@@ -226,6 +227,7 @@ public:
   DEF_FUNTYPE2( pRV, pE, I);
 
   DEF_FUNTYPE1( pRV, pE);
+  DEF_FUNTYPE2( pRV, pE, pRV);
 
   DEF_FUNTYPE2( pF, pE, pI);
   DEF_FUNTYPE2( pF, pE, I);
@@ -293,7 +295,7 @@ public:
 
   DEF_FUNCTION( print,         funtype_pRV__pRV);
   DEF_FUNCTION( paste,         funtype_pRV__pRV_pRV);
-  DEF_FUNCTION( eval,          funtype_pRV__pRV);
+  DEF_FUNCTION( eval,          funtype_pRV__pE_pRV);
 
   DEF_FUNCTION( r_call, funtype_pRV__pRV_I_v);
   DEF_FUNCTION( r_c, funtype_pRV__I_v);
@@ -317,11 +319,14 @@ public:
         m(new RiftModule(moduleName)) {}
 
     FunPtr compileAndJIT(Fun * function) {
+        int start = registeredFunctions.size();
         int result = compileFunction(function);
         ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).create();
         engine->finalizeObject();
-        for (FunInfo & i : registeredFunctions)
+        for (; start < registeredFunctions.size(); ++start) {
+            FunInfo & i = registeredFunctions[start];
             i.ptr = reinterpret_cast<FunPtr>(engine->getPointerToFunction(reinterpret_cast<Function*>(i.ptr)));
+        }
         return registeredFunctions[result].ptr;
     }
 
@@ -397,6 +402,8 @@ public:
   void visit(Call *e) {
       if (e->name->index == symbol::c) {
           call_c(e);
+      } else if (e->name->index == symbol::eval) {
+          call_eval(e);
       } else {
           e->name->accept(this);
           std::vector<Value *> args;
@@ -420,8 +427,12 @@ public:
           args.push_back(result);
       }
       result = CallInst::Create(m->fun_r_c, args, "", bb);
+  }
 
-
+  void call_eval(Call * e) {
+      assert(e->args.size() == 1 and "Only one argument to eval allowed");
+      e->args[0]->accept(this);
+      result = CallInst::Create(m->fun_eval, ARGS(env, result), "", bb);
   }
 
 

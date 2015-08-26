@@ -17,6 +17,7 @@ struct FunInfo {
 std::vector<FunInfo> registeredFunctions;
 std::unordered_map<std::string, int> symbols;
 
+RVal * eval_internal(Env * env, int size, char * source);
 
 
 extern "C" {
@@ -442,8 +443,10 @@ RVal *paste(RVal *v1, RVal *v2) {
 }
 
 
-RVal *eval(RVal *v) {
-  return nullptr; // TODO -- how do we do this one?
+
+RVal *eval(Env * env, RVal *v) {
+    assert(v->kind == KIND::CV and "Only char vectors can be evaluated");
+    return eval_internal(env, v->cv->size, v->cv->data);
 }
 
 

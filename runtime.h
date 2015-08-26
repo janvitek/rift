@@ -139,7 +139,7 @@ RVal *print(RVal *v);
 RVal *paste(RVal *v1, RVal *v2);
 
 // eval
-RVal *eval(RVal *v);
+RVal *eval(Env * env, RVal *v);
 
 // prepares environment for given function and calls it
 RVal * r_call(RVal * callee, int size, ...);

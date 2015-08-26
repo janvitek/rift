@@ -59,7 +59,7 @@ class File  {
   void read_identifier_or_number();
 
 public:
-  File(char const* name);
+  File(int size, char * buffer);
   bool good();
   Token next();
   std::string token_as_string();
