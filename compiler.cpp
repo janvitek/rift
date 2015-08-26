@@ -24,6 +24,19 @@ struct FunInfo {
 };
 
 extern std::vector<FunInfo> registeredFunctions;
+extern std::unordered_map<std::string, int> symbols;
+
+int registerSymbol(char const * c) {
+    int result = symbols.size();
+    symbols[c] = result;
+    return result;
+}
+
+namespace symbol {
+    int const c = registerSymbol("c");
+
+
+}
 
 
 namespace {
@@ -229,6 +242,7 @@ public:
 
   DEF_FUNTYPEV( pCV, C);
   DEF_FUNTYPEV( pDV, D);
+  DEF_FUNTYPEV( pRV, I);
   DEF_FUNTYPEV2( pRV, pRV, I);
 
   DEF_FUNCTION( r_env_mk,     funtype_pE__pE);
@@ -281,6 +295,7 @@ public:
   DEF_FUNCTION( eval,          funtype_pRV__pRV);
 
   DEF_FUNCTION( r_call, funtype_pRV__pRV_I_v);
+  DEF_FUNCTION( r_c, funtype_pRV__I_v);
 
   RiftModule(std::string const & name) : Module( name, getGlobalContext()) {
   }
@@ -374,17 +389,33 @@ public:
 
   /** Compiles a call to a function.  */
   void visit(Call *e) {
-      e->name->accept(this);
+      if (e->name->index == symbol::c) {
+          call_c(e);
+      } else {
+          e->name->accept(this);
+          std::vector<Value *> args;
+          args.push_back(result);
+          args.push_back(r_const(static_cast<int>(e->args.size())));
+          for (Exp * arg : e->args) {
+            arg->accept(this);
+            args.push_back(result);
+          }
+          result = CallInst::Create(m->fun_r_call, args, "", bb);
+      }
 
+      //result = CallInst::Create(m->fun_r_dv_c, args, "", bb);
+  }
+
+  void call_c(Call * e) {
       std::vector<Value *> args;
-      args.push_back(result);
       args.push_back(r_const(static_cast<int>(e->args.size())));
       for (Exp * arg : e->args) {
-        arg->accept(this);
-        args.push_back(result);
+          arg->accept(this);
+          args.push_back(result);
       }
-      result = CallInst::Create(m->fun_r_call, args, "", bb);
-      //result = CallInst::Create(m->fun_r_dv_c, args, "", bb);
+      result = CallInst::Create(m->fun_r_c, args, "", bb);
+
+
   }
 
 

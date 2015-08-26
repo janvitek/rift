@@ -8,6 +8,7 @@
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 
+
 struct RVal;
 
 /** Bindings in an environment */
@@ -142,6 +143,8 @@ RVal *eval(RVal *v);
 
 // prepares environment for given function and calls it
 RVal * r_call(RVal * callee, int size, ...);
+
+RVal * r_c(int size, ...);
 
 }
 

@@ -6,6 +6,11 @@
 #include <unordered_map>
 #include "lex.h"
 
+
+// TODO this is ugly, but so is the parser
+extern std::unordered_map<std::string, int> symbols;
+
+
 namespace rift {
 
 class Visitor;
@@ -196,12 +201,12 @@ public:
     virtual void visit(IfElse* x) = 0;
 };
 
+
 class Parser {
     File file;
     std::vector<Token> tokens;
     std::vector<std::string> strings;
     std::vector<double> doubles;
-    std::unordered_map<std::string, int> symbols;
     int cursor;
     Seq* parseSequence();
     Exp* parseExp();

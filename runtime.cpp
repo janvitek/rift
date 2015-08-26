@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vector>
 #include <iostream>
+#include <unordered_map>
 
 #include "runtime.h"
 
@@ -14,6 +15,8 @@ struct FunInfo {
 };
 
 std::vector<FunInfo> registeredFunctions;
+std::unordered_map<std::string, int> symbols;
+
 
 
 extern "C" {
@@ -168,8 +171,17 @@ CV *r_cv_mk_from_char(char* data) {
   return r;  
 }
 
+CV *r_cv_c_internal(int size, va_list ap) {
+    assert(false and "not implemented");
+    return nullptr;
+}
+
 CV *r_cv_c(int size, ...) {
-  return nullptr; // TODO - finish
+    va_list ap;
+    va_start(ap, size);
+    CV * result = r_cv_c_internal(size, ap);
+    va_end(ap);
+    return result;
 }
 
 void r_cv_del(CV *v) {
@@ -209,22 +221,27 @@ DV *r_dv_mk(int size) {
   return r;
 }
 
-DV *r_dv_c(int size, ...) {
-    va_list ap;
-    va_start(ap, size);
+DV * r_dv_c_internal(int size, va_list ap) {
     std::vector<DV*> inputs;
     int length = 0;
-    for (int i = 0; i <= size; ++i) {
-        inputs.push_back(va_arg(ap, DV*));
+    for (int i = 0; i < size; ++i) {
+        inputs.push_back(va_arg(ap, RVal*)->dv);
         length += inputs.back()->size;
     }
-    va_end(ap);
     DV * result = r_dv_mk(length);
     size = 0;
     for (DV * dv : inputs) {
-        memcpy(result->data + size,dv->data, dv->size);
+        memcpy(result->data + size,dv->data, dv->size * sizeof(double));
         size += dv->size;
     }
+    return result;
+}
+
+DV *r_dv_c(int size, ...) {
+    va_list ap;
+    va_start(ap, size);
+    DV * result = r_dv_c_internal(size, ap);
+    va_end(ap);
     return result;
 }
 
@@ -441,6 +458,36 @@ RVal * r_call(RVal * callee, int size, ...) {
     va_end(ap);
     return callee->fun->code(env);
 }
+
+RVal * r_c(int size, ...) {
+    if (size == 0)
+        return r_rv_mk_dv(r_dv_mk(0));
+    std::vector<RVal*> args(size);
+    va_list ap;
+    va_start(ap, size);
+    for (int i = 0; i <= size; ++i)
+        args[i] = va_arg(ap, RVal*);
+    va_end(ap);
+    KIND k = args[0]->kind;
+    assert(k != KIND::FUN and "unable to concat functions");
+    for (int i = 1; i < args.size(); ++i)
+        assert(k == args[i]->kind and "All arguments to c() must be of the same type");
+    va_start(ap, size);
+    RVal * result = nullptr;
+    switch (k) {
+    case KIND::CV:
+        result = r_rv_mk_cv(r_cv_c_internal(size, ap));
+        break;
+    case KIND::DV:
+        result = r_rv_mk_dv(r_dv_c_internal(size, ap));
+        break;
+    }
+    va_end(ap);
+    return result;
+}
+
+
+
 
 
 } // extern "C"
