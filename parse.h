@@ -6,11 +6,6 @@
 #include <unordered_map>
 #include "lex.h"
 
-using namespace std;
-
-using std::endl;
-using std::string;
-
 namespace rift {
 
 class Visitor;
@@ -31,44 +26,51 @@ public:
 
 class Str : public Exp {
 public:
-  string* value;
-  Str(string* v) : value(v) {}
+  std::string  value;
+  Str(std::string const & v) : value(v) {}
   void accept(Visitor* v) override;
 };
 
 class Var : public Exp {
 public:
-  string* value;
-  Var(string* v) : value(v) {}
+  std::string value;
+  Var(std::string const & v) : value(v) {}
   void accept(Visitor* v) override;
-  ~Var() {
-      delete value;
-  }
 };
 
 class Seq : public Exp {
 public:
-  std::vector<Exp*> * exps;
-  Seq(std::vector<Exp*>* v) : exps(v) {}
+  std::vector<Exp*> exps;
+  Seq() = default;
+  void push_back(Exp * e) {
+      exps.push_back(e);
+  }
+
   void accept(Visitor* v) override;
   ~Seq() {
-    for (Exp * e : *exps)
+    for (Exp * e : exps)
        delete e;
-    delete exps;
   }
 };
 
 
 class Fun : public Exp {
 public:
-  std::vector<Var*> *params;
+  std::vector<Var*> params;
   Seq* body;
-  Fun(std::vector<Var*> *params, Seq *body) : params(params), body(body) {}
+  Fun() = default;
+  void addParam(Var * v) {
+      params.push_back(v);
+  }
+
+  void setBody(Seq * b) {
+      body = b;
+  }
+
   void accept(Visitor* v) override;
   ~Fun() {
-      for (Var * v : *params)
+      for (Var * v : params)
           delete v;
-    delete params;
     delete body;
   }
 };
@@ -88,14 +90,17 @@ public:
 class Call : public Exp {
 public:
   Var* name;
-  std::vector<Exp*>* args;
-  Call(Var* n, std::vector<Exp*>* a) : name(n), args(a) {}
+  std::vector<Exp*> args;
+  Call(Var* n) : name(n) {}
+  void addArg(Exp * a) {
+      args.push_back(a);
+  }
+
   void accept(Visitor* v) override;
   ~Call() {
     delete name;
-      for (Exp * e : *args)
+      for (Exp * e : args)
           delete e;
-    delete args;
   }
 };
 
@@ -171,9 +176,9 @@ class Visitor {
 class Parser {
   File file;
   std::vector<Token> tokens;
-  std::vector<string*> strings;
+  std::vector<std::string*> strings;
   std::vector<double> doubles;
-  std::unordered_map<string*,string*> symbols;
+  std::unordered_map<std::string*,std::string*> symbols;
   int cursor;
   Seq* parseSequence();
   Exp* parseExp();
@@ -188,7 +193,7 @@ public:
     while((tok = file.next()) != END) {
       count++;
       tokens.push_back(tok);
-      string* str = NULL;
+      std::string* str = NULL;
       if (tok == IDENT || tok == STR) {	
 	if (symbols.count(file.ident_or_string) == 0) {
 	  str = file.ident_or_string;
@@ -203,7 +208,7 @@ public:
   }
 
   Token token();
-  string* string_value();
+  std::string const & string_value();
   double  double_value();
   void advance();
   Seq * parse();

@@ -323,7 +323,7 @@ public:
     return ConstantFP::get(gc, APFloat(value));
   }
 
-  Value *r_const(string const & value) {
+  Value *r_const(std::string const & value) {
     ArrayType * arrayType = ArrayType::get(IntegerType::get(gc, 8), 
 					   value.size() + 1);
       GlobalVariable * gvar = 
@@ -348,8 +348,8 @@ public:
   /** Compiles a call to c() function.  */
   void visit(Call *e) {
     std::vector<Value *> args;
-    args.push_back(r_const(static_cast<int>(e->args->size()))); 
-    for (Exp * arg : *e->args) {
+    args.push_back(r_const(static_cast<int>(e->args.size())));
+    for (Exp * arg : e->args) {
       arg->accept(this);
       args.push_back(result);
     }
@@ -359,7 +359,7 @@ public:
 
   void visit(Str * x)  {
     result = CallInst::Create(m->fun_r_cv_mk_from_char, 
-                  ARGS(r_const(*(x->value))), "", bb);
+                  ARGS(r_const(x->value)), "", bb);
     result = CallInst::Create(m->fun_r_rv_mk_cv, ARGS(result), "", bb);
   }
    void visit(Var * x)  {}
@@ -392,7 +392,7 @@ public:
    }
 
    void visit(Seq * x) {
-       for (Exp * e : *(x->exps))
+       for (Exp * e : x->exps)
            e->accept(this);
    }
 

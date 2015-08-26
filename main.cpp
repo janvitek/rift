@@ -25,7 +25,9 @@ int main(int n, char** argv) {
   rift::Parser parse(file);
   rift::Seq* e = parse.parse();
   // now we need the compiler
-  FunPtr x = reinterpret_cast<FunPtr>(test_compileFunction(new rift::Fun(new std::vector<rift::Var*>(), e)));
+  rift::Fun * f = new rift::Fun();
+  f->setBody(e);
+  FunPtr x = reinterpret_cast<FunPtr>(test_compileFunction(f));
   // create the global environment
   Env * globalEnv = r_env_mk(nullptr, 0);
 
