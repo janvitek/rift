@@ -8,8 +8,12 @@
 
 using namespace std;
 
+struct FunInfo {
+    FunPtr ptr;
+    std::vector<int> args;
+};
 
-std::vector<FunPtr> registeredFunctions;
+std::vector<FunInfo> registeredFunctions;
 
 
 extern "C" {
@@ -49,43 +53,52 @@ void Fun::print() {
     cout << "I am a function" << endl;
 }
 
-Env*  r_env_mk(Env* parent, int length) {
+Env*  r_env_mk(Env* parent, int capacity) {
   Env *r = new Env();
   r->size = 0;
-  r->length = length;
+  r->capacity = capacity;
   r->parent = parent;
-  r->bindings = new Binding[length];
+  r->bindings = new Binding[capacity];
   return r;
 }
 
-RVal* r_env_get(Env* env, void *sym) {
-  for (int i = 0; i < env->size; i++) 
-    if (env->bindings[i].symbol == sym)
-      return env->bindings[i].data;
-   if (env->parent != nullptr)
-     return r_env_get(env->parent, sym);
-   else 
-     return nullptr;
+Binding * bindingForSymbol(Env * env, int symbol) {
+    for (int i = 0; i < env->size; ++i)
+        if (env->bindings[i].symbol == symbol)
+            return env->bindings + i;
+    // not found
+    return nullptr;
 }
 
-Env *r_env_def(Env* env,  void *sym) {
-  if ( env->length == env->size ) {
-    Env *t = r_env_mk( env->parent, env->length + 6);
-    for (int i = 0; i < env->size; i++) 
-      t->bindings[i] = env->bindings[i];
-    delete env;
-    env = t;
-  }
-  for (int i = 0; i < env->size; i ++) 
-    if (env->bindings[i].symbol == sym) 
-      return env;
-  env->size++;
-  env->bindings[env->size].symbol = sym;   
-  return env;
+Binding * defineBinding(Env * env, int symbol) {
+    for (int i = 0; i < env->size; i ++)
+      if (env->bindings[i].symbol == symbol)
+        return env->bindings + i;
+    if ( env->capacity == env->size) {
+        Binding * n = new Binding[env->capacity + 6];
+        for (int i = 0; i < env->size; i++)
+            n[i] = env->bindings[i];
+        delete env->bindings;
+        env->bindings = n;
+    }
+    env->bindings[env->size].symbol = symbol;
+    env->size++;
+    return env->bindings + (env->size - 1);
+}
+
+RVal* r_env_get(Env* env, int sym) {
+    Binding * b = bindingForSymbol(env, sym);
+    if (b == nullptr)
+        return env->parent == nullptr ? nullptr : r_env_get(env->parent, sym);
+    return b->data;
+}
+
+void r_env_def(Env* env,  int sym) {
+    defineBinding(env, sym);
 }
 
 // helper function
-static void  env_set(Env* env, void* sym, RVal* val, Env *original) {
+static void  env_set(Env* env, int sym, RVal* val, Env *original) {
   for (int i = 0; i < env->size; i++) 
     if (env->bindings[i].symbol == sym) {
       env->bindings[i].data = val;
@@ -100,8 +113,9 @@ static void  env_set(Env* env, void* sym, RVal* val, Env *original) {
 }
 
 // if sym is not defined, add to the current env
-void  r_env_set(Env* env, void* sym, RVal* val) {
-  env_set(env, sym, val, env);
+void  r_env_set(Env* env, int sym, RVal* val) {
+    Binding * b = defineBinding(env, sym);
+    b->data = val;
 }
 
 // For local variables, access by offset
@@ -127,7 +141,10 @@ void  r_env_del(Env* env) {
 Fun *r_fun_mk(Env *env, int index) {
   Fun *f = new Fun();
   f->env = env;
-  f->code = registeredFunctions[index];
+  FunInfo & fi = registeredFunctions[index];
+  f->code = fi.ptr;
+  f->args = fi.args.data();
+  f->argsSize = fi.args.size();
   return f;
 }
 
@@ -411,6 +428,20 @@ RVal *paste(RVal *v1, RVal *v2) {
 RVal *eval(RVal *v) {
   return nullptr; // TODO -- how do we do this one?
 }
+
+
+RVal * r_call(RVal * callee, int size, ...) {
+    assert(callee->kind == KIND::FUN and "Only functions can be called");
+    assert(callee->fun->argsSize == size and "Invalid number of arguments");
+    Env * env = r_env_mk(callee->fun->env, size);
+    va_list ap;
+    va_start(ap, size);
+    for (int i = 0; i <= size; ++i)
+        r_env_set(env, callee->fun->args[i], va_arg(ap, RVal*));
+    va_end(ap);
+    return callee->fun->code(env);
+}
+
 
 } // extern "C"
 

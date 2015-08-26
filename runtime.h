@@ -12,7 +12,7 @@ struct RVal;
 
 /** Bindings in an environment */
 struct Binding {
-  void *symbol; 
+  int symbol;
   RVal *data;
 };
 
@@ -21,14 +21,14 @@ struct Env {
   Env     *parent;   // parent environemtn
   Binding *bindings; // bindings in this environment
   int      size;     // number of bindings in the environment
-  int      length;   // length of the binding array
+  int      capacity; // capacity of the binding array
 };
 
 extern "C" {
 Env  *r_env_mk(Env* parent, int length);
-RVal *r_env_get(Env* env, void *sym);
-Env  *r_env_def(Env* env,  void *sym);
-void  r_env_set(Env* env, void* sym, RVal* val);
+RVal *r_env_get(Env* env, int sym);
+void  r_env_def(Env* env,  int sym);
+void  r_env_set(Env* env, int sym, RVal* val);
 void  r_env_set_at(Env *env, int at, RVal *val);
 RVal *r_env_get_at(Env *env, int at);
 void  r_env_del(Env* env);
@@ -46,6 +46,8 @@ typedef RVal * (*FunPtr)(Env *);
 struct Fun {
   Env *env;
   FunPtr code;
+  int const * args;
+  int argsSize;
   void print();
 };
 extern "C" {
@@ -137,6 +139,10 @@ RVal *paste(RVal *v1, RVal *v2);
 
 // eval
 RVal *eval(RVal *v);
+
+// prepares environment for given function and calls it
+RVal * r_call(RVal * callee, int size, ...);
+
 }
 
 #endif // RUNTIME_H

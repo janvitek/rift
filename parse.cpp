@@ -18,7 +18,7 @@ public:
         cout << "\"" << x->value << "\"";
     }
     void visit(Var* x) override {
-        cout << x->value;
+        cout << x->value << "[[" << x->index << "]]";
     }
     void visit(Fun* x) override {
         cout << "function (";
@@ -128,12 +128,12 @@ void Parser::advance() {
     cursor++;
 }
 
-string const& Parser::string_value() {
-    return *strings.at(cursor);
+string const & Parser::string_value() {
+    return strings[cursor];
 }
 
 double Parser::double_value() {
-    return doubles.at(cursor);
+    return doubles[cursor];
 }
 
 #define EAT(T)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
@@ -183,7 +183,7 @@ Exp* Parser::parsePrimaryExp() {
         Fun* f = new Fun();
         EAT2(FUN, OPAR);
         while (token() != CPAR) {
-            Var* v = new Var(string_value());
+            Var* v = new Var(string_value(), static_cast<int>(double_value()));
             EAT(IDENT);
             f->addParam(v);
             if (token() == COM)
@@ -205,7 +205,7 @@ Exp* Parser::parsePrimaryExp() {
         EAT(CCBR);
         e = new IfElse(g, t, f);
     } else if (t == IDENT) {
-        Var* v = new Var(string_value());
+        Var* v = new Var(string_value(), static_cast<int>(double_value()));
         EAT(IDENT);
         if (token() == OPAR) {
             EAT(OPAR);

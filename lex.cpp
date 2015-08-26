@@ -121,12 +121,12 @@ Token File::next() {
   return tok;
 }
 
-string* File:: token_as_string() {
-  return new string( &buffer[tok_start], cursor - tok_start);
+string File:: token_as_string() {
+  return string( &buffer[tok_start], cursor - tok_start);
 }
 
-string * File::token_as_stringLiteral() {
-    return new string( &buffer[tok_start + 1], cursor - tok_start - 1);
+string File::token_as_stringLiteral() {
+    return string( &buffer[tok_start + 1], cursor - tok_start - 1);
 }
 
 void File::read_identifier_or_number() {

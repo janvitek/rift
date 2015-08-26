@@ -62,9 +62,9 @@ public:
   File(char const* name);
   bool good();
   Token next();
-  std::string* token_as_string();
-  std::string* token_as_stringLiteral();
-  std::string* ident_or_string;
+  std::string token_as_string();
+  std::string token_as_stringLiteral();
+  std::string ident_or_string;
   float number;
 };
 

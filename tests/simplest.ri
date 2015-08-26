@@ -1,2 +1,2 @@
-x <- function() { 1 + 2 }
-x()
+x <- function(a, b) { a + b };
+x(10, 2);

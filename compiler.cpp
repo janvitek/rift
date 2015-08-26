@@ -17,7 +17,13 @@ struct RVal;
 struct Env;
 
 typedef RVal * (*FunPtr)(Env *);
-extern std::vector<FunPtr> registeredFunctions;
+
+struct FunInfo {
+    FunPtr ptr;
+    std::vector<int> args;
+};
+
+extern std::vector<FunInfo> registeredFunctions;
 
 
 namespace {
@@ -55,6 +61,15 @@ class RiftModule : public Module {
   } \
   FunctionType * funtype_ ## returntype ## __ ## argtype ## _v = 	\
     init_funtype_ ## returntype ## __ ## argtype ## _v();
+
+#define DEF_FUNTYPEV2( returntype , argtype, argtype2 )	\
+  FunctionType*  init_funtype_ ## returntype ## __ ## argtype ## _ ## argtype2 ##_v () { \
+     std::vector<Type *> args; \
+     args = { argtype, argtype2 }; \
+     return FunctionType::get( returntype, args, true ); \
+  } \
+  FunctionType * funtype_ ## returntype ## __ ## argtype ## _ ## argtype2 ## _v = 	\
+    init_funtype_ ## returntype ## __ ## argtype ## _ ## argtype2 ## _v();
 
 #define DEF_FUNTYPE1( returntype , argtype )	\
   FunctionType*  init_funtype_ ## returntype ## __ ## argtype () { \
@@ -187,7 +202,7 @@ public:
   DEF_FUNTYPE2( C, pCV, I);
 
   DEF_FUNTYPE1( pE, pE);
-  DEF_FUNTYPE2( pE, pE, pI);
+  DEF_FUNTYPE2( pE, pE, I);
 
   DEF_FUNTYPE1( pRV, pDV);
   DEF_FUNTYPE1( pRV, pCV);
@@ -210,14 +225,16 @@ public:
   DEF_FUNTYPE1( pDV, I);
   DEF_FUNTYPE1( pDV, pRV);
   DEF_FUNTYPE2( pDV, pDV, pDV);
+  DEF_FUNTYPE2( V, pE, I)
 
   DEF_FUNTYPEV( pCV, C);
   DEF_FUNTYPEV( pDV, D);
+  DEF_FUNTYPEV2( pRV, pRV, I);
 
   DEF_FUNCTION( r_env_mk,     funtype_pE__pE);
-  DEF_FUNCTION( r_env_get,    funtype_pE__pE_pI);
-  DEF_FUNCTION( r_env_def,    funtype_pE__pE_pI);
-  DEF_FUNCTION( r_env_set,    funtype_V__pE_pI_pRV);
+  DEF_FUNCTION( r_env_get,    funtype_pRV__pE_I);
+  DEF_FUNCTION( r_env_def,    funtype_V__pE_I);
+  DEF_FUNCTION( r_env_set,    funtype_V__pE_I_pRV);
   DEF_FUNCTION( r_env_set_at, funtype_V__pE_I_pRV);
   DEF_FUNCTION( r_env_get_at, funtype_pRV__pE_I);
   DEF_FUNCTION( r_env_del,    funtype_V__pE);
@@ -263,6 +280,8 @@ public:
   DEF_FUNCTION( paste,         funtype_pRV__pRV_pRV);
   DEF_FUNCTION( eval,          funtype_pRV__pRV);
 
+  DEF_FUNCTION( r_call, funtype_pRV__pRV_I_v);
+
   RiftModule(std::string const & name) : Module( name, getGlobalContext()) {
   }
 };    
@@ -280,9 +299,9 @@ public:
         int result = compileFunction(function);
         ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).create();
         engine->finalizeObject();
-        for (FunPtr & i : registeredFunctions)
-            i = reinterpret_cast<FunPtr>(engine->getPointerToFunction(reinterpret_cast<Function*>(i)));
-        return registeredFunctions[result];
+        for (FunInfo & i : registeredFunctions)
+            i.ptr = reinterpret_cast<FunPtr>(engine->getPointerToFunction(reinterpret_cast<Function*>(i.ptr)));
+        return registeredFunctions[result].ptr;
     }
 
 
@@ -300,7 +319,11 @@ public:
         //Value * r = new BitCastInst(result, m->pRV, "", bb);
         ReturnInst::Create(gc, result, bb);
         f->dump();
-        registeredFunctions.push_back(reinterpret_cast<FunPtr>(f));
+        FunInfo fi;
+        fi.ptr = reinterpret_cast<FunPtr>(f);
+        for (Var * v : function->params)
+            fi.args.push_back(v->index);
+        registeredFunctions.push_back(fi);
         f = oldf;
         bb = oldbb;
         env = oldenv;
@@ -321,6 +344,10 @@ public:
 
   Value *r_const(double value) {
     return ConstantFP::get(gc, APFloat(value));
+  }
+
+  Value * r_const(void * symbol) {
+
   }
 
   Value *r_const(std::string const & value) {
@@ -345,15 +372,19 @@ public:
     result = CallInst::Create(m->fun_r_rv_mk_dv, ARGS(result), "", bb);
   }
 
-  /** Compiles a call to c() function.  */
+  /** Compiles a call to a function.  */
   void visit(Call *e) {
-    std::vector<Value *> args;
-    args.push_back(r_const(static_cast<int>(e->args.size())));
-    for (Exp * arg : e->args) {
-      arg->accept(this);
+      e->name->accept(this);
+
+      std::vector<Value *> args;
       args.push_back(result);
-    }
-    result = CallInst::Create(m->fun_r_dv_c, args, "", bb);
+      args.push_back(r_const(static_cast<int>(e->args.size())));
+      for (Exp * arg : e->args) {
+        arg->accept(this);
+        args.push_back(result);
+      }
+      result = CallInst::Create(m->fun_r_call, args, "", bb);
+      //result = CallInst::Create(m->fun_r_dv_c, args, "", bb);
   }
 
 
@@ -362,11 +393,15 @@ public:
                   ARGS(r_const(x->value)), "", bb);
     result = CallInst::Create(m->fun_r_rv_mk_cv, ARGS(result), "", bb);
   }
-   void visit(Var * x)  {}
+   void visit(Var * x)  {
+       result = CallInst::Create(m->fun_r_env_get, ARGS(env, r_const(x->index)), "", bb);
+
+   }
 
    void visit(Fun * x)  {
        int fi = compileFunction(x);
        result = CallInst::Create(m->fun_r_fun_mk, ARGS(env, r_const(fi)), "", bb);
+       result = CallInst::Create(m->fun_r_rv_mk_fun, ARGS(result), "", bb);
    }
 
    void visit(BinExp * x) {
@@ -397,7 +432,10 @@ public:
    }
 
    void visit(Idx * x)    {} 
-   void visit(SimpleAssign * x) {}
+   void visit(SimpleAssign * x) {
+       x->rhs->accept(this);
+       CallInst::Create(m->fun_r_env_set, ARGS(env, r_const(x->name->index), result), "", bb);
+   }
    void visit(IdxAssign * x) {}
    void visit(IfElse * x) {}
 };
