@@ -32,7 +32,7 @@ int main(int n, char** argv) {
   Env * globalEnv = r_env_mk(nullptr, 0);
 
   RVal * result = x(globalEnv);
-  //e->print();
+  e->print();
   result->print();
 
   delete globalEnv;

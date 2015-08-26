@@ -146,6 +146,9 @@ RVal * r_call(RVal * callee, int size, ...);
 
 RVal * r_c(int size, ...);
 
+RVal * r_getIndex(RVal * source, RVal * index);
+void r_setIndex(RVal * target, RVal * index, RVal * value);
+
 }
 
 #endif // RUNTIME_H

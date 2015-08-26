@@ -486,6 +486,43 @@ RVal * r_c(int size, ...) {
     return result;
 }
 
+RVal * r_getIndex(RVal * source, RVal * index) {
+    assert(source->kind != KIND::FUN and "Cannot do indexed read from a function");
+    assert(index->kind == KIND::DV and "Only numbers can be indices");
+    assert(index->dv->size == 1 and "Index must be scalar");
+    switch (source->kind) {
+    case KIND::DV: {
+        double v = r_dv_get(source->dv, index->dv->data[0]);
+        DV * rd = r_dv_mk(1);
+        r_dv_set(rd, 0, v);
+        return r_rv_mk_dv(rd);
+    }
+    case KIND::CV: {
+        char c = r_cv_get(source->cv, index->dv->data[0]);
+        CV * rc = r_cv_mk(1);
+        r_cv_set(rc, 0, c);
+        return r_rv_mk_cv(rc);
+    }
+    }
+    return nullptr;
+}
+
+void r_setIndex(RVal * target, RVal * index, RVal * value) {
+    assert(target->kind != KIND::FUN and "Cannot do indexed write to a function");
+    assert(index->kind == KIND::DV and "Only numbers can be indices");
+    assert(index->dv->size == 1 and "Index must be scalar");
+    assert(value->dv->size == 1 and "Value must be scalar");
+    assert(target->kind == value->kind and "target and source types must match");
+    switch (target->kind) {
+    case KIND::DV:
+        r_dv_set(target->dv, index->dv->data[0], value->dv->data[0]);
+        break;
+    case KIND::CV:
+        r_cv_set(target->cv, index->cv->data[0], value->cv->data[0]);
+        break;
+    }
+
+}
 
 
 

@@ -222,6 +222,7 @@ public:
   DEF_FUNTYPE1( pRV, pF);
   DEF_FUNTYPE1( pRV, pRV);
   DEF_FUNTYPE2( pRV, pRV, pRV);
+  DEF_FUNTYPE3( pRV, pRV, pRV, pRV);
   DEF_FUNTYPE2( pRV, pE, I);
 
   DEF_FUNTYPE1( pRV, pE);
@@ -296,6 +297,9 @@ public:
 
   DEF_FUNCTION( r_call, funtype_pRV__pRV_I_v);
   DEF_FUNCTION( r_c, funtype_pRV__I_v);
+
+  DEF_FUNCTION( r_getIndex, funtype_pRV__pRV_pRV);
+  DEF_FUNCTION( r_setIndex, funtype_pRV__pRV_pRV_pRV);
 
   RiftModule(std::string const & name) : Module( name, getGlobalContext()) {
   }
@@ -462,12 +466,26 @@ public:
            e->accept(this);
    }
 
-   void visit(Idx * x)    {} 
+   void visit(Idx * x)    {
+       x->name->accept(this);
+       Value * source = result;
+       x->body->accept(this);
+       result = CallInst::Create(m->fun_r_getIndex, ARGS(source, result), "", bb);
+   }
+
    void visit(SimpleAssign * x) {
        x->rhs->accept(this);
        CallInst::Create(m->fun_r_env_set, ARGS(env, r_const(x->name->index), result), "", bb);
    }
-   void visit(IdxAssign * x) {}
+   void visit(IdxAssign * x) {
+       x->lhs->name->accept(this);
+       Value * target = result;
+       x->lhs->body->accept(this);
+       Value * index = result;
+       x->rhs->accept(this);
+       result = CallInst::Create(m->fun_r_setIndex, ARGS(target, index, result), "", bb);
+   }
+
    void visit(IfElse * x) {}
 };
 
