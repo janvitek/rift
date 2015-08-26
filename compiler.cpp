@@ -530,6 +530,23 @@ public:
        phi->addIncoming(falseResult, ifFalse);
        result = phi;
    }
+
+   void visit(WhileLoop * x) override {
+       BasicBlock * loopStart = BasicBlock::Create(getGlobalContext(), "loopStart", f, nullptr);
+       BasicBlock * loopBody = BasicBlock::Create(getGlobalContext(), "loopBody", f, nullptr);
+       BasicBlock * loopNext = BasicBlock::Create(getGlobalContext(), "loopNext", f, nullptr);
+       BranchInst::Create(loopStart,bb);
+       bb = loopStart;
+       x->guard->accept(this);
+       Value * cond = CallInst::Create(m->fun_r_guard, ARGS(result), "", bb);
+       ICmpInst * test = new ICmpInst(*bb, ICmpInst::ICMP_EQ, cond, r_const(1), "condition");
+       BranchInst::Create(loopBody, loopNext, test, bb);
+       bb = loopBody;
+       x->body->accept(this);
+       BranchInst::Create(loopStart, bb);
+       bb = loopNext;
+       result = cond;
+   }
 };
 
 

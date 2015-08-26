@@ -75,6 +75,14 @@ public:
         x->elseclause->accept(this);
         cout << "\n}";
     }
+
+    void visit(WhileLoop * x) override {
+        cout << "while (";
+        x->guard->accept(this);
+        cout << ") {" << endl;
+        x->body->accept(this);
+        cout << "}" << endl;
+    }
 };
 
 } // namespace
@@ -112,6 +120,10 @@ void IdxAssign::accept(Visitor* v) {
     v->visit(this);
 }
 void IfElse::accept(Visitor* v) {
+    v->visit(this);
+}
+
+void WhileLoop::accept(Visitor* v) {
     v->visit(this);
 }
 
@@ -195,6 +207,13 @@ Exp* Parser::parsePrimaryExp() {
         f->setBody(parseSequence());
         EAT(CCBR);
         return f;
+    } else if (t == WHILE) {
+        EAT2(WHILE, OPAR);
+        Exp * g = parseExp();
+        EAT2(CPAR, OCBR);
+        Seq * b = parseSequence();
+        EAT(CCBR);
+        e = new WhileLoop(g, b);
     } else if (t == IF) {
         EAT2(IF, OPAR);
         Exp* g = parseExp();

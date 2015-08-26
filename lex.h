@@ -38,6 +38,7 @@ enum Token {
   SEP = 20,
   LT = 21,
   COM = 22,
+    WHILE = 23,
 };
 
 char const* tok_to_str(Token tok);

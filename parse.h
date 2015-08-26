@@ -186,6 +186,21 @@ public:
     }
 };
 
+class WhileLoop : public Exp {
+public:
+    Exp * guard;
+    Exp * body;
+    WhileLoop(Exp * guard, Exp * body):
+        guard(guard),
+        body(body) {
+    }
+    ~WhileLoop() override {
+        delete guard;
+        delete body;
+    }
+    void accept(Visitor * v) override;
+};
+
 class Visitor {
 public:
     virtual void visit(Num* x) = 0;
@@ -199,6 +214,7 @@ public:
     virtual void visit(SimpleAssign* x) = 0;
     virtual void visit(IdxAssign* x) = 0;
     virtual void visit(IfElse* x) = 0;
+    virtual void visit(WhileLoop * x) = 0;
 };
 
 

@@ -47,6 +47,7 @@ char const* tok_to_str(Token tok) {
   case  SEP:   return ";";
   case  LT:    return "<"; 
   case  COM: return ",";
+  case WHILE: return "while";
   }
 }
 
@@ -148,6 +149,8 @@ void File::read_identifier_or_number() {
       tok = FUN;
     else if ( len == 4 && strncmp( "else", &buffer[tok_start], 2)== 0 ) 
       tok = ELSE;
+    else if ( len == 5 && strncmp("while", &buffer[tok_start], 2) == 0)
+        tok = WHILE;
     else {
       tok = IDENT;
       ident_or_string = token_as_string();
