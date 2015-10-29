@@ -8,51 +8,63 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 
-#include "parse.h"
+#include "ast.h"
+#include "parser.h"
 #include "runtime.h"
+#include "compiler.h"
 
 
 using namespace std;
 using namespace llvm;
+using namespace rift;
 
 
-FunPtr test_compileFunction(rift::Fun * f);
+void interactive() {
+    cout << "rift console - type exit to quit" << endl;
+    Environment * env = new Environment(nullptr);
+    while (true) {
+        try {
+            cout << "> ";
+            std::string in;
+            getline(cin, in);
+            if (in == "exit")
+                break;
+            eval(env, in.c_str())->print(cout);
+            cout << endl;
+        } catch (char const * error) {
+            std::cerr << error << std::endl;
+            std::cout << std::endl;
+        }
+    }
+    delete env;
+}
 
+void runScript(char const * filename) {
+    std::ifstream s(filename);
+    if (not s.is_open()) {
+        std::cerr << "Unable to open file " << filename << endl;
+    } else {
+        Parser p;
+        ast::Exp * root = p.parse(s);
+    }
 
-RVal * eval_internal(Env * env, int size, char * source) {
-    File file(size, source);
-    rift::Parser parse(file);
-    rift::Seq* e = parse.parse();
-    // now we need the compiler
-    rift::Fun * f = new rift::Fun();
-    f->setBody(e);
-    FunPtr x = reinterpret_cast<FunPtr>(test_compileFunction(f));
-    // create the global environment
-    RVal * result = x(env);
-    return result;
 }
 
 
-int main(int argc, char** argv) {
-  // initialize the JIT
-  LLVMInitializeNativeTarget();
-  LLVMInitializeNativeAsmPrinter();
-  LLVMInitializeNativeAsmParser();
-  // load the file
-  assert (argc == 2 and "First argument must be file to run");
-  ifstream fin(argv[1]);
-  assert (fin.good() and "IO Error");
-  fin.seekg(0, ios::end);
-  int size = fin.tellg();
-  char * buffer = new char[size];
-  fin.seekg(0);
-  fin.read(buffer, size);
-  fin.close();
-  Env * env = r_env_mk(nullptr, 0);
-  RVal * result = eval_internal(env, size, buffer);
-  delete env;
-  result->print();
-
-  cout << endl;
-
+int main(int argc, char * argv[]) {
+    // initialize the JIT
+    LLVMInitializeNativeTarget();
+    LLVMInitializeNativeAsmPrinter();
+    LLVMInitializeNativeAsmParser();
+    if (argc == 1) {
+        interactive();
+    } else {
+        if (argc > 2)
+            cerr << "Only one script can be loaded at a time" << endl;
+        else
+            runScript(argv[1]);
+    }
 }
+
+
+

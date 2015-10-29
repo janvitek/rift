@@ -6,555 +6,459 @@
 #include <unordered_map>
 
 #include "runtime.h"
+#include "lexer.h"
+#include "parser.h"
+#include "compiler.h"
+
 
 using namespace std;
-
-struct FunInfo {
-    FunPtr ptr;
-    std::vector<int> args;
-};
-
-std::vector<FunInfo> registeredFunctions;
-std::unordered_map<std::string, int> symbols;
-
-RVal * eval_internal(Env * env, int size, char * source);
+using namespace rift;
 
 
 extern "C" {
-/////////////////////////////////////////////////////////////////
-// --- Environemnts ---
-/////////////////////////////////////////////////////////////////
 
-void RVal::print() {
-    switch (kind) {
-    case KIND::CV:
-        cv->print();
-        break;
-    case KIND::DV:
-        dv->print();
-        break;
-    case KIND::FUN:
-        fun->print();
-        break;
+Environment * envCreate(Environment * parent) {
+    return new Environment(parent);
+}
+
+Value * envGet(Environment * env, int symbol) {
+    return env->get(symbol);
+}
+
+Value * envSet(Environment * env, int symbol, Value * value) {
+    env->set(symbol, value);
+    return value;
+}
+
+DoubleVector * doubleVectorLiteral(double value) {
+    return new DoubleVector(value);
+}
+
+CharacterVector * characterVectorLiteral(int cpIndex) {
+    std::string const & original = Lexer::getPoolObject(cpIndex);
+    char * dest = new char[original.size() + 1];
+    memcpy(dest, original.c_str(), original.size());
+    dest[original.size()] = 0;
+    return new CharacterVector(dest, original.size());
+
+}
+
+Value * fromDoubleVector(DoubleVector * from) {
+    return new Value(from);
+}
+
+Value * fromCharacterVector(CharacterVector * from) {
+    return new Value(from);
+}
+
+Value * fromFunction(Function * from) {
+    return new Value(from);
+}
+
+
+DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
+    unsigned resultSize = index->size;
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i) {
+        int idx = index->data[i];
+        if (idx < 0 or idx >= from->size)
+            throw "Index out of bound";
+        result[i] = from->data[idx];
+    }
+    return new DoubleVector(result, resultSize);
+}
+
+CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index) {
+    unsigned resultSize = index->size;
+    char * result = new char[resultSize];
+    for (int i = 0; i < resultSize; ++i) {
+        int idx = index->data[i];
+        if (idx < 0 or idx >= from->size)
+            throw "Index out of bound";
+        result[i] = from->data[idx];
+    }
+    return new CharacterVector(result, resultSize);
+}
+
+
+Value * genericGetElement(Value * from, Value * index) {
+    if (index->type != Value::Type::Double)
+        throw "Index vector must be double";
+    switch (from->type) {
+    case Value::Type::Double:
+        return new Value(doubleGetElement(from->d, index->d));
+    case Value::Type::Character:
+        return new Value(characterGetElement(from->c, index->d));
+    default:
+        throw "Cannot index a function";
     }
 }
 
-void DV::print() {
-    cout << "double";
-    for (int i = 0; i < size; ++i)
-        cout << " " << data[i];
-    cout << endl;
-}
-
-void CV::print() {
-    cout << "char";
-    for (int i = 0; i < size; ++i)
-        cout << " " << data[i];
-    cout << endl;
-}
-
-void Fun::print() {
-    cout << "I am a function" << endl;
-}
-
-Env*  r_env_mk(Env* parent, int capacity) {
-  Env *r = new Env();
-  r->size = 0;
-  r->capacity = capacity;
-  r->parent = parent;
-  r->bindings = new Binding[capacity];
-  return r;
-}
-
-Binding * bindingForSymbol(Env * env, int symbol) {
-    for (int i = 0; i < env->size; ++i)
-        if (env->bindings[i].symbol == symbol)
-            return env->bindings + i;
-    // not found
-    return nullptr;
-}
-
-Binding * defineBinding(Env * env, int symbol) {
-    for (int i = 0; i < env->size; i ++)
-      if (env->bindings[i].symbol == symbol)
-        return env->bindings + i;
-    if ( env->capacity == env->size) {
-        Binding * n = new Binding[env->capacity + 6];
-        for (int i = 0; i < env->size; i++)
-            n[i] = env->bindings[i];
-        delete env->bindings;
-        env->bindings = n;
+void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * value) {
+    for (int i = 0; i < index->size; ++i) {
+        int idx = index->data[i];
+        if (idx < 0 or idx >= target->size)
+            throw "Index out of bound";
+        double val = value->data[i % value->size];
+        target->data[idx] = val;
     }
-    env->bindings[env->size].symbol = symbol;
-    env->size++;
-    return env->bindings + (env->size - 1);
 }
 
-RVal* r_env_get(Env* env, int sym) {
-    Binding * b = bindingForSymbol(env, sym);
-    if (b == nullptr)
-        return env->parent == nullptr ? nullptr : r_env_get(env->parent, sym);
-    return b->data;
-}
-
-void r_env_def(Env* env,  int sym) {
-    defineBinding(env, sym);
-}
-
-// helper function
-static void  env_set(Env* env, int sym, RVal* val, Env *original) {
-  for (int i = 0; i < env->size; i++) 
-    if (env->bindings[i].symbol == sym) {
-      env->bindings[i].data = val;
-      return;
+void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * value) {
+    for (int i = 0; i < index->size; ++i) {
+        int idx = index->data[i];
+        if (idx < 0 or idx >= target->size)
+            throw "Index out of bound";
+        char val = value->data[i % value->size];
+        target->data[idx] = val;
     }
-  if ( env->parent != nullptr )
-    r_env_set(env->parent, sym, val);
-  else {
-    r_env_def(original, sym);
-    env_set(original, sym, val, nullptr);
-  }
 }
 
-// if sym is not defined, add to the current env
-void  r_env_set(Env* env, int sym, RVal* val) {
-    Binding * b = defineBinding(env, sym);
-    b->data = val;
+void genericSetElement(Value * target, Value * index, Value * value) {
+    if (index->type != Value::Type::Double)
+        throw "Index vector must be double";
+    if (target->type != value->type)
+        throw "Vector and element must be of same type";
+    switch (target->type) {
+    case Value::Type::Double:
+        doubleSetElement(target->d, index->d, value->d);
+        break;
+    case Value::Type::Character:
+        characterSetElement(target->c, index->d, value->c);
+        break;
+    default:
+        throw "Cannot index a function";
+    }
+
 }
 
-// For local variables, access by offset
-void  r_env_set_at(Env *env, int at, RVal *val) {
-  env->bindings[at].data = val;
+DoubleVector * doubleAdd(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] + rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
 }
 
-// For local variables, we can acccess by offset
-RVal *r_env_get_at(Env *env, int at) {
-  return env->bindings[at].data;
+CharacterVector * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
+    int resultSize = lhs->size + rhs->size;
+    char * result = new char(resultSize + 1);
+    memcpy(result, lhs->data, lhs->size);
+    memcpy(result + lhs->size, rhs->data, rhs->size);
+    result[resultSize] = 0;
+    return new CharacterVector(result, resultSize);
 }
 
-void  r_env_del(Env* env) {
-  delete env->bindings;
-  delete env;
+
+Value * genericAdd(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        throw "Incompatible types for binary operator";
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleAdd(lhs->d, rhs->d));
+    case Value::Type::Character:
+        return new Value(characterAdd(lhs->c, rhs->c));
+    default:
+        throw "Invalid types for binary add";
+    }
 }
 
-///////////////////////////////////////////////////////////////////
-//-- Closures
-//////////////////////////////////////////////////////////////////
-
-
-Fun *r_fun_mk(Env *env, int index) {
-  Fun *f = new Fun();
-  f->env = env;
-  FunInfo & fi = registeredFunctions[index];
-  f->code = fi.ptr;
-  f->args = fi.args.data();
-  f->argsSize = fi.args.size();
-  return f;
+DoubleVector * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] - rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
 }
 
-//////////////////////////////////////////////////////////////////////
-/////-- Character vectors
-//////////////////////////////////////////////////////////////////////
 
-CV *r_cv_mk(int size) {
-  CV *r = new CV();
-  r->data = new char[size + 1];
-  r->size = size;
-  return r;  
+
+Value * genericSub(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        throw "Incompatible types for binary operator";
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleSub(lhs->d, rhs->d));
+    default:
+        throw "Invalid types for binary sub";
+    }
 }
 
-CV *r_cv_mk_from_char(char* data) {
-  CV *r = new CV();
-  int size = strlen(data);
-  r->data = new char[size + 1];
-  r->size = size;
-  strncpy(r->data, data, size + 1);
-  return r;  
+DoubleVector * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] * rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
 }
 
-CV *r_cv_c_internal(int size, va_list ap) {
-    assert(false and "not implemented");
-    return nullptr;
+Value * genericMul(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        throw "Incompatible types for binary operator";
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleMul(lhs->d, rhs->d));
+    default:
+        throw "Invalid types for binary mul";
+    }
 }
 
-CV *r_cv_c(int size, ...) {
+DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] / rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+Value * genericDiv(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        throw "Incompatible types for binary operator";
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleDiv(lhs->d, rhs->d));
+    default:
+        throw "Invalid types for binary div";
+    }
+}
+
+DoubleVector * doubleEq(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] == rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] == rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+DoubleVector * functionEq(Function * lhs, Function * rhs) {
+    return new DoubleVector(lhs->code == rhs->code);
+}
+
+Value * genericEq(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        return new Value(new DoubleVector(0));
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleEq(lhs->d, rhs->d));
+    case Value::Type::Character:
+        return new Value(characterEq(lhs->c, rhs->c));
+    case Value::Type::Function:
+    default:
+        return new Value(functionEq(lhs->f, rhs->f));
+    }
+}
+
+DoubleVector * doubleNeq(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] != rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] == rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+DoubleVector * functionNeq(Function * lhs, Function * rhs) {
+    return new DoubleVector(lhs->code != rhs->code);
+}
+
+Value * genericNeq(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        return new Value(new DoubleVector(1));
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleNeq(lhs->d, rhs->d));
+    case Value::Type::Character:
+        return new Value(characterNeq(lhs->c, rhs->c));
+    case Value::Type::Function:
+    default:
+        return new Value(functionNeq(lhs->f, rhs->f));
+    }
+}
+
+DoubleVector * doubleLt(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] < rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+Value * genericLt(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        throw "Incompatible types for binary operator";
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleLt(lhs->d, rhs->d));
+    default:
+        throw "Invalid types for lt";
+    }
+}
+
+DoubleVector * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
+    int resultSize = max(lhs->size, rhs->size);
+    double * result = new double[resultSize];
+    for (int i = 0; i < resultSize; ++i)
+        result[i] = lhs->data[i % lhs->size] > rhs->data[i % rhs->size];
+    return new DoubleVector(result, resultSize);
+}
+
+
+Value * genericGt(Value * lhs, Value * rhs) {
+    if (lhs->type != rhs->type)
+        throw "Incompatible types for binary operator";
+    switch (lhs->type) {
+    case Value::Type::Double:
+        return new Value(doubleGt(lhs->d, rhs->d));
+    default:
+        throw "Invalid types for gt";
+    }
+}
+
+Function * createFunction(int index, Environment * env) {
+    return new Function(Runtime::getFunction(index), env);
+}
+
+bool toBoolean(Value * value) {
+    switch (value->type) {
+    case Value::Type::Function:
+        return true;
+    case Value::Type::Character:
+        return value->c->size > 0;
+    case Value::Type::Double:
+        return (value->d->size > 0) and (value->d->data[0] != 0);
+    default:
+        return false;
+    }
+
+}
+
+Value * call(Value * callee, Environment * parent, int argc, ...) {
+    if (callee->type != Value::Type::Function)
+        throw "Only functions can be called";
+    Function * f = callee->f;
+    if (f->argsSize != argc)
+        throw "Invalid number of arguments given";
+    Environment * calleeEnv = new Environment(parent);
     va_list ap;
-    va_start(ap, size);
-    CV * result = r_cv_c_internal(size, ap);
+    va_start(ap, argc);
+    for (int i = 0; i < argc; ++i)
+        // TODO this is pass by reference always!
+        calleeEnv->set(f->args[i], va_arg(ap, Value *));
     va_end(ap);
+    return f->code(calleeEnv);
+}
+
+double length(Value * value) {
+    switch (value->type) {
+    case Value::Type::Double:
+        return value->d->size;
+    case Value::Type::Character:
+        return value->c->size;
+    default:
+        throw "Cannot determine length of a function";
+    }
+
+}
+
+CharacterVector * type(Value * value) {
+    switch (value->type) {
+    case Value::Type::Double:
+        return CharacterVector::copy("double");
+    case Value::Type::Character:
+        return CharacterVector::copy("character");
+    case Value::Type::Function:
+        return CharacterVector::copy("function");
+    default:
+        return nullptr;
+    }
+}
+
+Value * eval(Environment * env, char const * value) {
+    std::string s(value);
+    Parser p;
+    ast::Exp * x = p.parse(s);
+    FunPtr f = compile(new ast::Fun(x));
+    Value * result = f(env);
+    delete x;
     return result;
 }
 
-void r_cv_del(CV *v) {
-  delete v->data;
-  delete v;
-}
-void r_cv_set(CV *v, int index, char value) {
-  v->data[index] = value;
+Value * characterEval(Environment * env, CharacterVector * value) {
+    if (value->size == 0)
+        throw "Cannot evaluate empty character vector";
+    return eval(env, value->data);
 }
 
-char r_cv_get(CV *v, int index) {
-  return v->data[index];
+Value * genericEval(Environment * env, Value * value) {
+    if (value->type != Value::Type::Character)
+        throw "Only character vectors can be evaluated";
+    return characterEval(env, value->c);
 }
 
-int r_cv_size(CV *v) {
-  return v->size;
-}
-
-CV *r_cv_paste(CV *v1, CV *v2) { 
-  int size = v1->size + v2->size;
-  CV *r = new CV();
-  r->data = new char[size];
-  r->size = size;
-  strncpy(r->data, v1->data, v1->size);
-  strncpy(r->data+v1->size, v2->data, v2->size);
-  return r;
-}
-
-//////////////////////////////////////////////////////////////////////
-/////-- Double vectors
-//////////////////////////////////////////////////////////////////////
-
-DV *r_dv_mk(int size) {
-  DV *r = new DV();
-  r->data = new double[size];
-  r->size = size;
-  return r;
-}
-
-DV * r_dv_c_internal(int size, va_list ap) {
-    std::vector<DV*> inputs;
-    int length = 0;
-    for (int i = 0; i < size; ++i) {
-        inputs.push_back(va_arg(ap, RVal*)->dv);
-        length += inputs.back()->size;
-    }
-    DV * result = r_dv_mk(length);
-    size = 0;
-    for (DV * dv : inputs) {
-        memcpy(result->data + size,dv->data, dv->size * sizeof(double));
-        size += dv->size;
-    }
-    return result;
-}
-
-DV *r_dv_c(int size, ...) {
-    va_list ap;
-    va_start(ap, size);
-    DV * result = r_dv_c_internal(size, ap);
-    va_end(ap);
-    return result;
-}
-
-void r_dv_del(DV * v) {
-  delete v->data;
-  delete v;
-}
-
-void r_dv_set(DV * v, int index, double value) {
-  v->data[index] = value;
-}
-
-double r_dv_get(DV * v, int index) {
-  return v->data[index];
-}
-
-int r_dv_size(DV * v) {
-  return v->size;
-}
-
-DV *r_dv_paste(DV *v1, DV *v2) {
-  int size = v1->size + v2->size;
-  DV *r = r_dv_mk(size);
-  for(int i = 0; i < v1->size; i++) 
-    r->data[i] = v1->data[i];
-  for(int i = 0; i < v1->size; i++) 
-    r->data[i + v1->size ] = v1->data[i];
-  return r;
-}
-
-//////////////////////////////////////////////////////////////////////
-/////-- RVal
-//////////////////////////////////////////////////////////////////////
-
-
-RVal *r_rv_mk_dv(DV *v) {
-  RVal* r = new RVal();
-  r->kind = KIND::DV;
-  r->dv = v;
-  return r;
-}
-
-RVal *r_rv_mk_cv(CV *v) {
-  RVal* r = new RVal();
-  r->kind = KIND::CV;
-  r->cv = v;
-  return r;
-}
-
-RVal *r_rv_mk_fun(Fun *v) {
-  RVal* r = new RVal();
-  r->kind = KIND::FUN;
-  r->fun = v;
-  return r;
-}
-
-DV   *r_rv_as_dv(RVal *v) {
-  return v->dv;
-}
-
-CV   *r_rv_as_cv(RVal *v) {
-  return v->cv;
-}
-
-Fun  *r_rv_as_fun(RVal *v) {
-  return v->fun;
-}
-
-
-// helper enum
-enum class OP { PLUS, TIMES, DIVIDE, MINUS };
-
-// helper function
-static RVal *op_OP(OP op, RVal* v1, RVal *v2) {
-  if (v1->kind != v2->kind) {
-    return nullptr; // should convert?
-  } 
-  if ( isa_dv(v1) ) {
-    DV *vt1 = v1->dv;
-    DV *vt2 = v2->dv;
-    if (vt1->size == vt2->size) {
-      DV *d = r_dv_mk(vt1->size);
-      for( int i = 0; i < vt1->size; i++) {
-	switch (op) {
-	case OP::PLUS:
-	  d->data[i] = vt1->data[i] + vt2->data[i]; break;
-	case OP::TIMES:
-	  d->data[i] = vt1->data[i] * vt2->data[i]; break;
-	case OP::MINUS:
-	  d->data[i] = vt1->data[i] - vt2->data[i]; break;
-	case OP::DIVIDE:
-	  d->data[i] = vt1->data[i] / vt2->data[i]; break;
-	}
-      }
-      return r_rv_mk_dv(d);
-    } else {
-      if (vt2->size > vt1->size) {
-	DV *tmp = vt1;
-	vt2 = vt1; 
-	vt1 = tmp;
-      }
-      // reuse vt2
-      DV *d = r_dv_mk(vt1->size);
-      for( int i = 0, j = 0; i < vt1->size; i++, j++) {
-	if ( j == vt2->size) j = 0;
-	switch (op) {
-	case OP::PLUS:
-	  d->data[i] = vt1->data[i] + vt2->data[j]; break;
-	case OP::TIMES:
-	  d->data[i] = vt1->data[i] * vt2->data[j]; break;
-	case OP::MINUS:
-	  d->data[i] = vt1->data[i] - vt2->data[j]; break;
-	case OP::DIVIDE:
-	  d->data[i] = vt1->data[i] / vt2->data[j]; break;
-	}
-      }
-      return r_rv_mk_dv(d);
-    }
-  } else if ( isa_cv(v1) ) { 
-    CV *vt1 = v1->cv;
-    CV *vt2 = v2->cv;
-    if (vt1->size == vt2->size) {
-      CV *d = r_cv_mk(vt1->size);
-      for( int i = 0; i < vt1->size; i++) {
-	switch (op) {
-	case OP::PLUS:
-	  d->data[i] = vt1->data[i] + vt2->data[i]; break;
-	case OP::TIMES:
-	  d->data[i] = vt1->data[i] * vt2->data[i]; break;
-	case OP::MINUS:
-	  d->data[i] = vt1->data[i] - vt2->data[i]; break;
-	case OP::DIVIDE:
-	  d->data[i] = vt1->data[i] / vt2->data[i]; break;
-	}
-      }
-      return r_rv_mk_cv(d);
-    } else {
-      if (vt2->size > vt1->size) {
-	CV *tmp = vt1;
-	vt2 = vt1; 
-	vt1 = tmp;
-      }
-      // reuse vt2
-      CV *d = r_cv_mk(vt1->size);
-      for( int i = 0, j = 0; i < vt1->size; i++, j++) {
-	if ( j == vt2->size) j = 0;
-	switch (op) {
-	case OP::PLUS:
-	  d->data[i] = vt1->data[i] + vt2->data[j]; break;
-	case OP::TIMES:
-	  d->data[i] = vt1->data[i] * vt2->data[j]; break;
-	case OP::MINUS:
-	  d->data[i] = vt1->data[i] - vt2->data[j]; break;
-	case OP::DIVIDE:
-	  d->data[i] = vt1->data[i] / vt2->data[j]; break;
-	}
-      }
-      return r_rv_mk_cv(d);
-    }
-  } else {
-    return nullptr; // can't add functions
-  }
-}
-
-RVal *op_plus(RVal* v1, RVal *v2)   { return op_OP(OP::PLUS, v1, v2); }
-RVal *op_minus(RVal* v1, RVal *v2)  { return op_OP(OP::MINUS, v1, v2); }
-RVal *op_times(RVal* v1, RVal *v2)  { return op_OP(OP::TIMES, v1, v2); }
-RVal *op_divide(RVal* v1, RVal *v2) { return op_OP(OP::DIVIDE, v1, v2); }
-
-
-int  isa_fun(RVal *v) { return v->kind == KIND::FUN; }
-int  isa_dv(RVal *v)  { return v->kind == KIND::DV; }
-int  isa_cv(RVal *v)  { return v->kind == KIND::CV; }
-
-RVal *print(RVal *v) {
-  if ( isa_cv(v) ) {
-    cout << v->cv->data << "\n";
-  } else if ( isa_dv(v) ) {
-    cout << "DV\n";  // TODO: better print
-  } else {
-    cout << "Fun\n"; // TODO: better print
-  }
-  return v;
-}
-
-
-RVal *paste(RVal *v1, RVal *v2) {
-  if ( v1->kind != v2->kind ) {
-    return nullptr; // TODO -- report an error?
-  }
-  if ( isa_dv(v1) ) {
-    return r_rv_mk_dv( r_dv_paste( v1->dv, v2->dv) );
-  } else if ( isa_cv(v1) ) {
-    return r_rv_mk_cv( r_cv_paste( v1->cv, v2->cv) );
-  } else {
-    return nullptr; // Adding functions is not defined
-  }
-}
-
-
-
-RVal *eval(Env * env, RVal *v) {
-    assert(v->kind == KIND::CV and "Only char vectors can be evaluated");
-    return eval_internal(env, v->cv->size, v->cv->data);
-}
-
-
-RVal * r_call(RVal * callee, int size, ...) {
-    assert(callee->kind == KIND::FUN and "Only functions can be called");
-    assert(callee->fun->argsSize == size and "Invalid number of arguments");
-    Env * env = r_env_mk(callee->fun->env, size);
-    va_list ap;
-    va_start(ap, size);
-    for (int i = 0; i <= size; ++i)
-        r_env_set(env, callee->fun->args[i], va_arg(ap, RVal*));
-    va_end(ap);
-    return callee->fun->code(env);
-}
-
-RVal * r_c(int size, ...) {
+Value * c(int size, ...) {
     if (size == 0)
-        return r_rv_mk_dv(r_dv_mk(0));
-    std::vector<RVal*> args(size);
+        return new Value(new DoubleVector(nullptr, 0));
+    std::vector<Value *> args;
     va_list ap;
     va_start(ap, size);
-    for (int i = 0; i <= size; ++i)
-        args[i] = va_arg(ap, RVal*);
+    for (int i = 0; i < size; ++i)
+        args.push_back(va_arg(ap, Value*));
     va_end(ap);
-    KIND k = args[0]->kind;
-    assert(k != KIND::FUN and "unable to concat functions");
-    for (int i = 1; i < args.size(); ++i)
-        assert(k == args[i]->kind and "All arguments to c() must be of the same type");
-    va_start(ap, size);
-    RVal * result = nullptr;
-    switch (k) {
-    case KIND::CV:
-        result = r_rv_mk_cv(r_cv_c_internal(size, ap));
-        break;
-    case KIND::DV:
-        result = r_rv_mk_dv(r_dv_c_internal(size, ap));
-        break;
+    Value::Type t = args[0]->type;
+    if (t == Value::Type::Function)
+        throw "Cannot concatenate functions";
+    for (int i = 1; i < args.size(); ++i) {
+        if (args[i]->type != t)
+            throw "Types of all c arguments must be the same";
     }
-    va_end(ap);
-    return result;
+    if (t == Value::Type::Double) {
+        int size = 0;
+        for (Value * v : args)
+            size += v->d->size;
+        double * result = new double[size];
+        int offset = 0;
+        for (Value * v : args) {
+            memcpy(result + offset, v->d->data, v->d->size * sizeof(double));
+            offset += v->d->size;
+        }
+        return new Value(new DoubleVector(result, size));
+    } else { // Character
+        int size = 0;
+        for (Value * v : args)
+            size += v->c->size;
+        char * result = new char[size];
+        int offset = 0;
+        for (Value * v : args) {
+            memcpy(result + offset, v->d->data, v->c->size * sizeof(char));
+            offset += v->c->size;
+        }
+        return new Value(new CharacterVector(result, size));
+    }
 }
 
-RVal * r_getIndex(RVal * source, RVal * index) {
-    assert(source->kind != KIND::FUN and "Cannot do indexed read from a function");
-    assert(index->kind == KIND::DV and "Only numbers can be indices");
-    assert(index->dv->size == 1 and "Index must be scalar");
-    switch (source->kind) {
-    case KIND::DV: {
-        double v = r_dv_get(source->dv, index->dv->data[0]);
-        DV * rd = r_dv_mk(1);
-        r_dv_set(rd, 0, v);
-        return r_rv_mk_dv(rd);
-    }
-    case KIND::CV: {
-        char c = r_cv_get(source->cv, index->dv->data[0]);
-        CV * rc = r_cv_mk(1);
-        r_cv_set(rc, 0, c);
-        return r_rv_mk_cv(rc);
-    }
-    }
-    return nullptr;
-}
 
-void r_setIndex(RVal * target, RVal * index, RVal * value) {
-    assert(target->kind != KIND::FUN and "Cannot do indexed write to a function");
-    assert(index->kind == KIND::DV and "Only numbers can be indices");
-    assert(index->dv->size == 1 and "Index must be scalar");
-    assert(value->dv->size == 1 and "Value must be scalar");
-    assert(target->kind == value->kind and "target and source types must match");
-    switch (target->kind) {
-    case KIND::DV:
-        r_dv_set(target->dv, index->dv->data[0], value->dv->data[0]);
-        break;
-    case KIND::CV:
-        r_cv_set(target->cv, index->cv->data[0], value->cv->data[0]);
-        break;
-    }
-
-}
-
-int r_guard(RVal * value) {
-    if (value == nullptr)
-        return 0;
-    switch (value->kind) {
-    case KIND::FUN:
-        return 1;
-    case KIND::CV:
-        return value->cv->size != 0;
-    case KIND::DV:
-        if (value->dv->size == 0)
-            return 0;
-        return value->dv->data[0] != 0;
-    }
-    return 0;
-}
 
 
 
 } // extern "C"
 
+namespace rift {
+std::vector<Function *> Runtime::f_;
 
+}
 
-
-
-// TODO:  is a nullptr  a valid rift value ?  we have no way of writing it.
-//        perhaps we should never see that at the user level
-
-// TODO:  there are some runtime functions that are internal to the runtime
-//        system;  other can be called by from the user level
-//        Should the ones that are user-callable take an environment as 
-//        arugment or some kind of context?
