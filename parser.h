@@ -65,7 +65,7 @@ namespace rift {
         ast::Call * parseCall(ast::Var * variable) {
             std::unique_ptr<ast::UserCall> call(new ast::UserCall(variable));
             while (top() != Token::Type::cpar) {
-                call->addArgument(parseExpression());
+                call->args.push_back(parseExpression());
                 if (not condPop(Token::Type::comma))
                     break;
             }
@@ -75,17 +75,17 @@ namespace rift {
 
         ast::SimpleAssignment * parseAssignment(ast::Var * variable) {
             std::unique_ptr<ast::SimpleAssignment> assign(new ast::SimpleAssignment(variable));
-            assign->setRhs(parseExpression());
+            assign->rhs = parseExpression();
             return assign.release();
         }
 
         ast::Exp * parseIndex(ast::Var * variable) {
             std::unique_ptr<ast::Index> index(new ast::Index(variable));
-            index->setIndex(parseExpression());
+            index->index = parseExpression();
             pop(Token::Type::csbr);
             if (condPop(Token::Type::assign)) {
                 std::unique_ptr<ast::IndexAssignment> ia(new ast::IndexAssignment(index.release()));
-                ia->setRhs(parseExpression());
+                ia->rhs = parseExpression();
                 return ia.release();
             } else {
                 return index.release();
@@ -97,7 +97,7 @@ namespace rift {
             pop(Token::Type::opar);
             std::unique_ptr<ast::Exp> arg(parseExpression());
             pop(Token::Type::cpar);
-            return (new ast::SpecialCall(Token::Type::kwEval))->addArgument(arg.release());
+            return new ast::EvalCall(arg.release());
         }
 
         ast::Exp * parseLength() {
@@ -105,7 +105,7 @@ namespace rift {
             pop(Token::Type::opar);
             std::unique_ptr<ast::Exp> arg(parseExpression());
             pop(Token::Type::cpar);
-            return (new ast::SpecialCall(Token::Type::kwLength))->addArgument(arg.release());
+            return new ast::LengthCall(arg.release());
         }
 
         ast::Exp * parseType() {
@@ -113,15 +113,15 @@ namespace rift {
             pop(Token::Type::opar);
             std::unique_ptr<ast::Exp> arg(parseExpression());
             pop(Token::Type::cpar);
-            return (new ast::SpecialCall(Token::Type::kwType))->addArgument(arg.release());
+            return new ast::TypeCall(arg.release());
         }
 
         ast::Exp * parseC() {
             pop(Token::Type::kwC);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::SpecialCall> result(new ast::SpecialCall(Token::Type::kwC));
+            std::unique_ptr<ast::CCall> result(new ast::CCall());
             do {
-                result->addArgument(parseExpression());
+                result->args.push_back(parseExpression());
             } while (condPop(Token::Type::comma));
             pop(Token::Type::cpar);
             return result.release();
@@ -170,7 +170,17 @@ namespace rift {
                 switch (top().type) {
                 case Token::Type::mul:
                 case Token::Type::div: {
-                    Token::Type t = pop().type;
+                    ast::BinExp::Type t;
+                    switch (pop().type) {
+                    case Token::Type::mul:
+                        t = ast::BinExp::Type::mul;
+                        break;
+                    case Token::Type::div:
+                        t = ast::BinExp::Type::div;
+                        break;
+                    default:
+                        assert(false and "unreachable");
+                    }
                     x.reset(new ast::BinExp(x.release(), parseE3(), t));
                     break;
                 }
@@ -186,7 +196,17 @@ namespace rift {
                 switch (top().type) {
                 case Token::Type::add:
                 case Token::Type::sub: {
-                    Token::Type t = pop().type;
+                    ast::BinExp::Type t;
+                    switch (pop().type) {
+                    case Token::Type::add:
+                        t = ast::BinExp::Type::add;
+                        break;
+                    case Token::Type::sub:
+                        t = ast::BinExp::Type::sub;
+                        break;
+                    default:
+                        assert(false and "unreachable");
+                    }
                     x.reset(new ast::BinExp(x.release(), parseE2(), t));
                     break;
                 }
@@ -204,7 +224,23 @@ namespace rift {
                 case Token::Type::neq:
                 case Token::Type::lt:
                 case Token::Type::gt: {
-                    Token::Type t = pop().type;
+                    ast::BinExp::Type t;
+                    switch (pop().type) {
+                    case Token::Type::eq:
+                        t = ast::BinExp::Type::eq;
+                        break;
+                    case Token::Type::neq:
+                        t = ast::BinExp::Type::neq;
+                        break;
+                    case Token::Type::lt:
+                        t = ast::BinExp::Type::lt;
+                        break;
+                    case Token::Type::gt:
+                        t = ast::BinExp::Type::gt;
+                        break;
+                    default:
+                        assert(false and "unreachable");
+                    }
                     x.reset(new ast::BinExp(x.release(), parseE1(), t));
                     break;
                 }
@@ -219,11 +255,11 @@ namespace rift {
             pop(Token::Type::opar);
             std::unique_ptr<ast::IfElse> result(new ast::IfElse(parseExpression()));
             pop(Token::Type::cpar);
-            result->setIfClause(parseSequence());
+            result->ifClause = parseSequence();
             if (condPop(Token::Type::kwElse))
-                result->setElseClause(parseSequence());
+                result->elseClause = parseSequence();
             else
-                result->setElseClause(new ast::Num(0));
+                result->elseClause = new ast::Num(0);
             return result.release();
         }
 
@@ -232,7 +268,7 @@ namespace rift {
             pop(Token::Type::opar);
             std::unique_ptr<ast::WhileLoop> result(new ast::WhileLoop(parseExpression()));
             pop(Token::Type::cpar);
-            result->setBody(parseSequence());
+            result->body = parseSequence();
             return result.release();
         }
 
@@ -241,12 +277,12 @@ namespace rift {
             pop(Token::Type::opar);
             std::unique_ptr<ast::Fun> result(new ast::Fun());
             while (top() != Token::Type::cpar) {
-                result->addArgument(new ast::Var(pop(Token::Type::ident).c));
+                result->args.push_back(new ast::Var(pop(Token::Type::ident).c));
                 if (not condPop(Token::Type::comma))
                     break;
             }
             pop(Token::Type::cpar);
-            result->setBody(parseSequence());
+            result->body = parseSequence();
             return result.release();
         }
 
@@ -265,7 +301,7 @@ namespace rift {
             while (true) {
                 if ((top() == Token::Type::ccbr) or (top() == Token::Type::eof))
                     return;
-                seq->push_back(parseStatement());
+                seq->body.push_back(parseStatement());
             }
         }
 

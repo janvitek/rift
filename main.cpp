@@ -45,7 +45,11 @@ void runScript(char const * filename) {
         std::cerr << "Unable to open file " << filename << endl;
     } else {
         Parser p;
-        ast::Exp * root = p.parse(s);
+        ast::Fun * x = new ast::Fun(p.parse(s));
+        Environment * env = new Environment(nullptr);
+        compile(x)(env)->print(cout);
+        delete x;
+        delete env;
     }
 
 }

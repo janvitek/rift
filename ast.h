@@ -8,9 +8,12 @@
 
 namespace rift {
 
+typedef int Symbol;
+
 class Visitor;
 
 namespace ast {
+
     class Exp {
     public:
         virtual ~Exp() {}
@@ -22,265 +25,184 @@ namespace ast {
     class Num : public Exp {
     public:
         Num(double value):
-            value_(value) {}
+            value(value) {}
 
         void accept(Visitor * v) override;
 
-        double value() const {
-            return value_;
-        }
 
-
-    private:
-        double value_;
+        double value;
     };
 
 
     class Str : public Exp {
     public:
         Str(unsigned index):
-            index_(index) {}
+            index(index) {}
         void accept(Visitor * v) override;
-        std::string const & value() const {
-            return Lexer::getPoolObject(index_);
-        }
+        std::string const & value() const;
 
-        unsigned index() const {
-            return index_;
-        }
-
-    private:
-        unsigned index_;
+        unsigned index;
     };
 
     class Var : public Exp  {
     public:
-        Var(unsigned index):
-            index_(index) {}
+        Var(Symbol symbol):
+            symbol(symbol) {}
         void accept(Visitor * v) override;
-        std::string const & value() const {
-            return Lexer::getPoolObject(index_);
-        }
-        unsigned index() const {
-            return index_;
-        }
-    private:
-        unsigned index_;
+        std::string const & value() const;
+
+        unsigned symbol;
     };
 
     class Seq : public Exp {
     public:
         ~Seq() override  {
-            for (Exp * e : body_)
+            for (Exp * e : body)
                 delete e;
         }
 
         void accept(Visitor * v) override;
 
-        void push_back(Exp * exp) {
-            body_.push_back(exp);
-        }
-
-        std::vector<Exp *>::iterator begin() {
-            return body_.begin();
-        }
-
-        std::vector<Exp *>::iterator end() {
-            return body_.end();
-        }
-
-        unsigned size() const {
-            return body_.size();
-        }
-
-    private:
-        std::vector<Exp*> body_;
+        std::vector<Exp*> body;
     };
 
     class Fun: public Exp {
     public:
 
         Fun():
-            body_(nullptr) {
+            body(nullptr) {
         }
 
         Fun(ast::Exp * body):
-            body_(dynamic_cast<ast::Seq *>(body)) {
+            body(dynamic_cast<ast::Seq *>(body)) {
         }
 
         ~Fun() {
-            for (Var * v : args_)
+            for (Var * v : args)
                 delete v;
-            delete body_;
+            delete body;
         }
 
         void accept(Visitor * v) override;
 
-        void setBody(Seq * body) {
-            delete body_;
-            body_ = body;
-        }
-
-        Seq * body() {
-            return body_;
-        }
-
-        std::vector<Var *>::iterator begin() {
-            return args_.begin();
-        }
-
-        std::vector<Var *>::iterator end() {
-            return args_.end();
-        }
-
-        void addArgument(Var * arg) {
-            args_.push_back(arg);
-        }
-
-        unsigned argumentCount() const {
-            return args_.size();
-        }
-
-    private:
-        Seq * body_;
-        std::vector<Var *> args_;
+        Seq * body;
+        std::vector<Var *> args;
     };
 
     class BinExp : public Exp {
     public:
-        BinExp(Exp * lhs, Exp * rhs, Token::Type t):
-            lhs_(lhs),
-            rhs_(rhs),
-            type_(t) {}
+        enum class Type {
+            add,
+            sub,
+            mul,
+            div,
+            eq,
+            neq,
+            lt,
+            gt,
+        };
+
+        BinExp(Exp * lhs, Exp * rhs, Type t):
+            lhs(lhs),
+            rhs(rhs),
+            type(t) {
+        }
+
         ~BinExp() {
-            delete lhs_;
-            delete rhs_;
+            delete lhs;
+            delete rhs;
         }
 
         void accept(Visitor * v) override;
 
-        Exp * lhs() const {
-            return lhs_;
-        }
-
-        Exp * rhs() const {
-            return rhs_;
-        }
-
-        Token::Type type() const {
-            return type_;
-        }
-
-    private:
-        Exp * lhs_;
-        Exp * rhs_;
-        Token::Type type_;
+        Exp * lhs;
+        Exp * rhs;
+        Type type;
     };
 
     class Call: public Exp {
     public:
 
         ~Call() {
-            for (Exp * e : args_)
+            for (Exp * e : args)
                 delete e;
         }
 
         void accept(Visitor * v) override;
 
-        std::vector<Exp *>::iterator begin() {
-            return args_.begin();
-        }
-
-        std::vector<Exp *>::iterator end() {
-            return args_.end();
-        }
-
-        Call * addArgument(Exp * arg) {
-            args_.push_back(arg);
-            return this;
-        }
-
-        unsigned argumentCount() {
-            return args_.size();
-        }
-
-        Exp * operator[](unsigned index) {
-            return args_[index];
-        }
-
-
-    private:
-
-        std::vector<Exp*> args_;
+        std::vector<Exp*> args;
 
     };
 
     class UserCall : public Call {
     public:
         UserCall(Var * name):
-            name_(name) {
+            name(name) {
         }
         ~UserCall() {
-            delete name_;
+            delete name;
         }
 
         void accept(Visitor * v) override;
 
-        Var * name() {
-            return name_;
-        }
-
-    private:
-        Var * name_;
+        Var * name;
     };
 
     class SpecialCall : public Call {
     public:
-        SpecialCall(Token::Type target):
-            target_(target) {
-        }
 
         void accept(Visitor * v) override;
 
-        Token::Type target() const {
-            return target_;
+    };
+
+    class CCall : public SpecialCall {
+    public:
+        void accept(Visitor * v) override;
+    };
+
+    class EvalCall : public SpecialCall {
+    public:
+        EvalCall(ast::Exp * arg) {
+            args.push_back(arg);
         }
 
-    private:
-        Token::Type target_;
+        void accept(Visitor * v) override;
     };
+
+    class LengthCall : public SpecialCall {
+    public:
+        LengthCall(ast::Exp * arg) {
+            args.push_back(arg);
+        }
+        void accept(Visitor * v) override;
+    };
+
+    class TypeCall : public SpecialCall {
+    public:
+        TypeCall(ast::Exp * arg) {
+            args.push_back(arg);
+        }
+        void accept(Visitor * v) override;
+    };
+
 
     class Index : public Exp {
 
     public:
         Index(Var * name):
-            name_(name),
-            index_(nullptr) {
+            name(name),
+            index(nullptr) {
         }
 
         ~Index() {
-            delete name_;
-            delete index_;
+            delete name;
+            delete index;
         }
 
         void accept(Visitor * v) override;
 
-        Var * name() {
-            return name_;
-        }
-
-        Exp * index() {
-            return index_;
-        }
-
-        void setIndex(Exp * index) {
-            delete index_;
-            index_ = index;
-        }
-
-    private:
-        Var * name_;
-        Exp * index_;
+        Var * name;
+        Exp * index;
     };
 
     class Assignment : public Exp {
@@ -293,33 +215,19 @@ namespace ast {
     public:
 
         SimpleAssignment(Var * name):
-            name_(name),
-            rhs_(nullptr) {
+            name(name),
+            rhs(nullptr) {
         }
 
         ~SimpleAssignment() {
-            delete name_;
-            delete rhs_;
+            delete name;
+            delete rhs;
         }
 
         void accept(Visitor * v) override;
 
-        Var * name() const {
-            return name_;
-        }
-
-        Exp * rhs() const {
-            return rhs_;
-        }
-
-        void setRhs(Exp * rhs) {
-            delete rhs_;
-            rhs_ = rhs;
-        }
-
-    private:
-        Var * name_;
-        Exp * rhs_;
+        Var * name;
+        Exp * rhs;
 
     };
 
@@ -327,111 +235,59 @@ namespace ast {
     public:
 
         IndexAssignment(Index * index):
-            index_(index),
-            rhs_(nullptr) {
+            index(index),
+            rhs(nullptr) {
         }
 
         ~IndexAssignment() override {
-            delete index_;
-            delete rhs_;
+            delete index;
+            delete rhs;
         }
 
         void accept(Visitor * v) override;
 
-        Index * index() const {
-            return index_;
-        }
-
-        Exp * rhs() const {
-            return rhs_;
-        }
-
-        void setRhs(Exp * rhs) {
-            delete rhs_;
-            rhs_ = rhs;
-        }
-
-    private:
-        Index * index_;
-        Exp * rhs_;
+        Index * index;
+        Exp * rhs;
 
     };
 
     class IfElse : public Exp {
     public:
         IfElse(Exp * guard):
-            guard_(guard),
-            ifClause_(nullptr),
-            elseClause_(nullptr) {
+            guard(guard),
+            ifClause(nullptr),
+            elseClause(nullptr) {
         }
 
         ~IfElse() {
-            delete guard_;
-            delete ifClause_;
-            delete elseClause_;
+            delete guard;
+            delete ifClause;
+            delete elseClause;
         }
 
         void accept(Visitor * v) override;
 
-        Exp * guard() const {
-            return guard_;
-        }
-
-        Exp * ifClause() const {
-            return ifClause_;
-        }
-
-        void setIfClause(Exp * value) {
-            delete ifClause_;
-            ifClause_ = value;
-        }
-
-        Exp * elseClause() const {
-            return elseClause_;
-        }
-
-        void setElseClause(Exp * value) {
-            delete elseClause_;
-            elseClause_ = value;
-        }
-
-
-    private:
-        Exp * guard_;
-        Exp * ifClause_;
-        Exp * elseClause_;
+        Exp * guard;
+        Exp * ifClause;
+        Exp * elseClause;
     };
 
     class WhileLoop : public Exp {
     public:
         WhileLoop(Exp * guard):
-            guard_(guard),
-            body_(nullptr) {
+            guard(guard),
+            body(nullptr) {
         }
 
         ~WhileLoop() override {
-            delete guard_;
-            delete body_;
+            delete guard;
+            delete body;
         }
 
         void accept(Visitor * v) override;
 
-        Exp * guard() const {
-            return guard_;
-        }
-
-        Seq * body() const {
-            return body_;
-        }
-
-        void setBody(Seq * value) {
-            delete body_;
-            body_ = value;
-        }
-
-    private:
-        Exp * guard_;
-        Seq * body_;
+        Exp * guard;
+        Seq * body;
     };
 
 
@@ -451,6 +307,10 @@ public:
     virtual void visit(ast::Call * node) { visit(static_cast<ast::Exp*>(node)); }
     virtual void visit(ast::UserCall * node) { visit(static_cast<ast::Call*>(node)); }
     virtual void visit(ast::SpecialCall * node) { visit(static_cast<ast::Call*>(node)); }
+    virtual void visit(ast::CCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
+    virtual void visit(ast::EvalCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
+    virtual void visit(ast::TypeCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
+    virtual void visit(ast::LengthCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
     virtual void visit(ast::Index * node) { visit(static_cast<ast::Exp*>(node)); }
     virtual void visit(ast::Assignment * node) { visit(static_cast<ast::Exp*>(node)); }
     virtual void visit(ast::SimpleAssignment * node) { visit(static_cast<ast::Assignment*>(node)); }

@@ -1,21 +1,21 @@
-a<-1;
-b<-2;
-a+b;
-f1 <- function() { 1 };
+a<-1
+b<-2
+a+b
+f1 <- function() { 1 }
 
-f2 <- function(x) { f1()  };
+f2 <- function(x) { f1()  }
 
-y <- 1;
+y <- 1
 
-x <- if ( f1() < 0 ) { y <-0;  c( 1, 2, 4) } else {  c(4, 2, 1) };
+x <- if ( f1() < 0 ) { y <-0  c( 1, 2, 4) } else {  c(4, 2, 1) }
 
-x()+x();
+x()+x()
 
-y*y;
+y*y
 
-s <- "hi ho";
+s <- "hi ho"
 
-s[1];
+s[1]
 
-y[2];
+y[2]
  

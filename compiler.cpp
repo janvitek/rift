@@ -142,9 +142,9 @@ public:
         llvm::Function::arg_iterator args = f->arg_begin();
         env = args++;
         env->setName("env");
-        node->body()->accept(this);
+        node->body->accept(this);
         ReturnInst::Create(getGlobalContext(), result, b);
-        f->dump();
+        //f->dump();
         int result = Runtime::addFunction(node, f);
         f = oldF;
         b = oldB;
@@ -169,21 +169,21 @@ public:
     }
 
     void visit(ast::Num * node) override {
-        result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(node->value()));
+        result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(node->value));
         result = RUNTIME_CALL(fromDoubleVector, result);
     }
 
     void visit(ast::Str * node) override {
-        result = RUNTIME_CALL(characterVectorLiteral, fromInt(node->index()));
+        result = RUNTIME_CALL(characterVectorLiteral, fromInt(node->index));
         result = RUNTIME_CALL(fromCharacterVector, result);
     }
 
     void visit(ast::Var * node) override {
-        result = RUNTIME_CALL(envGet, env, fromInt(node->index()));
+        result = RUNTIME_CALL(envGet, env, fromInt(node->symbol));
     }
 
     void visit(ast::Seq * node) override {
-        for (ast::Exp * e : *node)
+        for (ast::Exp * e : node->body)
             e->accept(this);
     }
 
@@ -194,33 +194,33 @@ public:
     }
 
     void visit(ast::BinExp * node) override {
-        node->lhs()->accept(this);
+        node->lhs->accept(this);
         llvm::Value * lhs = result;
-        node->rhs()->accept(this);
+        node->rhs->accept(this);
         llvm::Value * rhs = result;
-        switch (node->type()) {
-        case Token::Type::add:
+        switch (node->type) {
+        case ast::BinExp::Type::add:
             result = RUNTIME_CALL(genericAdd, lhs, rhs);
             return;
-        case Token::Type::sub:
+        case ast::BinExp::Type::sub:
             result = RUNTIME_CALL(genericSub, lhs, rhs);
             return;
-        case Token::Type::mul:
+        case ast::BinExp::Type::mul:
             result = RUNTIME_CALL(genericMul, lhs, rhs);
             return;
-        case Token::Type::div:
+        case ast::BinExp::Type::div:
             result = RUNTIME_CALL(genericDiv, lhs, rhs);
             return;
-        case Token::Type::eq:
+        case ast::BinExp::Type::eq:
             result = RUNTIME_CALL(genericEq, lhs, rhs);
             return;
-        case Token::Type::neq:
+        case ast::BinExp::Type::neq:
             result = RUNTIME_CALL(genericNeq, lhs, rhs);
             return;
-        case Token::Type::lt:
+        case ast::BinExp::Type::lt:
             result = RUNTIME_CALL(genericLt, lhs, rhs);
             return;
-        case Token::Type::gt:
+        case ast::BinExp::Type::gt:
             result = RUNTIME_CALL(genericGt, lhs, rhs);
             return;
         default:
@@ -232,90 +232,82 @@ public:
 
     void visit(ast::UserCall * node) override {
         // get the function we are going to call
-        node->name()->accept(this);
+        node->name->accept(this);
         std::vector<llvm::Value *> args;
         args.push_back(result);
         args.push_back(env);
-        args.push_back(fromInt(node->argumentCount()));
-        for (ast::Exp * arg : *node) {
+        args.push_back(fromInt(node->args.size()));
+        for (ast::Exp * arg : node->args) {
             arg->accept(this);
             args.push_back(result);
         }
         result = CallInst::Create(m->call, args, "", b);
     }
 
-    void visit(ast::SpecialCall * node) override {
+    void visit(ast::LengthCall * node) {
+        node->args[0]->accept(this);
+        result = RUNTIME_CALL(length, result);
+        result = RUNTIME_CALL(doubleVectorLiteral, result);
+        result = RUNTIME_CALL(fromDoubleVector, result);
+    }
 
-        switch (node->target()) {
-        case Token::Type::kwLength: {
-             (*node)[0]->accept(this);
-            result = RUNTIME_CALL(length, result);
-            result = RUNTIME_CALL(doubleVectorLiteral, result);
-            result = RUNTIME_CALL(fromDoubleVector, result);
-            break;
+    void visit(ast::TypeCall * node) {
+        node->args[0]->accept(this);
+        result = RUNTIME_CALL(type, result);
+        result = RUNTIME_CALL(fromCharacterVector, result);
+    }
+
+    void visit(ast::EvalCall * node) {
+        node->args[0]->accept(this);
+        result = RUNTIME_CALL(genericEval, env, result);
+    }
+
+    void visit(ast::CCall * node) {
+        std::vector<llvm::Value *> args;
+        args.push_back(fromInt(node->args.size()));
+        for (ast::Exp * arg : node->args) {
+            arg->accept(this);
+            args.push_back(result);
         }
-        case Token::Type::kwType: {
-            (*node)[0]->accept(this);
-            result = RUNTIME_CALL(type, result);
-            result = RUNTIME_CALL(fromCharacterVector, result);
-            break;
-        }
-        case Token::Type::kwEval: {
-            (*node)[0]->accept(this);
-            result = RUNTIME_CALL(genericEval, env, result);
-            break;
-        }
-        case Token::Type::kwC: {
-            std::vector<llvm::Value *> args;
-            args.push_back(fromInt(node->argumentCount()));
-            for (ast::Exp * arg : *node) {
-                arg->accept(this);
-                args.push_back(result);
-            }
-            result = CallInst::Create(m->c, args, "", b);
-            break;
-        }
-        default:
-            throw "Unknown special call";
-        }
+        result = CallInst::Create(m->c, args, "", b);
     }
 
     void visit(ast::Index * node) override {
-        node->name()->accept(this);
+        node->name->accept(this);
         llvm::Value * obj = result;
-        node->index()->accept(this);
+        node->index->accept(this);
         result = RUNTIME_CALL(genericGetElement, obj, result);
     }
 
     void visit(ast::SimpleAssignment * node) override {
-        node->rhs()->accept(this);
-        result = RUNTIME_CALL(envSet, env, fromInt(node->name()->index()), result);
+        node->rhs->accept(this);
+        result = RUNTIME_CALL(envSet, env, fromInt(node->name->symbol), result);
     }
 
     void visit(ast::IndexAssignment * node) override {
-        node->rhs()->accept(this);
+        node->rhs->accept(this);
         llvm::Value * rhs = result;
-        node->index()->name()->accept(this);
+        node->index->name->accept(this);
         llvm::Value * var = result;
-        node->index()->index()->accept(this);
+        node->index->index->accept(this);
         RUNTIME_CALL(genericSetElement, var, result, rhs);
         result = rhs;
     }
 
     void visit(ast::IfElse * node) override {
-        node->guard()->accept(this);
+        node->guard->accept(this);
         llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
         BasicBlock * ifTrue = BasicBlock::Create(getGlobalContext(), "trueCase", f, nullptr);
         BasicBlock * ifFalse = BasicBlock::Create(getGlobalContext(), "falseCase", f, nullptr);
         BasicBlock * next = BasicBlock::Create(getGlobalContext(), "afterIf", f, nullptr);
         BranchInst::Create(ifTrue, ifFalse, guard, b);
         b = ifTrue;
-        node->ifClause()->accept(this);
+        node->ifClause->accept(this);
         llvm::Value * trueResult = result;
         BranchInst::Create(next, b);
         ifTrue = b;
         b = ifFalse;
-        node->elseClause()->accept(this);
+        node->elseClause->accept(this);
         llvm::Value * falseResult = result;
         BranchInst::Create(next, b);
         ifFalse = b;
@@ -332,11 +324,11 @@ public:
         BasicBlock * loopNext = BasicBlock::Create(getGlobalContext(), "afterLoop", f, nullptr);
         BranchInst::Create(loopStart, b);
         b = loopStart;
-        node->guard()->accept(this);
+        node->guard->accept(this);
         llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
         BranchInst::Create(loopBody, loopNext, guard, b);
         b = loopBody;
-        node->body()->accept(this);
+        node->body->accept(this);
         BranchInst::Create(loopStart, b);
         b = loopNext;
         result = guard;

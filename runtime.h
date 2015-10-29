@@ -60,14 +60,14 @@ struct DoubleVector {
 };
 
 
-struct Binding2 {
+struct Binding {
     int symbol;
     Value * value;
 };
 
 struct Environment {
     Environment * parent;
-    Binding2 * bindings;
+    Binding * bindings;
     int size;
     Environment(Environment * parent):
         parent(parent),
@@ -90,8 +90,8 @@ struct Environment {
                 bindings[i].value = value;
                 return;
             }
-        Binding2 * n = new Binding2[size + 1];
-        memcpy(n, bindings, size * sizeof(Binding2));
+        Binding * n = new Binding[size + 1];
+        memcpy(n, bindings, size * sizeof(Binding));
         delete [] bindings;
         bindings = n;
         bindings[size].symbol = symbol;
@@ -112,11 +112,11 @@ struct Function {
         env(nullptr),
         code(nullptr),
         bitcode(bitcode),
-        args(fun->argumentCount() == 0 ? nullptr : new int[fun->argumentCount()]),
-        argsSize(fun->argumentCount()) {
+        args(fun->args.size() == 0 ? nullptr : new int[fun->args.size()]),
+        argsSize(fun->args.size()) {
         unsigned i = 0;
-        for (rift::ast::Var * arg : *fun)
-            args[i++] = arg->index();
+        for (rift::ast::Var * arg : fun->args)
+            args[i++] = arg->symbol;
     }
 
     Function(Function * f, Environment * e):
@@ -256,6 +256,7 @@ Value * c(int size, ...);
 
 }
 
+
 namespace rift {
 class Runtime {
 public:
@@ -274,9 +275,23 @@ public:
         return f_.size() - 1;
     }
 
+    static std::string const & getPoolObject(unsigned index) {
+        return pool_[index];
+    }
+
+    static int addToPool(std::string const & s) {
+        for (unsigned i = 0; i < pool_.size(); ++i)
+            if (pool_[i] == s)
+                return i;
+        pool_.push_back(s);
+        return pool_.size() - 1;
+    }
+
+
 private:
 
     static std::vector<Function *> f_;
+    static std::vector<std::string> pool_;
 };
 
 

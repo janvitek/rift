@@ -168,9 +168,6 @@ public:
             tokens_.push_back(Token::Type::eof);
     }
 
-    static std::string const & getPoolObject(unsigned index) {
-        return pool_[index];
-    }
 
     bool eof() {
         return tidx_ >= tokens_.size() - 1;
@@ -296,53 +293,16 @@ private:
     }
 
 
-    Token identOrKeyword(char start, std::istream & input) {
-        std::string x(1, start);
-        while (isNumber(input.peek()) or isLetter(input.peek()))
-            x += input.get();
-        if (x == "function")
-            return Token(Token::Type::kwFunction);
-        else if (x == "if")
-            return Token(Token::Type::kwIf);
-        else if (x == "else")
-            return Token(Token::Type::kwElse);
-        else if (x == "while")
-            return Token(Token::Type::kwWhile);
-        else if (x == "c")
-            return Token(Token::Type::kwC);
-        else if (x == "eval")
-            return Token(Token::Type::kwEval);
-        else if (x == "length")
-            return Token(Token::Type::kwLength);
-        else if (x == "type")
-            return Token(Token::Type::kwType);
-        else
-            return Token(Token::Type::ident, addToPool(x));
-    }
+    Token identOrKeyword(char start, std::istream & input);
 
-    Token stringLiteral(std::istream & input) {
-        std::string x;
-        while (input.peek() != '"')
-            x += input.get();
-        input.get(); // closing "
-        return Token(Token::Type::character, addToPool(x));
-    }
+    Token stringLiteral(std::istream & input);
 
-
-    static int addToPool(std::string const & s) {
-        for (unsigned i = 0; i < pool_.size(); ++i)
-            if (pool_[i] == s)
-                return i;
-        pool_.push_back(s);
-        return pool_.size() - 1;
-    }
 
 
     std::vector<Token> tokens_;
 
     unsigned tidx_ = 0;
 
-    static std::vector<std::string> pool_;
 
 
 

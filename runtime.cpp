@@ -35,7 +35,7 @@ DoubleVector * doubleVectorLiteral(double value) {
 }
 
 CharacterVector * characterVectorLiteral(int cpIndex) {
-    std::string const & original = Lexer::getPoolObject(cpIndex);
+    std::string const & original = Runtime::getPoolObject(cpIndex);
     char * dest = new char[original.size() + 1];
     memcpy(dest, original.c_str(), original.size());
     dest[original.size()] = 0;
@@ -338,7 +338,7 @@ bool toBoolean(Value * value) {
     case Value::Type::Function:
         return true;
     case Value::Type::Character:
-        return value->c->size > 0;
+        return (value->c->size > 0) and (value->c->data[0] != 0);
     case Value::Type::Double:
         return (value->d->size > 0) and (value->d->data[0] != 0);
     default:
@@ -391,8 +391,8 @@ CharacterVector * type(Value * value) {
 Value * eval(Environment * env, char const * value) {
     std::string s(value);
     Parser p;
-    ast::Exp * x = p.parse(s);
-    FunPtr f = compile(new ast::Fun(x));
+    ast::Fun * x = new ast::Fun(p.parse(s));
+    FunPtr f = compile(x);
     Value * result = f(env);
     delete x;
     return result;
@@ -459,6 +459,7 @@ Value * c(int size, ...) {
 
 namespace rift {
 std::vector<Function *> Runtime::f_;
+std::vector<std::string> Runtime::pool_;
 
 }
 
