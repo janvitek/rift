@@ -346,10 +346,7 @@ private:
 
 FunPtr compile(ast::Fun * what) {
     Compiler c;
-    FunPtr result = c.compile(what);
-
-
-
+    return c.compile(what);
 }
 
 }

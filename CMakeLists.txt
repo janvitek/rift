@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(rift)
 
+#SET(CMAKE_C_COMPILER "/usr/bin/clang-3.5")
+#SET(CMAKE_CXX_COMPILER "/usr/bin/clang++-3.5")
+
+
 # set LLVM
 
 find_package(LLVM REQUIRED CONFIG)
