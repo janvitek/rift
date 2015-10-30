@@ -121,7 +121,7 @@ public:
     }
 
     FunPtr compile(ast::Fun * what) {
-        int start = Runtime::functionsCount();
+        unsigned start = Runtime::functionsCount();
         int result = compileFunction(what);
         // now do the actual JITting
         ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).create();

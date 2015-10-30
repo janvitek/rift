@@ -59,8 +59,8 @@ Value * fromFunction(Function * from) {
 DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
     double * result = new double[resultSize];
-    for (int i = 0; i < resultSize; ++i) {
-        int idx = index->data[i];
+    for (unsigned i = 0; i < resultSize; ++i) {
+        unsigned idx = index->data[i];
         if (idx < 0 or idx >= from->size)
             throw "Index out of bound";
         result[i] = from->data[idx];
@@ -71,8 +71,8 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
 CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
     char * result = new char[resultSize];
-    for (int i = 0; i < resultSize; ++i) {
-        int idx = index->data[i];
+    for (unsigned i = 0; i < resultSize; ++i) {
+        unsigned idx = index->data[i];
         if (idx < 0 or idx >= from->size)
             throw "Index out of bound";
         result[i] = from->data[idx];
@@ -95,8 +95,8 @@ Value * genericGetElement(Value * from, Value * index) {
 }
 
 void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * value) {
-    for (int i = 0; i < index->size; ++i) {
-        int idx = index->data[i];
+    for (unsigned i = 0; i < index->size; ++i) {
+        unsigned idx = index->data[i];
         if (idx < 0 or idx >= target->size)
             throw "Index out of bound";
         double val = value->data[i % value->size];
@@ -105,8 +105,8 @@ void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector 
 }
 
 void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * value) {
-    for (int i = 0; i < index->size; ++i) {
-        int idx = index->data[i];
+    for (unsigned i = 0; i < index->size; ++i) {
+        unsigned idx = index->data[i];
         if (idx < 0 or idx >= target->size)
             throw "Index out of bound";
         char val = value->data[i % value->size];
@@ -347,7 +347,7 @@ bool toBoolean(Value * value) {
 
 }
 
-Value * call(Value * callee, Environment * parent, int argc, ...) {
+Value * call(Value * callee, Environment * parent, unsigned argc, ...) {
     if (callee->type != Value::Type::Function)
         throw "Only functions can be called";
     Function * f = callee->f;
@@ -356,7 +356,7 @@ Value * call(Value * callee, Environment * parent, int argc, ...) {
     Environment * calleeEnv = new Environment(parent);
     va_list ap;
     va_start(ap, argc);
-    for (int i = 0; i < argc; ++i)
+    for (unsigned i = 0; i < argc; ++i)
         // TODO this is pass by reference always!
         calleeEnv->set(f->args[i], va_arg(ap, Value *));
     va_end(ap);
@@ -422,7 +422,7 @@ Value * c(int size, ...) {
     Value::Type t = args[0]->type;
     if (t == Value::Type::Function)
         throw "Cannot concatenate functions";
-    for (int i = 1; i < args.size(); ++i) {
+    for (unsigned i = 1; i < args.size(); ++i) {
         if (args[i]->type != t)
             throw "Types of all c arguments must be the same";
     }

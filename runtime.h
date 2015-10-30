@@ -54,7 +54,7 @@ struct DoubleVector {
         delete [] data;
     }
     void print(std::ostream & s) {
-        for (int i = 0; i < size; ++i)
+        for (unsigned i = 0; i < size; ++i)
             s << data[i] << " ";
     }
 };
@@ -245,7 +245,7 @@ Function * createFunction(int index, Environment * env);
 
 bool toBoolean(Value * value);
 
-Value * call(Value * callee, Environment * parent, int argc, ...);
+Value * call(Value * callee, Environment * parent, unsigned argc, ...);
 
 double length(Value * value);
 CharacterVector * type(Value * value);
