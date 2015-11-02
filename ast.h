@@ -1,8 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
-
 #include <iostream>
+#include <ciso646>
 
 #include "lexer.h"
 
