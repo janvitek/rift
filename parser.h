@@ -51,15 +51,25 @@ namespace rift {
         }
 
     private:
-/*
-        SEQ ::= '{' SEQ_BODY '}'
-        SEQ_BODY ::= {STATEMENT}
-        STATEMENT ::= IF | WHILE | EXPRESSION
-        EXPRESSION ::= E1 { ( == | != | <= | >=) E1 }
-        E1 ::= E2 { ( + | -) E1 }
-        E2 ::= E3 { ( * | / ) E2 }
-        E2 ::= CALL | (VAR | INDEX) [<- EXPRESSION] | num | char | '(' EXPRESSION ')'
- */
+        /** SEQ ::= '{' { STATEMENT } '}'
+            STATEMENT ::= IF | WHILE | EXPRESSION
+            EXPRESSION ::= E1 { ( == | != | < | > ) E1 }
+            E1 ::= E2 { ( + | - ) E2 }
+            E2 ::= E3 { ( * | / ) E3 }
+            E3 ::= E4 | '(' EXPRESSION ')' | FUNCTION | SPECIAL_CALL
+            E4 ::= NUMBER | STRING | IDENT ( CALL | INDEX | ASSIGNMENT | e )
+            CALL ::= '(' [ EXPRESSION {, EXPRESSION } ')'
+            INDEX ::= '[' EXPRESSION ']' [ ASSIGNMENT ]
+            ASSIGNMENT ::= ( <- | = ) EXPRESSION
+            SPECIAL_CALL ::= EVAL | LENGTH | TYPE | C
+            EVAL ::= eval '(' EXPRESSION ')'
+            LENGTH ::= length '(' EXPRESSION ')'
+            TYPE ::= type '(' EXPRESSION ')'
+            C ::= c '(' EXPRESSION {, EXPRESSION } ')'
+            FUNCTION ::= function '(' [ ident {, ident } ] ')' SEQ
+            WHILE ::= while '(' EXPRESSION ')' SEQ
+            IF ::= if '(' EXPRESSION ')' SEQ [ else SEQ ]
+         */
 
 
         ast::Call * parseCall(ast::Var * variable) {
