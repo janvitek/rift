@@ -78,6 +78,72 @@ namespace type {
     }
 }
 
+class MemoryManager : public llvm::SectionMemoryManager {
+    MemoryManager(const MemoryManager&) = delete;
+    void operator=(const MemoryManager&) = delete;
+
+public:
+    MemoryManager() = default;
+    virtual ~MemoryManager() {}
+
+#define CHECK_RUNTIME(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
+    uint64_t getSymbolAddress(const std::string &Name) override {
+        uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
+        if (addr) {
+            return addr;
+        } else {
+            CHECK_RUNTIME(envCreate);
+            CHECK_RUNTIME(envGet);
+            CHECK_RUNTIME(envSet);
+            CHECK_RUNTIME(doubleVectorLiteral);
+            CHECK_RUNTIME(characterVectorLiteral);
+            CHECK_RUNTIME(fromDoubleVector);
+            CHECK_RUNTIME(fromCharacterVector);
+            CHECK_RUNTIME(fromFunction);
+            CHECK_RUNTIME(doubleGetElement);
+            CHECK_RUNTIME(characterGetElement);
+            CHECK_RUNTIME(genericGetElement);
+            CHECK_RUNTIME(doubleSetElement);
+            CHECK_RUNTIME(characterSetElement);
+            CHECK_RUNTIME(genericSetElement);
+            CHECK_RUNTIME(doubleAdd);
+            CHECK_RUNTIME(characterAdd);
+            CHECK_RUNTIME(genericAdd);
+            CHECK_RUNTIME(doubleSub);
+            CHECK_RUNTIME(genericSub);
+            CHECK_RUNTIME(doubleMul);
+            CHECK_RUNTIME(genericMul);
+            CHECK_RUNTIME(doubleDiv);
+            CHECK_RUNTIME(genericDiv);
+            CHECK_RUNTIME(doubleEq);
+            CHECK_RUNTIME(characterEq);
+            CHECK_RUNTIME(functionEq);
+            CHECK_RUNTIME(genericEq);
+            CHECK_RUNTIME(doubleNeq);
+            CHECK_RUNTIME(characterNeq);
+            CHECK_RUNTIME(functionNeq);
+            CHECK_RUNTIME(genericNeq);
+            CHECK_RUNTIME(doubleLt);
+            CHECK_RUNTIME(genericLt);
+            CHECK_RUNTIME(doubleGt);
+            CHECK_RUNTIME(genericGt);
+            CHECK_RUNTIME(createFunction);
+            CHECK_RUNTIME(toBoolean);
+            CHECK_RUNTIME(call);
+            CHECK_RUNTIME(length);
+            CHECK_RUNTIME(type);
+            CHECK_RUNTIME(eval);
+            CHECK_RUNTIME(characterEval);
+            CHECK_RUNTIME(genericEval);
+            CHECK_RUNTIME(c);
+            report_fatal_error("Program used extern function '" + Name +
+                "' which could not be resolved!");
+        }
+        return addr;
+
+    }
+
+};
 
 class RiftModule : public Module {
 public:
@@ -124,7 +190,7 @@ public:
         unsigned start = Runtime::functionsCount();
         int result = compileFunction(what);
         // now do the actual JITting
-        ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).create();
+        ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).setMCJITMemoryManager(std::unique_ptr<MemoryManager>(new MemoryManager())).create();
         engine->finalizeObject();
         for (; start < Runtime::functionsCount(); ++start) {
             ::Function * rec = Runtime::getFunction(start);

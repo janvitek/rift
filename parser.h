@@ -1,6 +1,7 @@
 #ifndef H_PARSE
 #define H_PARSE
 
+#include <ciso646>
 #include <vector>
 #include <iostream>
 #include <unordered_map>
