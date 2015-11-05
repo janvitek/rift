@@ -25,9 +25,8 @@ Value * envGet(Environment * env, int symbol) {
     return env->get(symbol);
 }
 
-Value * envSet(Environment * env, int symbol, Value * value) {
+void envSet(Environment * env, int symbol, Value * value) {
     env->set(symbol, value);
-    return value;
 }
 
 DoubleVector * doubleVectorLiteral(double value) {
@@ -55,6 +54,38 @@ Value * fromFunction(Function * from) {
     return new Value(from);
 }
 
+DoubleVector * doubleFromValue(Value * v) {
+    if (v->type != Value::Type::Double)
+        throw "Invalid type";
+    return v->d;
+}
+
+double scalarFromVector(DoubleVector * v) {
+    if (v->size != 1)
+        throw "not a scalar";
+    return v->data[0];
+}
+
+CharacterVector * characterFromValue(Value *v) {
+    if (v->type != Value::Type::Character)
+        throw "Invalid type";
+    return v->c;
+
+}
+Function * functionFromValue(Value *v) {
+    if (v->type != Value::Type::Function)
+        throw "Invalid type";
+    return v->f;
+
+}
+
+
+
+double doubleGetSingleElement(DoubleVector * from, double index) {
+    if (index < 0 or index >= from->size)
+        throw "Index out of bounds";
+    return from->data[static_cast<unsigned>(index)];
+}
 
 DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
@@ -62,7 +93,7 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     for (unsigned i = 0; i < resultSize; ++i) {
         unsigned idx = index->data[i];
         if (idx < 0 or idx >= from->size)
-            throw "Index out of bound";
+            throw "Index out of bounds";
         result[i] = from->data[idx];
     }
     return new DoubleVector(result, resultSize);
@@ -74,7 +105,7 @@ CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * ind
     for (unsigned i = 0; i < resultSize; ++i) {
         unsigned idx = index->data[i];
         if (idx < 0 or idx >= from->size)
-            throw "Index out of bound";
+            throw "Index out of bounds";
         result[i] = from->data[idx];
     }
     return new CharacterVector(result, resultSize);
@@ -102,6 +133,13 @@ void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector 
         double val = value->data[i % value->size];
         target->data[idx] = val;
     }
+}
+
+void scalarSetElement(DoubleVector * target, double index, double value) {
+    unsigned idx = index;
+    if (idx < 0 or idx >= target->size)
+        throw "Index out of bound";
+    target->data[idx] = value;
 }
 
 void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * value) {
@@ -238,10 +276,6 @@ DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-DoubleVector * functionEq(Function * lhs, Function * rhs) {
-    return new DoubleVector(lhs->code == rhs->code);
-}
-
 Value * genericEq(Value * lhs, Value * rhs) {
     if (lhs->type != rhs->type)
         return new Value(new DoubleVector(0));
@@ -252,7 +286,7 @@ Value * genericEq(Value * lhs, Value * rhs) {
         return new Value(characterEq(lhs->c, rhs->c));
     case Value::Type::Function:
     default:
-        return new Value(functionEq(lhs->f, rhs->f));
+        return new Value(new DoubleVector(lhs->f->code == rhs->f->code));
     }
 }
 
@@ -272,10 +306,6 @@ DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-DoubleVector * functionNeq(Function * lhs, Function * rhs) {
-    return new DoubleVector(lhs->code != rhs->code);
-}
-
 Value * genericNeq(Value * lhs, Value * rhs) {
     if (lhs->type != rhs->type)
         return new Value(new DoubleVector(1));
@@ -286,7 +316,7 @@ Value * genericNeq(Value * lhs, Value * rhs) {
         return new Value(characterNeq(lhs->c, rhs->c));
     case Value::Type::Function:
     default:
-        return new Value(functionNeq(lhs->f, rhs->f));
+        return new Value(new DoubleVector(lhs->f->code != rhs->f->code));
     }
 }
 
@@ -408,6 +438,44 @@ Value * genericEval(Environment * env, Value * value) {
     if (value->type != Value::Type::Character)
         throw "Only character vectors can be evaluated";
     return characterEval(env, value->c);
+}
+
+DoubleVector * doublec(int size, ...) {
+    std::vector<DoubleVector *> args;
+    va_list ap;
+    va_start(ap, size);
+    for (int i = 0; i < size; ++i)
+        args.push_back(va_arg(ap, DoubleVector*));
+    va_end(ap);
+    size = 0;
+    for (DoubleVector * v : args)
+        size += v->size;
+    double * result = new double[size];
+    int offset = 0;
+    for (DoubleVector * v : args) {
+        memcpy(result + offset, v->data, v->size * sizeof(double));
+        offset += v->size;
+    }
+    return new DoubleVector(result, size);
+}
+
+CharacterVector * characterc(int size, ...) {
+    std::vector<CharacterVector *> args;
+    va_list ap;
+    va_start(ap, size);
+    for (int i = 0; i < size; ++i)
+        args.push_back(va_arg(ap, CharacterVector*));
+    va_end(ap);
+    size = 0;
+    for (CharacterVector * v : args)
+        size += v->size;
+    char * result = new char[size];
+    int offset = 0;
+    for (CharacterVector * v : args) {
+        memcpy(result + offset, v->data, v->size * sizeof(char));
+        offset += v->size;
+    }
+    return new CharacterVector(result, size);
 }
 
 Value * c(int size, ...) {

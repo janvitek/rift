@@ -1,3 +1,4 @@
+#pragma once
 #ifndef H_LEX
 #define H_LEX
 
@@ -216,8 +217,10 @@ private:
         case ',':
             return Token(Token::Type::comma);
         case '=':
-            if (input.peek() != '=')
+            if (input.peek() != '=') {
                 return Token(Token::Type::assign);
+            }
+            input.get();
             return Token(Token::Type::eq);
         case '!':
             if (input.get() != '=')

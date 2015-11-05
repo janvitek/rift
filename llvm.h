@@ -1,3 +1,4 @@
+#pragma once
 #ifndef LLVM_H
 #define LLVM_H
 
@@ -24,7 +25,8 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h> 
+#include <llvm/Pass.h>
 #pragma warning(pop)
 
 
-#endif
+#endif // LLVM_H

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef AST_H
 #define AST_H
 
@@ -136,7 +137,7 @@ namespace ast {
 
     class UserCall : public Call {
     public:
-        UserCall(Var * name):
+        UserCall(Exp * name):
             name(name) {
         }
         ~UserCall() {
@@ -145,7 +146,7 @@ namespace ast {
 
         void accept(Visitor * v) override;
 
-        Var * name;
+        Exp * name;
     };
 
     class SpecialCall : public Call {
@@ -189,7 +190,7 @@ namespace ast {
     class Index : public Exp {
 
     public:
-        Index(Var * name):
+        Index(Exp * name):
             name(name),
             index(nullptr) {
         }
@@ -201,7 +202,7 @@ namespace ast {
 
         void accept(Visitor * v) override;
 
-        Var * name;
+        Exp * name;
         Exp * index;
     };
 

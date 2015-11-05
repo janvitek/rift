@@ -1,3 +1,4 @@
+#pragma once
 #ifndef H_PARSE
 #define H_PARSE
 
@@ -57,8 +58,8 @@ namespace rift {
             EXPRESSION ::= E1 { ( == | != | < | > ) E1 }
             E1 ::= E2 { ( + | - ) E2 }
             E2 ::= E3 { ( * | / ) E3 }
-            E3 ::= E4 | '(' EXPRESSION ')' | FUNCTION | SPECIAL_CALL
-            E4 ::= NUMBER | STRING | IDENT ( CALL | INDEX | ASSIGNMENT | e )
+            E3 ::= F { INDEX | CALL | ASSIGNMENT } 
+            F ::= NUMBER | STRING | IDENT | FUNCTION | SPECIAL_CALL | '(' EXPRESSION ')'
             CALL ::= '(' [ EXPRESSION {, EXPRESSION } ')'
             INDEX ::= '[' EXPRESSION ']' [ ASSIGNMENT ]
             ASSIGNMENT ::= ( <- | = ) EXPRESSION
@@ -73,8 +74,9 @@ namespace rift {
          */
 
 
-        ast::Call * parseCall(ast::Var * variable) {
+        ast::Call * parseCall(ast::Exp * variable) {
             std::unique_ptr<ast::UserCall> call(new ast::UserCall(variable));
+            pop(Token::Type::opar);
             while (top() != Token::Type::cpar) {
                 call->args.push_back(parseExpression());
                 if (not condPop(Token::Type::comma))
@@ -84,14 +86,20 @@ namespace rift {
             return call.release();
         }
 
-        ast::SimpleAssignment * parseAssignment(ast::Var * variable) {
-            std::unique_ptr<ast::SimpleAssignment> assign(new ast::SimpleAssignment(variable));
+        ast::SimpleAssignment * parseAssignment(std::unique_ptr<ast::Exp> variable) {
+            pop(Token::Type::assign);
+            ast::Var * v = dynamic_cast<ast::Var*>(variable.get());
+            if (v == nullptr)
+                throw "Assignment is only possible into variables";
+            std::unique_ptr<ast::SimpleAssignment> assign(new ast::SimpleAssignment(v));
+            variable.release();
             assign->rhs = parseExpression();
             return assign.release();
         }
 
-        ast::Exp * parseIndex(ast::Var * variable) {
+        ast::Exp * parseIndex(ast::Exp * variable) {
             std::unique_ptr<ast::Index> index(new ast::Index(variable));
+            pop(Token::Type::osbr);
             index->index = parseExpression();
             pop(Token::Type::csbr);
             if (condPop(Token::Type::assign)) {
@@ -138,40 +146,54 @@ namespace rift {
             return result.release();
         }
 
-        ast::Exp * parseE3() {
+        ast::Exp * parseF() {
             switch (top().type) {
-            case Token::Type::number:
-                return new ast::Num(pop().d);
-            case Token::Type::character:
-                return new ast::Str(pop().c);
-            case Token::Type::opar: {
-                pop();
-                std::unique_ptr<ast::Exp> result(parseExpression());
-                pop(Token::Type::cpar);
-                return result.release();
+                case Token::Type::ident:
+                    return new ast::Var(pop().c);
+                case Token::Type::number:
+                    return new ast::Num(pop().d);
+                case Token::Type::character:
+                    return new ast::Str(pop().c);
+                case Token::Type::opar: {
+                    pop();
+                    std::unique_ptr<ast::Exp> result(parseExpression());
+                    pop(Token::Type::cpar);
+                    return result.release();
+                }
+                case Token::Type::kwFunction:
+                    return parseFunction();
+                case Token::Type::kwEval:
+                    return parseEval();
+                case Token::Type::kwLength:
+                    return parseLength();
+                case Token::Type::kwType:
+                    return parseType();
+                case Token::Type::kwC:
+                    return parseC();
+                default:
+                    throw "literal, variable, call or special call expected";
             }
-            case Token::Type::kwFunction:
-                return parseFunction();
-            case Token::Type::kwEval:
-                return parseEval();
-            case Token::Type::kwLength:
-                return parseLength();
-            case Token::Type::kwType:
-                return parseType();
-            case Token::Type::kwC:
-                return parseC();
-            default:
-                std::unique_ptr<ast::Var> v(new ast::Var(pop(Token::Type::ident).c));
-                // if we see ( it's a call
-                if (condPop(Token::Type::opar))
-                    return parseCall(v.release());
-                // if we see <- it is an assignment
-                if (condPop(Token::Type::assign))
-                    return parseAssignment(v.release());
-                // if we see [ it is index, or later index assignment
-                if (condPop(Token::Type::osbr))
-                    return parseIndex(v.release());
-                return v.release();
+        }
+
+//        E3 :: = F{INDEX | CALL | ASSIGNMENT}
+//            F :: = NUMBER | STRING | IDENT | SPECIAL_CALL | '(' EXPRESSION ')'
+
+        ast::Exp * parseE3() {
+            std::unique_ptr<ast::Exp> f(parseF());
+            while (true) {
+                switch (top().type) {
+                    case Token::Type::osbr:
+                        f.reset(parseIndex(f.release()));
+                        break;
+                    case Token::Type::opar:
+                        f.reset(parseCall(f.release()));
+                        break;
+                    case Token::Type::assign:
+                        f.reset(parseAssignment(std::move(f)));
+                        break;
+                    default:
+                        return f.release();
+                }
             }
         }
 

@@ -1,5 +1,9 @@
 #include "parser.h"
 #include "runtime.h"
+#include "compiler.h"
+#include "type_analysis.h"
+#include "unboxing.h"
+#include "boxing_removal.h"
 
 #include <initializer_list>
 using namespace llvm;
@@ -8,16 +12,16 @@ namespace rift {
 
 namespace type {
 #define STRUCT(name, ...) StructType::create(name, __VA_ARGS__, nullptr)
-#define FUN_TYPE(result, ...) FunctionType::get(result, std::vector<Type*>({ __VA_ARGS__}), false)
-#define FUN_TYPE_VARARG(result, ...) FunctionType::get(result, std::vector<Type*>({ __VA_ARGS__}), true)
+#define FUN_TYPE(result, ...) FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
+#define FUN_TYPE_VARARG(result, ...) FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
 
     StructType * environmentType();
 
-    Type * Void = Type::getVoidTy(getGlobalContext());
-    Type * Int = IntegerType::get(getGlobalContext(), 32);
-    Type * Double = Type::getDoubleTy(getGlobalContext());
-    Type * Character = IntegerType::get(getGlobalContext(), 8);
-    Type * Bool = IntegerType::get(getGlobalContext(), 1);
+    llvm::Type * Void = llvm::Type::getVoidTy(getGlobalContext());
+    llvm::Type * Int = IntegerType::get(getGlobalContext(), 32);
+    llvm::Type * Double = llvm::Type::getDoubleTy(getGlobalContext());
+    llvm::Type * Character = IntegerType::get(getGlobalContext(), 8);
+    llvm::Type * Bool = IntegerType::get(getGlobalContext(), 1);
 
     PointerType * ptrInt = PointerType::get(Int, 0);
     PointerType * ptrCharacter = PointerType::get(Character, 0);
@@ -55,7 +59,12 @@ namespace type {
     FunctionType * v_vi = FUN_TYPE(ptrValue, ptrValue, Int);
     FunctionType * v_viv = FUN_TYPE(ptrValue, ptrValue, Int, ptrValue);
     FunctionType * v_ei = FUN_TYPE(ptrValue, ptrEnvironment, Int);
-    FunctionType * v_eiv = FUN_TYPE(ptrValue, ptrEnvironment, Int, ptrValue);
+    FunctionType * void_eiv = FUN_TYPE(Void, ptrEnvironment, Int, ptrValue);
+    FunctionType * dv_dvdv = FUN_TYPE(ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
+    FunctionType * cv_cvcv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrCharacterVector);
+    FunctionType * dv_cvcv = FUN_TYPE(ptrDoubleVector, ptrCharacterVector, ptrCharacterVector);
+    FunctionType * d_dvd = FUN_TYPE(Double, ptrDoubleVector, Double);
+    FunctionType * cv_cvdv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrDoubleVector);
 
     FunctionType * v_f = FUN_TYPE(ptrValue, ptrFunction);
     FunctionType * f_ie = FUN_TYPE(ptrFunction, Int, ptrEnvironment);
@@ -65,10 +74,20 @@ namespace type {
     FunctionType * v_veiVA = FUN_TYPE_VARARG(ptrValue, ptrValue, ptrEnvironment, Int);
 
     FunctionType * void_vvv = FUN_TYPE(Void, ptrValue, ptrValue, ptrValue);
+    FunctionType * void_dvdvdv = FUN_TYPE(Void, ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
+    FunctionType * void_cvdvcv = FUN_TYPE(Void, ptrCharacterVector, ptrDoubleVector, ptrCharacterVector);
+    FunctionType * void_dvdd = FUN_TYPE(Void, ptrDoubleVector, Double, Double);
 
     FunctionType * d_v = FUN_TYPE(Double, ptrValue);
     FunctionType * cv_v = FUN_TYPE(ptrCharacterVector, ptrValue);
     FunctionType * v_iVA = FUN_TYPE_VARARG(ptrValue, Int);
+    FunctionType * dv_iVA = FUN_TYPE_VARARG(ptrDoubleVector, Int);
+    FunctionType * cv_iVA = FUN_TYPE_VARARG(ptrCharacterVector, Int);
+
+    FunctionType * dv_v = FUN_TYPE(ptrDoubleVector, ptrValue);
+    FunctionType * d_dv = FUN_TYPE(Double, ptrDoubleVector);
+    FunctionType * f_v = FUN_TYPE(ptrFunction, ptrValue);
+
 
     StructType * environmentType() {
         StructType * result = StructType::create(getGlobalContext(), "Environment");
@@ -100,10 +119,16 @@ public:
             CHECK_RUNTIME(fromDoubleVector);
             CHECK_RUNTIME(fromCharacterVector);
             CHECK_RUNTIME(fromFunction);
+            CHECK_RUNTIME(doubleFromValue);
+            CHECK_RUNTIME(scalarFromVector);
+            CHECK_RUNTIME(characterFromValue);
+            CHECK_RUNTIME(functionFromValue);
+            CHECK_RUNTIME(doubleGetSingleElement);
             CHECK_RUNTIME(doubleGetElement);
             CHECK_RUNTIME(characterGetElement);
             CHECK_RUNTIME(genericGetElement);
             CHECK_RUNTIME(doubleSetElement);
+            CHECK_RUNTIME(scalarSetElement);
             CHECK_RUNTIME(characterSetElement);
             CHECK_RUNTIME(genericSetElement);
             CHECK_RUNTIME(doubleAdd);
@@ -117,11 +142,9 @@ public:
             CHECK_RUNTIME(genericDiv);
             CHECK_RUNTIME(doubleEq);
             CHECK_RUNTIME(characterEq);
-            CHECK_RUNTIME(functionEq);
             CHECK_RUNTIME(genericEq);
             CHECK_RUNTIME(doubleNeq);
             CHECK_RUNTIME(characterNeq);
-            CHECK_RUNTIME(functionNeq);
             CHECK_RUNTIME(genericNeq);
             CHECK_RUNTIME(doubleLt);
             CHECK_RUNTIME(genericLt);
@@ -135,6 +158,8 @@ public:
             CHECK_RUNTIME(eval);
             CHECK_RUNTIME(characterEval);
             CHECK_RUNTIME(genericEval);
+            CHECK_RUNTIME(doublec);
+            CHECK_RUNTIME(characterc);
             CHECK_RUNTIME(c);
             report_fatal_error("Program used extern function '" + Name +
                 "' which could not be resolved!");
@@ -144,41 +169,6 @@ public:
     }
 
 };
-
-class RiftModule : public Module {
-public:
-    RiftModule():
-        Module("rift", getGlobalContext()) {
-    }
-
-#define DEF_FUN(name, signature) llvm::Function * name = llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this)
-    DEF_FUN(doubleVectorLiteral, type::dv_d);
-    DEF_FUN(characterVectorLiteral, type::cv_i);
-    DEF_FUN(fromDoubleVector, type::v_dv);
-    DEF_FUN(fromCharacterVector, type::v_cv);
-    DEF_FUN(fromFunction, type::v_f);
-    DEF_FUN(genericGetElement, type::v_vv);
-    DEF_FUN(genericSetElement, type::void_vvv);
-    DEF_FUN(envGet, type::v_ei);
-    DEF_FUN(envSet, type::v_eiv);
-    DEF_FUN(genericAdd, type::v_vv);
-    DEF_FUN(genericSub, type::v_vv);
-    DEF_FUN(genericMul, type::v_vv);
-    DEF_FUN(genericDiv, type::v_vv);
-    DEF_FUN(genericEq, type::v_vv);
-    DEF_FUN(genericNeq, type::v_vv);
-    DEF_FUN(genericLt, type::v_vv);
-    DEF_FUN(genericGt, type::v_vv);
-    DEF_FUN(createFunction, type::f_ie);
-    DEF_FUN(toBoolean, type::b_v);
-    DEF_FUN(call, type::v_veiVA);
-    DEF_FUN(length, type::d_v);
-    DEF_FUN(type, type::cv_v);
-    DEF_FUN(genericEval, type::v_ev);
-    DEF_FUN(c, type::v_iVA);
-
-};
-
 
 class Compiler : public Visitor {
 public:
@@ -191,12 +181,29 @@ public:
         int result = compileFunction(what);
         // now do the actual JITting
         ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).setMCJITMemoryManager(std::unique_ptr<MemoryManager>(new MemoryManager())).create();
+        // optimize functions in the module
+        optimizeModule(engine);
+        // finalize the module object so that we can compile it
         engine->finalizeObject();
         for (; start < Runtime::functionsCount(); ++start) {
             ::Function * rec = Runtime::getFunction(start);
             rec->code = reinterpret_cast<FunPtr>(engine->getPointerToFunction(rec->bitcode));
         }
         return Runtime::getFunction(result)->code;
+    }
+
+    void optimizeModule(ExecutionEngine * ee) {
+        auto *pm = new legacy::FunctionPassManager(m);
+        m->setDataLayout(* ee->getDataLayout());
+        pm->add(new TypeAnalysis());
+        pm->add(new Unboxing());
+        pm->add(new BoxingRemoval());
+        pm->add(createConstantPropagationPass());
+        for (llvm::Function & f : *m) {
+            pm->run(f);
+            f.dump();
+        }
+        delete pm;
     }
 
     int compileFunction(ast::Fun * node) {
@@ -347,7 +354,7 @@ public:
 
     void visit(ast::SimpleAssignment * node) override {
         node->rhs->accept(this);
-        result = RUNTIME_CALL(envSet, env, fromInt(node->name->symbol), result);
+        RUNTIME_CALL(envSet, env, fromInt(node->name->symbol), result);
     }
 
     void visit(ast::IndexAssignment * node) override {

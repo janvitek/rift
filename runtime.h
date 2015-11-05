@@ -1,3 +1,4 @@
+#pragma once
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
@@ -192,7 +193,8 @@ extern "C" {
 Environment * envCreate(Environment * parent);
 
 Value * envGet(Environment * env, int symbol);
-Value * envSet(Environment * env, int symbol, Value * value);
+void envSet(Environment * env, int symbol, Value * value);
+
 
 
 DoubleVector * doubleVectorLiteral(double value);
@@ -205,10 +207,18 @@ Value * fromDoubleVector(DoubleVector * from);
 Value * fromCharacterVector(CharacterVector * from);
 Value * fromFunction(Function * from);
 
+DoubleVector * doubleFromValue(Value * v);
+double scalarFromVector(DoubleVector * v);
+CharacterVector * characterFromValue(Value *v);
+Function * functionFromValue(Value *v);
+
+double doubleGetSingleElement(DoubleVector * from, double index);
+
 DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index);
 CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index);
 Value * genericGetElement(Value * from, Value * index);
 void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * value);
+void scalarSetElement(DoubleVector * target, double index, double value);
 void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * value);
 void genericSetElement(Value * target, Value * index, Value * value);
 
@@ -223,11 +233,9 @@ DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs);
 Value * genericDiv(Value * lhs, Value * rhs);
 DoubleVector * doubleEq(DoubleVector * lhs, DoubleVector * rhs);
 DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs);
-DoubleVector * functionEq(Function * lhs, Function * rhs);
 Value * genericEq(Value * lhs, Value * rhs);
 DoubleVector * doubleNeq(DoubleVector * lhs, DoubleVector * rhs);
 DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs);
-DoubleVector * functionNeq(Function * lhs, Function * rhs);
 Value * genericNeq(Value * lhs, Value * rhs);
 DoubleVector * doubleLt(DoubleVector * lhs, DoubleVector * rhs);
 Value * genericLt(Value * lhs, Value * rhs);
@@ -245,6 +253,8 @@ CharacterVector * type(Value * value);
 Value * eval(Environment * env, char const * value);
 Value * characterEval(Environment * env, CharacterVector * value);
 Value * genericEval(Environment * env, Value * value);
+DoubleVector * doublec(int size, ...);
+CharacterVector * characterc(int size, ...);
 Value * c(int size, ...);
 
 }
