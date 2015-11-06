@@ -39,6 +39,7 @@ namespace rift {
         bool doubleComparison(llvm::CallInst * ci, llvm::CmpInst::Predicate op, llvm::Function * fop);
 
         bool characterOperator(llvm::CallInst * ci, llvm::Function * fop);
+        bool characterComparison(llvm::CallInst * ci, llvm::Function * fop);
 
         bool genericAdd(llvm::CallInst * ci);
         bool genericEq(llvm::CallInst * ci);

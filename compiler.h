@@ -126,7 +126,9 @@ namespace rift {
         DEF_FUN(doubleNeq, type::dv_dvdv);
         DEF_FUN(characterNeq, type::dv_cvcv);
         DEF_FUN(genericNeq, type::v_vv);
+        DEF_FUN(doubleLt, type::dv_dvdv);
         DEF_FUN(genericLt, type::v_vv);
+        DEF_FUN(doubleGt, type::dv_dvdv);
         DEF_FUN(genericGt, type::v_vv);
         DEF_FUN(createFunction, type::f_ie);
         DEF_FUN(toBoolean, type::b_v);

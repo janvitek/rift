@@ -123,6 +123,18 @@ namespace rift {
 
     }
 
+    bool Unboxing::characterComparison(llvm::CallInst * ci, llvm::Function * fop) {
+        llvm::Value * lhs = ci->getOperand(0);
+        llvm::Value * rhs = ci->getOperand(1);
+        lhs = unbox(ci, lhs);
+        rhs = unbox(ci, rhs);
+        llvm::Value * resultVector = RUNTIME_CALL(fop, lhs, rhs);
+        ta->setValueType(resultVector, Type::DoubleVector);
+        ci->replaceAllUsesWith(boxDoubleVector(ci, resultVector));
+        return true;
+
+    }
+
 
     bool Unboxing::genericAdd(CallInst * ci) {
         // first check if we are dealing with character add
@@ -145,7 +157,7 @@ namespace rift {
         if (tl.isDouble() and tr.isDouble()) {
             return doubleComparison(ci, FCmpInst::FCMP_OEQ, m->doubleEq);
         } else if (tl.isCharacter() and tr.isCharacter()) {
-            characterOperator(ci, m->characterEq);
+            characterComparison(ci, m->characterEq);
             return true;
         } else if (tl.isDifferentClassAs(tr)) {
             llvm::Value * scalar = ConstantFP::get(getGlobalContext(), APFloat(0.0));
@@ -165,7 +177,7 @@ namespace rift {
         if (tl.isDouble() and tr.isDouble()) {
             return doubleComparison(ci, FCmpInst::FCMP_ONE, m->doubleNeq);
         } else if (tl.isCharacter() and tr.isCharacter()) {
-            characterOperator(ci, m->characterEq);
+            characterComparison(ci, m->characterEq);
             return true;
         } else if (tl.isDifferentClassAs(tr)) {
             llvm::Value * scalar = ConstantFP::get(getGlobalContext(), APFloat(1.0));
@@ -264,7 +276,7 @@ namespace rift {
 
 
     bool Unboxing::runOnFunction(llvm::Function & f) {
-        std::cout << "running Unboxing optimization..." << std::endl;
+        //std::cout << "running Unboxing optimization..." << std::endl;
         m = reinterpret_cast<RiftModule*>(f.getParent());
         ta = &getAnalysis<TypeAnalysis>();
         for (auto & b : f) {
@@ -284,10 +296,10 @@ namespace rift {
                         erase = doubleArithmetic(ci, Instruction::FDiv, m->doubleDiv);
                     } else if (s == "genericLt") {
                         // types are already checked for us and only doubles can be here
-                        erase = doubleComparison(ci, FCmpInst::FCMP_OLT, m->doubleDiv);
+                        erase = doubleComparison(ci, FCmpInst::FCMP_OLT, m->doubleLt);
                     } else if (s == "genericGt") {
                         // types are already checked for us and only doubles can be here
-                        erase = doubleComparison(ci, FCmpInst::FCMP_OGT, m->doubleDiv);
+                        erase = doubleComparison(ci, FCmpInst::FCMP_OGT, m->doubleGt);
                     } else if (s == "genericEq") {
                         erase = genericEq(ci);
                     } else if (s == "genericNeq") {
@@ -309,7 +321,7 @@ namespace rift {
                 }
             }
         }
-        f.dump();
+        //f.dump();
         return false;
     }
 

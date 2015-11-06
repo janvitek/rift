@@ -201,7 +201,7 @@ public:
         pm->add(createConstantPropagationPass());
         for (llvm::Function & f : *m) {
             pm->run(f);
-            f.dump();
+            //f.dump();
         }
         delete pm;
     }
@@ -309,7 +309,7 @@ public:
         std::vector<llvm::Value *> args;
         args.push_back(result);
         args.push_back(env);
-        args.push_back(fromInt(node->args.size()));
+        args.push_back(fromInt(static_cast<int>(node->args.size())));
         for (ast::Exp * arg : node->args) {
             arg->accept(this);
             args.push_back(result);
@@ -337,7 +337,7 @@ public:
 
     void visit(ast::CCall * node) {
         std::vector<llvm::Value *> args;
-        args.push_back(fromInt(node->args.size()));
+        args.push_back(fromInt(static_cast<int>(node->args.size())));
         for (ast::Exp * arg : node->args) {
             arg->accept(this);
             args.push_back(result);

@@ -12,10 +12,11 @@ struct Value;
 struct CharacterVector {
     char * data;
     unsigned size;
-    CharacterVector(char * data, int size):
+    CharacterVector(char * data, unsigned size):
         data(data),
         size(size) {
     }
+
     ~CharacterVector() {
         delete [] data;
     }
@@ -42,6 +43,14 @@ struct DoubleVector {
     DoubleVector(double * data, unsigned size):
         data(data),
         size(size) {
+    }
+
+    DoubleVector(std::initializer_list<double> d) {
+        size = d.size();
+        data = new double[size];
+        unsigned i = 0;
+        for (double dd : d)
+            data[i++] = dd;
     }
 
     ~DoubleVector() {
@@ -145,6 +154,16 @@ struct Value {
         Function * f;
     };
 
+    Value(std::initializer_list<double> d) :
+        type(Type::Double),
+        d(new DoubleVector(d)) {
+    }
+
+    Value(char const * c) :
+        type(Type::Character),
+        c(CharacterVector::copy(c)) {
+    }
+
     Value(DoubleVector * d):
         type(Type::Double),
         d(d) {
@@ -172,7 +191,7 @@ struct Value {
             break;
         }
     }
-    void print(std::ostream & s) {
+    void print(std::ostream & s) const {
         switch (type) {
         case Type::Double:
             d->print(s);
@@ -185,7 +204,65 @@ struct Value {
             break;
         }
     }
+
+    bool operator == (Value const & other) {
+        if (type != other.type)
+            return false;
+        switch (type) {
+            case Type::Double: {
+                if (d->size != other.d->size)
+                    return false;
+                for (unsigned i = 0; i < d->size; ++i)
+                    if (d->data[i] != other.d->data[i])
+                        return false;
+                return true;
+            }
+            case Type::Character: {
+                if (c->size != other.c->size)
+                    return false;
+                for (unsigned i = 0; i < c->size; ++i)
+                    if (c->data[i] != other.c->data[i])
+                        return false;
+                return true;
+            }
+            case Type::Function:
+            default:
+                // just to silence warnings
+                return f == other.f;
+        }
+    }
+
+    bool operator != (Value const & other) {
+        if (type != other.type)
+            return true;
+        switch (type) {
+            case Type::Double: {
+                if (d->size != other.d->size)
+                    return true;
+                for (unsigned i = 0; i < d->size; ++i)
+                    if (d->data[i] != other.d->data[i])
+                        return true;
+                return false;
+            }
+            case Type::Character: {
+                if (c->size != other.c->size)
+                    return true;
+                for (unsigned i = 0; i < c->size; ++i)
+                    if (c->data[i] != other.c->data[i])
+                        return true;
+                return false;
+            }
+            case Type::Function:
+            default: // just to silence warnings
+                return f != other.f;
+        }
+    }
 };
+
+inline std::ostream & operator << (std::ostream & s, Value const & value) {
+    value.print(s);
+    return s;
+}
 
 extern "C" {
 

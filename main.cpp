@@ -6,12 +6,11 @@
 #include "parser.h"
 #include "runtime.h"
 #include "compiler.h"
-
+#include "tests.h"
 
 using namespace std;
 using namespace llvm;
 using namespace rift;
-
 
 void interactive() {
     cout << "rift console - type exit to quit" << endl;
@@ -54,6 +53,7 @@ int main(int argc, char * argv[]) {
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeAsmParser();
     if (argc == 1) {
+        tests();
         interactive();
     } else {
         if (argc > 2)

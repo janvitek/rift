@@ -13,7 +13,7 @@ namespace rift {
     char BoxingRemoval::ID = 0;
 
     bool BoxingRemoval::runOnFunction(llvm::Function & f) {
-        std::cout << "running boxing removal optimization..." << std::endl;
+        //std::cout << "running boxing removal optimization..." << std::endl;
         bool changed = false;
         while (true) {
             bool c = false;
@@ -23,7 +23,7 @@ namespace rift {
                     bool erase = false;
                     if (CallInst * ci = dyn_cast<CallInst>(i)) {
                         StringRef s = ci->getCalledFunction()->getName();
-                        if (s != "call" and s != "genericEval" and s != "characterEval") {
+                        if (s != "call" and s != "genericEval" and s != "characterEval" and s != "envGet" and s != "envSet") {
                             if (ci->use_empty())
                                 erase = true;
                         }
@@ -42,7 +42,7 @@ namespace rift {
             if (not c)
                 break;
         }
-        f.dump();
+        //f.dump();
         return changed;
     }
 
