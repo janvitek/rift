@@ -25,7 +25,7 @@ public:
     }
 
     void visit(ast::Num * node) override {
-        static_assert(false, "Implement me");
+        s << node->value;
     }
     void visit(ast::Str * node) override {
         s << '"' << node->value() << '"';
@@ -45,8 +45,9 @@ public:
             v->accept(this);
             s << ", ";
         }
-        s << ")\n";
+        s << ") {\n";
         node->body->accept(this);
+        s << "}";
 
     }
     void visit(ast::BinExp * node) override {
