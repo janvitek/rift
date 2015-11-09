@@ -178,9 +178,15 @@ public:
 private:
     Token readToken(std::istream & input) {
         char c = input.get();
-        // skip the whitespace
-        while (c == ' ' or c == '\n' or c == '\t')
+        // skip the whitespace and comments
+        bool skip = false;
+        while (skip or c == ' ' or c == '\n' or c == '\t' or c == '#') {
+            if (c == '#')
+                skip = true;
+            if (skip and c == '\n')
+                skip = false;
             c = input.get();
+        }
         if (input.eof())
             return Token(Token::Type::eof);
         switch (c) {

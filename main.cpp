@@ -24,6 +24,7 @@ void interactive() {
                 break;
             if (in.empty())
                 continue;
+            in = in + "\n";
             eval(env, in.c_str())->print(cout);
             cout << endl;
         } catch (char const * error) {
@@ -55,7 +56,7 @@ int main(int argc, char * argv[]) {
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeAsmParser();
     if (argc == 1) {
-        tests();
+        //tests();
         interactive();
     } else {
         if (argc > 2)
