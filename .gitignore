@@ -50,6 +50,8 @@ CMakeCache.txt
 
 *.log
 
-CMakeFiles/Makefile2
+CMakeFiles
 
 *.marks
+
+Makefile
