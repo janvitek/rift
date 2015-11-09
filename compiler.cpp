@@ -368,31 +368,30 @@ public:
         }
     }
 
-    /** User call means calling rift function. 
-    
-    The function is first evaluated (this may e a variable read, or any arbitrary expression in general), then all the arguments are compiled and they are passed as arguments together with the function to the call runtime which creates & populates the callee's frame and calls the function. 
-    */
-    void visit(ast::UserCall * node) override {
-        // get the function we are going to call
-        node->name->accept(this);
-        std::vector<llvm::Value *> args;
-        args.push_back(result);
-        args.push_back(fromInt(static_cast<int>(node->args.size())));
-        for (ast::Exp * arg : node->args) {
-            arg->accept(this);
-            args.push_back(result);
-        }
-        result = CallInst::Create(m->call, args, "", b);
+  /** Rift Function Call. First obtain the function pointer, then the
+      arguments.
+   */
+  void visit(ast::UserCall * node) override {
+    node->name->accept(this);
+    std::vector<Value *> args;
+    args.push_back(result);
+    args.push_back(fromInt(node->args.size()));
+    for (ast::Exp * arg : node->args) {
+      arg->accept(this);
+      args.push_back(result);
     }
+    result = CallInst::Create(m->call, args, "", b);
+  }
 
-    /** Call to length special function is translated into runtime call of length followed by the usual boxing of double scalars. 
-     */
-    void visit(ast::LengthCall * node) override {
-        node->args[0]->accept(this);
-        result = RUNTIME_CALL(length, result);
-        result = RUNTIME_CALL(doubleVectorLiteral, result);
-        result = RUNTIME_CALL(fromDoubleVector, result);
-    }
+  /** Call the runtime function length, box the scalar result into a vector
+      and then an RVal.
+  */
+  void visit(ast::LengthCall * node) override {
+    node->args[0]->accept(this);
+    result = RUNTIME_CALL(length, result);
+    result = RUNTIME_CALL(doubleVectorLiteral, result);
+    result = RUNTIME_CALL(fromDoubleVector, result);
+  }
 
     /** Call to type() function is a call to type() runtime and then boxing of the character vector. 
      */
