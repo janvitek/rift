@@ -25,7 +25,6 @@ public:
     }
 
     void visit(ast::Num * node) override {
-        s << node->value;
     }
     void visit(ast::Str * node) override {
         s << '"' << node->value() << '"';

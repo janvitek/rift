@@ -2,7 +2,8 @@
 #ifndef POOL_H
 #define POOL_H
 
-#include "runtime.h"
+#include <string>
+#include <vector>
 
 namespace rift {
 
@@ -12,26 +13,6 @@ Contains the list of constant pool objects (symbols and character vectors) and t
 */
 class Pool {
 public:
-    /** Returns the number of already stored compiled functions. 
-     */
-    static unsigned functionsCount() {
-        return f_.size();
-    }
-
-    /** Returns the index-th compiled function. 
-     */
-    static ::Function * getFunction(int index) {
-        return f_[index];
-    }
-
-    /** Adds given function to the list of compiled objects. 
-     */
-    static int addFunction(ast::Fun * fun, llvm::Function * bitcode) {
-        ::Function * f = new ::Function(fun, bitcode);
-        f_.push_back(f);
-        return f_.size() - 1;
-    }
-
     /** Returns the index-th constant pool object. 
      */
     static std::string const & getPoolObject(unsigned index) {
@@ -49,10 +30,6 @@ public:
     }
 
 private:
-
-    /** List of compiled functions. 
-     */
-    static std::vector<::Function *> f_;
 
     /** List of constant pool objects. 
      */
