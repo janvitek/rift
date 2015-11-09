@@ -183,75 +183,74 @@ public:
 
 };
 
-/** The compiler. 
-
-The compiler implements the visitor pattern on the AST nodes. Each of the functions then translates the respective part of the ast tree. 
-
+/** The compiler:
+    a visitor over the AST.
 */
 class Compiler : public Visitor {
 public:
-    /** Creates the compiler and the module to which the function will be compiled. 
+    /** Creates the module to which the function will be compiled.
      */
     Compiler():
         m(new RiftModule()) {
     }
 
-    /** Compiles given function and returns a pointer to the native code. 
+  /** Compiles a function and returns a pointer to the native code.  JIT
+      compilation in LLVM finalizes the module, this function can only be
+      called once.
+  */
+  FunPtr compile(ast::Fun * what) {
+    unsigned start = Pool::functionsCount();
+    int result = compileFunction(what);
+    ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m))
+      .setMCJITMemoryManager(std::unique_ptr<MemoryManager>(new MemoryManager())).create();
+    optimizeModule(engine);
+    engine->finalizeObject();
+    // Compile newly registered functions; update their native code in the
+    // registered functions vector
+    for (; start < Pool::functionsCount(); ++start) {
+      ::Function * rec = Pool::getFunction(start);
+      rec->code = reinterpret_cast<FunPtr>(engine->getPointerToFunction(rec->bitcode));
+    }
+    return Pool::getFunction(result)->code;
+  }
 
-    Because JIT compilation requires the module to be finalized, this function can be called only once on an existing compiler. This is why the compiler class is not a public interface, but the compile function should be used instead of it. 
-    */
-    FunPtr compile(ast::Fun * what) {
-        unsigned start = Pool::functionsCount();
-        int result = compileFunction(what);
-        // now do the actual JITting
-        ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).setMCJITMemoryManager(std::unique_ptr<MemoryManager>(new MemoryManager())).create();
-        // optimize functions in the module
-        optimizeModule(engine);
-        // finalize the module object so that we can compile it
-        engine->finalizeObject();
-        // All newly registered functions must be compiled and their native code in the registered functions vector should be updated
-        for (; start < Pool::functionsCount(); ++start) {
-            ::Function * rec = Pool::getFunction(start);
-            rec->code = reinterpret_cast<FunPtr>(engine->getPointerToFunction(rec->bitcode));
-        }
-        return Pool::getFunction(result)->code;
+  /** Optimize on the bitcode before native code generation. The
+      TypeAnalysis, Unboxing and BoxingRemoval are Rift passes, the rest is
+      from LLVM.
+   */
+  void optimizeModule(ExecutionEngine * ee) {
+    auto *pm = new legacy::FunctionPassManager(m);
+    m->setDataLayout(* ee->getDataLayout());
+    pm->add(new TypeAnalysis());
+    pm->add(new Unboxing());
+    pm->add(new BoxingRemoval());
+    pm->add(createConstantPropagationPass());
+    // Optimize each function of this module
+    for (llvm::Function & f : *m) {
+      pm->run(f);
+    }
+    delete pm;
     }
 
-    /** Performs optimizations on the bitcode before native code generation. 
-     */
-    void optimizeModule(ExecutionEngine * ee) {
-        auto *pm = new legacy::FunctionPassManager(m);
-        m->setDataLayout(* ee->getDataLayout());
-        // Our type & shape analysis
-        pm->add(new TypeAnalysis());
-        // Our unboxing
-        pm->add(new Unboxing());
-        // Our boxing removal
-        pm->add(new BoxingRemoval());
-        // LLVM's constant propagation pass
-        pm->add(createConstantPropagationPass());
-        // Run the optimizations on each function in the current module
-        for (llvm::Function & f : *m) {
-            pm->run(f);
-            //f.dump();
-        }
-
-        delete pm;
-    }
-
-    /** Translates a function to bitcode, registers it with the runtime,
-	and returns its index.
+    /** Translates a function to bitcode, registers it with the runtime, and
+	returns its index.
     */
     int compileFunction(ast::Fun * node) {
         // Backup context in case we are creating a nested function
         llvm::Function * oldF = f;
         BasicBlock * oldB = b;
         llvm::Value * oldEnv = env;
-
 	// Create the function and its first BB
-        f = llvm::Function::Create(type::NativeCode, llvm::Function::ExternalLinkage, "riftFunction", m);
-        b = BasicBlock::Create(getGlobalContext(), "entry", f, nullptr);
-        // Get the argument of the function and store is as the environment value so that we can easily access it
+        f = llvm::Function::Create(type::NativeCode, 
+				   llvm::Function::ExternalLinkage, 
+				   "riftFunction", 
+				   m);
+        b = BasicBlock::Create(getGlobalContext(), 
+			       "entry", 
+			       f, 
+			       nullptr);
+        // Get the (single) argument of the function and store is as the
+        // environment
         llvm::Function::arg_iterator args = f->arg_begin();
         env = args++;
         env->setName("env");
@@ -262,7 +261,6 @@ public:
 
         // Register and get index
         int result = Pool::addFunction(node, f);
-
         // Restore context
         f = oldF;
         b = oldB;
@@ -279,12 +277,12 @@ public:
 		   b)
 
 
-    /** Create LLVM Value from double scalar .  */
+    /** Create Value from double scalar .  */
     llvm::Value * fromDouble(double value) {
         return ConstantFP::get(getGlobalContext(), APFloat(value));
     }
 
-    /** Create LLVM Value from integer. */
+    /** Create Value from integer. */
     llvm::Value * fromInt(int value) {
         return ConstantInt::get(getGlobalContext(), APInt(32, value));
     }
