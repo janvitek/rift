@@ -388,7 +388,7 @@ public:
 
     /** Call to length special function is translated into runtime call of length followed by the usual boxing of double scalars. 
      */
-    void visit(ast::LengthCall * node) {
+    void visit(ast::LengthCall * node) override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(length, result);
         result = RUNTIME_CALL(doubleVectorLiteral, result);
@@ -397,7 +397,7 @@ public:
 
     /** Call to type() function is a call to type() runtime and then boxing of the character vector. 
      */
-    void visit(ast::TypeCall * node) {
+    void visit(ast::TypeCall * node)  override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(type, result);
         result = RUNTIME_CALL(fromCharacterVector, result);
@@ -405,14 +405,14 @@ public:
 
     /** Eval call is translated to runtime eval function. 
      */
-    void visit(ast::EvalCall * node) {
+    void visit(ast::EvalCall * node)  override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(genericEval, env, result);
     }
 
     /** C call is translated to the concatenation runtime call. 
      */
-    void visit(ast::CCall * node) {
+    void visit(ast::CCall * node)  override {
         std::vector<llvm::Value *> args;
         args.push_back(fromInt(static_cast<int>(node->args.size())));
         for (ast::Exp * arg : node->args) {

@@ -92,7 +92,7 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     double * result = new double[resultSize];
     for (unsigned i = 0; i < resultSize; ++i) {
         unsigned idx = index->data[i];
-        if (idx < 0 or idx >= from->size)
+        if (idx >= from->size)
             throw "Index out of bounds";
         result[i] = from->data[idx];
     }
@@ -104,7 +104,7 @@ CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * ind
     char * result = new char[resultSize + 1];
     for (unsigned i = 0; i < resultSize; ++i) {
         unsigned idx = index->data[i];
-        if (idx < 0 or idx >= from->size)
+        if (idx >= from->size)
             throw "Index out of bounds";
         result[i] = from->data[idx];
     }
@@ -129,7 +129,7 @@ Value * genericGetElement(Value * from, Value * index) {
 void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * value) {
     for (unsigned i = 0; i < index->size; ++i) {
         unsigned idx = index->data[i];
-        if (idx < 0 or idx >= target->size)
+        if (idx >= target->size)
             throw "Index out of bound";
         double val = value->data[i % value->size];
         target->data[idx] = val;
@@ -138,7 +138,7 @@ void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector 
 
 void scalarSetElement(DoubleVector * target, double index, double value) {
     unsigned idx = index;
-    if (idx < 0 or idx >= target->size)
+    if (idx >= target->size)
         throw "Index out of bound";
     target->data[idx] = value;
 }
@@ -146,7 +146,7 @@ void scalarSetElement(DoubleVector * target, double index, double value) {
 void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * value) {
     for (unsigned i = 0; i < index->size; ++i) {
         unsigned idx = index->data[i];
-        if (idx < 0 or idx >= target->size)
+        if (idx >= target->size)
             throw "Index out of bound";
         char val = value->data[i % value->size];
         target->data[idx] = val;
