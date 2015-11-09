@@ -511,12 +511,13 @@ Value * c(int size, ...) {
         int size = 0;
         for (Value * v : args)
             size += v->c->size;
-        char * result = new char[size];
+        char * result = new char[size + 1];
         int offset = 0;
         for (Value * v : args) {
             memcpy(result + offset, v->d->data, v->c->size * sizeof(char));
             offset += v->c->size;
         }
+        result[size] = 0;
         return new Value(new CharacterVector(result, size));
     }
 }
