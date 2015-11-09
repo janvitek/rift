@@ -25,6 +25,7 @@ public:
     }
 
     void visit(ast::Num * node) override {
+        static_assert(false, "Implement me");
     }
     void visit(ast::Str * node) override {
         s << '"' << node->value() << '"';

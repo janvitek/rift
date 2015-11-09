@@ -35,5 +35,25 @@ void interactive() {
 void test();
 
 int main(int argc, char * argv[]) {
+    test();
     interactive();
 }
+
+void test(std::string in, std::string expected) {
+    Parser p;
+    stringstream res;
+    p.parse(in)->print(res);
+    if (res.str().compare(expected) != 0) {
+        std::cout << "Expected '" << in << "' to be printed as '"
+                  << expected << "' but got '" << res.str() << "'\n";
+        exit(1);
+    }
+}
+
+void test() {
+    test("3", "3\n");
+    test(" 3 ", "3\n");
+    test("function(){1}", "function() {\n1\n}\n");
+}
+
+
