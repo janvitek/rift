@@ -232,7 +232,6 @@ public:
         pm->add(createConstantPropagationPass());
         // Run the optimizations on each function in the current module
         for (llvm::Function & f : *m) {
-            //f.dump();
             pm->run(f);
             //f.dump();
         }
@@ -240,64 +239,64 @@ public:
         delete pm;
     }
 
-    /** Translates a function into bitcode, registers it with the runtime and returns its index.
+    /** Translates a function to bitcode, registers it with the runtime,
+	and returns its index.
     */
     int compileFunction(ast::Fun * node) {
-        // backup context information in case we are creating function inside function
+        // Backup context in case we are creating a nested function
         llvm::Function * oldF = f;
         BasicBlock * oldB = b;
         llvm::Value * oldEnv = env;
-        // create new function
+
+	// Create the function and its first BB
         f = llvm::Function::Create(type::NativeCode, llvm::Function::ExternalLinkage, "riftFunction", m);
-        // and its first basic block
         b = BasicBlock::Create(getGlobalContext(), "entry", f, nullptr);
         // Get the argument of the function and store is as the environment value so that we can easily access it
         llvm::Function::arg_iterator args = f->arg_begin();
         env = args++;
         env->setName("env");
-        // compile the body of the function
+        // Compile body 
         node->body->accept(this);
-        // append return instruction of the last used value
+        // Append return instruction of the last used value
         ReturnInst::Create(getGlobalContext(), result, b);
-        //f->dump();
-        // register the function and get its index
+
+        // Register and get index
         int result = Pool::addFunction(node, f);
-        // backup the context
+
+        // Restore context
         f = oldF;
         b = oldB;
         env = oldEnv;
-
         return result;
     }
 
 
-    /** Shorthand macro for calling runtime functions. 
-     */
-#define RUNTIME_CALL(name, ...) CallInst::Create(m->name, std::vector<llvm::Value*>({__VA_ARGS__}), "", b)
+    /** Shorthand for calling runtime functions.  */
+#define RUNTIME_CALL(name, ...) \
+  CallInst::Create(m->name, \
+		   std::vector<llvm::Value*>({__VA_ARGS__}), \
+		   "", \
+		   b)
 
 
-    /** Obtains llvm Value from double scalar. 
-     */
+    /** Create LLVM Value from double scalar .  */
     llvm::Value * fromDouble(double value) {
         return ConstantFP::get(getGlobalContext(), APFloat(value));
     }
 
-    /** Obrains llvm Value from integer. 
-     */
+    /** Create LLVM Value from integer. */
     llvm::Value * fromInt(int value) {
         return ConstantInt::get(getGlobalContext(), APInt(32, value));
     }
 
-    /** Generic visitor method, a safeguard against forgetting to implement a visitor method. 
-     */
-    void visit(ast::Exp * node) override {
-        throw "Unexpected ast type reached during compilation";
-    }
+  /** Safeguard against forgotten  visitor methods.   */
+  void visit(ast::Exp * node) override {
+    throw "Unexpected: You are missing a visit() method.";
+  }
 
-    /** Numbers are simple to translate. 
-    
-    The double that is the number is first boxed in a vector and then the vector is boxed in a Value which is returned. 
-    */
+  /** Get the double value, box it into a vector of length 1, box that into
+      a Rift Value.
+   */
     void visit(ast::Num * node) override {
         result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(node->value));
         result = RUNTIME_CALL(fromDoubleVector, result);
@@ -323,15 +322,18 @@ public:
             e->accept(this);
     }
 
-    /** Function declaration compiles the function obtaining its id, which is then used as a constant in a call to createFunction runtime, which binds the function code to the environment. This is then boxed into value. 
-     */
-    void visit(ast::Fun * node) override {
-        int fi = compileFunction(node);
-        result = RUNTIME_CALL(createFunction, fromInt(fi), env);
-        result = RUNTIME_CALL(fromFunction, result);
-    }
+  /** Function declaration.  Compiles function, use its id as a constant for
+      createFunction() which binding the function code to the
+      environment. Box result into a value.
+  */
+  void visit(ast::Fun * node) override {
+    int fi = compileFunction(node);
+    result = RUNTIME_CALL(createFunction, fromInt(fi), env);
+    result = RUNTIME_CALL(fromFunction, result);
+  }
 
-    /** Binary expression first compiles its arguments and then calls respective runtime based on the type of the operation. 
+  /** Binary expression first compiles its arguments and then calls
+	respective runtime based on the type of the operation.
      */
     void visit(ast::BinExp * node) override {
         node->lhs->accept(this);
@@ -363,8 +365,7 @@ public:
         case ast::BinExp::Type::gt:
             result = RUNTIME_CALL(genericGt, lhs, rhs);
             return;
-        default:
-            // pass - can't happen
+        default: // can't happen
             return;
         }
     }
@@ -454,44 +455,40 @@ public:
         result = rhs;
     }
 
-    /** Conditionals in rift. 
-    
-    We first compile the guard, then convert it to a boolean used to control the conditional jump that executes the respective case. 
-
-    A slight compilcation is the phi node at the end used to merge the results from the respective cases into one value. 
-    */
-    void visit(ast::IfElse * node) override {
-        // compile the guard and convert it to boolean
-        node->guard->accept(this);
-        llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
-        // create basic blocks for if and then cases as well as for the code after the condition
-        BasicBlock * ifTrue = BasicBlock::Create(getGlobalContext(), "trueCase", f, nullptr);
-        BasicBlock * ifFalse = BasicBlock::Create(getGlobalContext(), "falseCase", f, nullptr);
-        BasicBlock * next = BasicBlock::Create(getGlobalContext(), "afterIf", f, nullptr);
-        // create the conditional branch
-        BranchInst::Create(ifTrue, ifFalse, guard, b);
-        // set current basic block to true case, compile it, remember the result value and emit branch to after the condition
-        b = ifTrue;
-        node->ifClause->accept(this);
-        llvm::Value * trueResult = result;
-        BranchInst::Create(next, b);
-        // remember the last basic block of the case (this will denote the incomming path to the phi node)
-        ifTrue = b;
-        // do the same for else case
-        b = ifFalse;
-        node->elseClause->accept(this);
-        llvm::Value * falseResult = result;
-        BranchInst::Create(next, b);
-        ifFalse = b;
-        // Set basic block to the one after the condition
-        b = next;
-        // emit the phi node with values coming from the if and else cases
-        PHINode * phi = PHINode::Create(type::ptrValue, 2, "ifPhi", b);
-        phi->addIncoming(trueResult, ifTrue);
-        phi->addIncoming(falseResult, ifFalse);
-        // the phi node is the result
-        result = phi;
-    }
+  /** Conditionals in rift.  Compile the guard, convert the result to a boolean,
+      and branch on that. PHI nodes have to be inserted when control flow merges
+      after the conditional.
+  */
+  void visit(ast::IfElse * node) override {
+    node->guard->accept(this);
+    llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
+    // Basic blocks and guard...
+    BasicBlock * ifTrue = BasicBlock::Create(getGlobalContext(), "trueCase", f, nullptr);
+    BasicBlock * ifFalse = BasicBlock::Create(getGlobalContext(), "falseCase", f, nullptr);
+    BasicBlock * merge = BasicBlock::Create(getGlobalContext(), "afterIf", f, nullptr);
+    // Branch...
+    BranchInst::Create(ifTrue, ifFalse, guard, b);
+    // Current BB set to true case, compile, remember result and merge
+    b = ifTrue;
+    node->ifClause->accept(this);
+    llvm::Value * trueResult = result;
+    BranchInst::Create(merge, b);
+    // remember the last basic block of the case (this will denote the incomming path to the phi node)
+    ifTrue = b;
+    // do the same for else case
+    b = ifFalse;
+    node->elseClause->accept(this);
+    llvm::Value * falseResult = result;
+    BranchInst::Create(merge, b);
+    ifFalse = b;
+    // Set BB to merge point
+    b = merge;
+    // Emit PHI node with values coming from the if and else cases
+    PHINode * phi = PHINode::Create(type::ptrValue, 2, "ifPhi", b);
+    phi->addIncoming(trueResult, ifTrue);
+    phi->addIncoming(falseResult, ifFalse);
+    result = phi;
+  }
 
     /** Compiles while loop.
 
