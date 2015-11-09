@@ -101,13 +101,14 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
 
 CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
-    char * result = new char[resultSize];
+    char * result = new char[resultSize + 1];
     for (unsigned i = 0; i < resultSize; ++i) {
         unsigned idx = index->data[i];
         if (idx < 0 or idx >= from->size)
             throw "Index out of bounds";
         result[i] = from->data[idx];
     }
+    result[resultSize] = 0;
     return new CharacterVector(result, resultSize);
 }
 
