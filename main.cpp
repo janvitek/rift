@@ -15,7 +15,7 @@ using namespace rift;
 void interactive() {
     cout << "rift console - type exit to quit" << endl;
     Environment * env = new Environment(nullptr);
-    while (true) {
+    while (not cin.eof()) {
         try {
             cout << "> ";
             std::string in;
