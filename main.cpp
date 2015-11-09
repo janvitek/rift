@@ -22,6 +22,8 @@ void interactive() {
             getline(cin, in);
             if (in == "exit")
                 break;
+            if (in.empty())
+                continue;
             eval(env, in.c_str())->print(cout);
             cout << endl;
         } catch (char const * error) {
