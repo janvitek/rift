@@ -1,15 +1,15 @@
 #include "ast.h"
-#include "runtime.h"
+#include "pool.h"
 
 namespace rift {
 namespace ast {
 
 std::string const & Str::value() const {
-    return Runtime::getPoolObject(index);
+    return Pool::getPoolObject(index);
 }
 
 std::string const & Var::value() const {
-    return Runtime::getPoolObject(symbol);
+    return Pool::getPoolObject(symbol);
 }
 
 

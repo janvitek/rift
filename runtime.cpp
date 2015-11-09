@@ -9,7 +9,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "compiler.h"
-
+#include "pool.h"
 
 using namespace std;
 using namespace rift;
@@ -34,7 +34,7 @@ DoubleVector * doubleVectorLiteral(double value) {
 }
 
 CharacterVector * characterVectorLiteral(int cpIndex) {
-    std::string const & original = Runtime::getPoolObject(cpIndex);
+    std::string const & original = Pool::getPoolObject(cpIndex);
     char * dest = new char[original.size() + 1];
     memcpy(dest, original.c_str(), original.size());
     dest[original.size()] = 0;
@@ -361,7 +361,7 @@ Value * genericGt(Value * lhs, Value * rhs) {
 }
 
 Function * createFunction(int index, Environment * env) {
-    return new Function(Runtime::getFunction(index), env);
+    return new Function(Pool::getFunction(index), env);
 }
 
 bool toBoolean(Value * value) {
@@ -525,10 +525,4 @@ Value * c(int size, ...) {
 
 
 } // extern "C"
-
-namespace rift {
-std::vector<Function *> Runtime::f_;
-std::vector<std::string> Runtime::pool_;
-
-}
 
