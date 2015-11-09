@@ -10,6 +10,10 @@
 
 namespace rift {
 
+    /** Shorthands for llvm type declarations. 
+
+    See the cpp file for their actual initialization. 
+     */
     namespace type {
         extern llvm::Type * Void;
         extern llvm::Type * Int;
@@ -26,7 +30,8 @@ namespace rift {
         extern llvm::PointerType * ptrDoubleVector;
         extern llvm::PointerType * ptrCharacterVector;
 
-        // union
+        /** Unions in llvm are represented by the longest of the members, smaller members are obtained by typecasting. 
+         */
         extern llvm::StructType * Value;
         extern llvm::PointerType * ptrValue;
 
@@ -43,6 +48,18 @@ namespace rift {
         extern llvm::PointerType * ptrFunction;
 
 
+        /** Declaration of runtime function types. 
+        
+        x_yz where x is the return type of the function and y and z are arguments. VA is used for varargs so that the type of the function can be easily determined from the name:
+
+        d = double scalar
+        dv = double vector *
+        i = integer
+        cv = character vector *
+        e = Environment *
+        v = Value *
+        f = Function *
+        */
         extern llvm::FunctionType * dv_d;
         extern llvm::FunctionType * cv_i;
         extern llvm::FunctionType * v_dv;
@@ -65,7 +82,7 @@ namespace rift {
 
         extern llvm::FunctionType * b_v;
 
-        extern llvm::FunctionType * v_viVA;
+        extern llvm::FunctionType * v_veiVA;
 
         extern llvm::FunctionType * void_vvv;
         extern llvm::FunctionType * void_dvdvdv;
@@ -86,8 +103,15 @@ namespace rift {
 
 
 
+    /** Rift module inherits from LLVM module and replaces it in the compiler. 
+    
+    Apart from LLVM module's usage it also contains declarations of the runtime functions the module might use. 
+    */
     class RiftModule : public llvm::Module {
     private:
+
+        /** Adds attribute readnone (pure function in LLVM) to given function declaration. 
+         */
         static llvm::Function * readnone(llvm::Function * f) {
             llvm::AttributeSet as;
             {
@@ -99,11 +123,21 @@ namespace rift {
             return f;
         }
     public:
+        /** Creates the module.
+         */
         RiftModule() :
             llvm::Module("rift", llvm::getGlobalContext()) {}
 
+/** Shorthand macro for declaring functions and marking them as pure. 
+ */
 #define DEF_FUN_PURE(name, signature) llvm::Function * name = readnone(llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this))
+
+/** Shorthand macro for declaring functions that are not pure. 
+ */
 #define DEF_FUN(name, signature) llvm::Function * name = llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this)
+
+        /** All runtime functions must be declared properly. Declaration consists of the name of the function (i.e. the symbol under which it can be found) and the type. 
+         */
         DEF_FUN_PURE(doubleVectorLiteral, type::dv_d);
         DEF_FUN_PURE(characterVectorLiteral, type::cv_i);
         DEF_FUN_PURE(fromDoubleVector, type::v_dv);
@@ -144,7 +178,7 @@ namespace rift {
         DEF_FUN_PURE(genericGt, type::v_vv);
         DEF_FUN_PURE(createFunction, type::f_ie);
         DEF_FUN_PURE(toBoolean, type::b_v);
-        DEF_FUN(call, type::v_viVA);
+        DEF_FUN(call, type::v_veiVA);
         DEF_FUN_PURE(length, type::d_v);
         DEF_FUN_PURE(type, type::cv_v);
         DEF_FUN(genericEval, type::v_ev);
@@ -155,7 +189,8 @@ namespace rift {
     };
 
 
-
+/** Compiles given function's ast and returns pointer to the compiled native code. 
+ */
 FunPtr compile(rift::ast::Fun * f);
 
 }
