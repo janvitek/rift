@@ -378,13 +378,13 @@ bool toBoolean(Value * value) {
 
 }
 
-Value * call(Value * callee, Environment * caller, unsigned argc, ...) {
+Value * call(Value * callee, unsigned argc, ...) {
     if (callee->type != Value::Type::Function)
         throw "Only functions can be called";
     Function * f = callee->f;
     if (f->argsSize != argc)
         throw "Invalid number of arguments given";
-    Environment * calleeEnv = new Environment(caller);
+    Environment * calleeEnv = new Environment(f->env);
     va_list ap;
     va_start(ap, argc);
     for (unsigned i = 0; i < argc; ++i)

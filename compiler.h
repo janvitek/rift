@@ -82,7 +82,7 @@ namespace rift {
 
         extern llvm::FunctionType * b_v;
 
-        extern llvm::FunctionType * v_veiVA;
+        extern llvm::FunctionType * v_viVA;
 
         extern llvm::FunctionType * void_vvv;
         extern llvm::FunctionType * void_dvdvdv;
@@ -178,7 +178,7 @@ namespace rift {
         DEF_FUN_PURE(genericGt, type::v_vv);
         DEF_FUN_PURE(createFunction, type::f_ie);
         DEF_FUN_PURE(toBoolean, type::b_v);
-        DEF_FUN(call, type::v_veiVA);
+        DEF_FUN(call, type::v_viVA);
         DEF_FUN_PURE(length, type::d_v);
         DEF_FUN_PURE(type, type::cv_v);
         DEF_FUN(genericEval, type::v_ev);

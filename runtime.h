@@ -579,7 +579,7 @@ bool toBoolean(::Value * value);
 The number of arguments is matched agains the arguments of the function, new environment is created for the callee and its arguments are populated by the values given. Then the function is called, and its return value is returned. 
 
  */
-::Value * call(::Value * callee, Environment * caller, unsigned argc, ...);
+::Value * call(::Value * callee, unsigned argc, ...);
 
 /** Returns the length of given value if it is a vector. 
  */
