@@ -507,6 +507,7 @@ public:
         // compile loop start as the evaluation of the guard and conditional branch to the body, or after the loop
         b = loopStart;
         node->guard->accept(this);
+        llvm::Value * whileResult = result;
         llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
         BranchInst::Create(loopBody, loopNext, guard, b);
         // compile the loop body, at the end of the loop body, branch to loop start to evaluate the guard again
@@ -515,7 +516,7 @@ public:
         BranchInst::Create(loopStart, b);
         // set the current basic block to the one after the loop, the result is the guard (just because the result must be soething)
         b = loopNext;
-        result = guard;
+        result = whileResult;
     }
 
 private:
