@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "lexer.h"
-#include "runtime.h"
+#include "pool.h"
 
 namespace rift {
 
@@ -30,7 +30,7 @@ Token Lexer::identOrKeyword(char start, std::istream & input) {
     else if (x == "type")
         return Token(Token::Type::kwType);
     else
-        return Token(Token::Type::ident, Runtime::addToPool(x));
+        return Token(Token::Type::ident, Pool::addToPool(x));
 }
 
 Token Lexer::stringLiteral(std::istream & input) {
@@ -38,7 +38,7 @@ Token Lexer::stringLiteral(std::istream & input) {
     while (input.peek() != '"')
         x += input.get();
     input.get(); // closing "
-    return Token(Token::Type::character, Runtime::addToPool(x));
+    return Token(Token::Type::character, Pool::addToPool(x));
 }
 
 }

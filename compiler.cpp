@@ -4,6 +4,7 @@
 #include "type_analysis.h"
 #include "unboxing.h"
 #include "boxing_removal.h"
+#include "pool.h"
 
 #include <initializer_list>
 using namespace llvm;
@@ -200,7 +201,7 @@ public:
     Because JIT compilation requires the module to be finalized, this function can be called only once on an existing compiler. This is why the compiler class is not a public interface, but the compile function should be used instead of it. 
     */
     FunPtr compile(ast::Fun * what) {
-        unsigned start = Runtime::functionsCount();
+        unsigned start = Pool::functionsCount();
         int result = compileFunction(what);
         // now do the actual JITting
         ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m)).setMCJITMemoryManager(std::unique_ptr<MemoryManager>(new MemoryManager())).create();
@@ -209,11 +210,11 @@ public:
         // finalize the module object so that we can compile it
         engine->finalizeObject();
         // All newly registered functions must be compiled and their native code in the registered functions vector should be updated
-        for (; start < Runtime::functionsCount(); ++start) {
-            ::Function * rec = Runtime::getFunction(start);
+        for (; start < Pool::functionsCount(); ++start) {
+            ::Function * rec = Pool::getFunction(start);
             rec->code = reinterpret_cast<FunPtr>(engine->getPointerToFunction(rec->bitcode));
         }
-        return Runtime::getFunction(result)->code;
+        return Pool::getFunction(result)->code;
     }
 
     /** Performs optimizations on the bitcode before native code generation. 
@@ -260,7 +261,7 @@ public:
         ReturnInst::Create(getGlobalContext(), result, b);
         //f->dump();
         // register the function and get its index
-        int result = Runtime::addFunction(node, f);
+        int result = Pool::addFunction(node, f);
         // backup the context
         f = oldF;
         b = oldB;
