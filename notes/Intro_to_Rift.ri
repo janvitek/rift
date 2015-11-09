@@ -129,7 +129,10 @@ add1 <- function ( v ) { v[0] <- v[0] + 1 }
 add1(x)
 x
 
+# and there is eval()
 
-
+eval("x <- 1")
+f <- function() { z <- 42   eval("x <- z") }
+f()
 
 

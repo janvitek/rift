@@ -183,16 +183,13 @@ public:
 
 };
 
-/** The compiler:
-    a visitor over the AST.
+/** The compiler: a visitor over the AST.
 */
 class Compiler : public Visitor {
 public:
     /** Creates the module to which the function will be compiled.
      */
-    Compiler():
-        m(new RiftModule()) {
-    }
+    Compiler(): m(new RiftModule()) { }
 
   /** Compiles a function and returns a pointer to the native code.  JIT
       compilation in LLVM finalizes the module, this function can only be
@@ -429,28 +426,24 @@ public:
         result = RUNTIME_CALL(genericGetElement, obj, result);
     }
 
-    /** Simple assignment is assignment to a variable. 
+  /** Assign a variable.
+   */
+  void visit(ast::SimpleAssignment * node) override {
+    node->rhs->accept(this);
+    RUNTIME_CALL(envSet, env, fromInt(node->name->symbol), result);
+  }
 
-    So it translates to envSet runtime call. 
-     */
-    void visit(ast::SimpleAssignment * node) override {
-        node->rhs->accept(this);
-        RUNTIME_CALL(envSet, env, fromInt(node->name->symbol), result);
-    }
-
-    /** Index assignment is in place assignment of vector subsets.
-    
-    The target, indices and values are compiled and the the genericSetElement runtime is called to perform the assignment. 
-    */
-    void visit(ast::IndexAssignment * node) override {
-        node->rhs->accept(this);
-        llvm::Value * rhs = result;
-        node->index->name->accept(this);
-        llvm::Value * var = result;
-        node->index->index->accept(this);
-        RUNTIME_CALL(genericSetElement, var, result, rhs);
-        result = rhs;
-    }
+  /** Assign into a vector at an index.
+   */
+  void visit(ast::IndexAssignment * node) override {
+    node->rhs->accept(this);
+    llvm::Value * rhs = result;
+    node->index->name->accept(this);
+    llvm::Value * var = result;
+    node->index->index->accept(this);
+    RUNTIME_CALL(genericSetElement, var, result, rhs);
+    result = rhs;
+  }
 
   /** Conditionals in rift.  Compile the guard, convert the result to a boolean,
       and branch on that. PHI nodes have to be inserted when control flow merges
@@ -514,32 +507,26 @@ public:
     }
 
 private:
-    
-    /** Current basic block, to which new instructions will be added */
+    /** Current BB */
     BasicBlock * b;
 
-    /** Current function that is being compiled. */
+    /** Current function. */
     llvm::Function * f;
     
-    /** Module to which we are compiling. 
-     */
+    /** Current Module */
     RiftModule * m;
 
-    /** Value to be returned by the function. 
-     */
+    /** Result of visit functions */
     llvm::Value * result;
 
-    /* Environment for the currently compiled function. 
-     */
+    /* Current Environment */
     llvm::Value * env;
-
-
 };
 
 
 FunPtr compile(ast::Fun * what) {
-    Compiler c;
-    return c.compile(what);
+  Compiler c;
+  return c.compile(what);
 }
 
 } // namespace rift
