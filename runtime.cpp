@@ -423,6 +423,8 @@ Value * eval(Environment * env, char const * value) {
     std::string s(value);
     Parser p;
     ast::Fun * x = new ast::Fun(p.parse(s));
+    if (x->body->body.empty())
+        return new Value({0.0});
     FunPtr f = compile(x);
     Value * result = f(env);
     delete x;
