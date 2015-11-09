@@ -8,7 +8,7 @@
 
 /** Value forward declaration 
 */
-struct Value;
+struct RVal;
 
 /** Character vector. 
 
@@ -109,7 +109,7 @@ Binding is a pair of symbol and corresponding Value.
 */
 struct Binding {
     rift::Symbol symbol;
-    ::Value * value;
+    RVal * value;
 };
 
 /** Rift Environment. 
@@ -145,7 +145,7 @@ struct Environment {
 
     If the symbol is not found in current bindings, recursively searches parent environments as well. 
      */
-    ::Value * get(rift::Symbol symbol) {
+    RVal * get(rift::Symbol symbol) {
         for (int i = 0; i < size; ++i)
             if (bindings[i].symbol == symbol)
                 return bindings[i].value;
@@ -159,7 +159,7 @@ struct Environment {
     
     If the symbol already exists it the environment, updates its value, otherwise creates new binding for the symbol and attaches it to the value. 
      */
-    void set(rift::Symbol symbol, ::Value * value) {
+    void set(rift::Symbol symbol, RVal * value) {
         for (int i = 0; i < size; ++i)
             if (bindings[i].symbol == symbol) {
                 bindings[i].value = value;
@@ -177,7 +177,7 @@ struct Environment {
 
 /** Pointer to rift functions compiled to native code, i.e. a function which takes Environment * as an argument and returns Value *. 
  */
-typedef ::Value * (*FunPtr)(Environment *);
+typedef RVal * (*FunPtr)(Environment *);
 
 /** Function object. 
 
@@ -241,7 +241,7 @@ struct Function {
 
 A value comprises of the type specifier (double vector, character vector, or function) and union of pointers to the respective classes. 
  */
-struct Value {
+struct RVal {
     enum class Type {
         Double,
         Character,
@@ -258,14 +258,14 @@ struct Value {
 
     /** Creates a boxed double vector from given numbers. 
      */
-    Value(std::initializer_list<double> d) :
+    RVal(std::initializer_list<double> d) :
         type(Type::Double),
         d(new DoubleVector(d)) {
     }
 
     /** Creates a boxed character vector from given string. 
      */
-    Value(char const * c) :
+    RVal(char const * c) :
         type(Type::Character),
         c(new CharacterVector(c)) {
     }
@@ -274,7 +274,7 @@ struct Value {
 
     Takes ownership of the vector. 
      */
-    Value(DoubleVector * d):
+    RVal(DoubleVector * d):
         type(Type::Double),
         d(d) {
     }
@@ -283,7 +283,7 @@ struct Value {
 
     Takes ownership of the vector.
     */
-    Value(CharacterVector * c):
+    RVal(CharacterVector * c):
         type(Type::Character),
         c(c) {
     }
@@ -292,14 +292,14 @@ struct Value {
 
     Takes ownership of the vector.
     */
-    Value(::Function * f):
+    RVal(::Function * f):
         type(Type::Function),
         f(f) {
     }
 
     /** Deletes the value, deleting its boxed element based on value's type. 
      */
-    ~Value() {
+    ~RVal() {
         switch (type) {
         case Type::Double:
             delete d;
@@ -333,7 +333,7 @@ struct Value {
     
     The operator is only expected to be used by the tests. rift should use the genericEq() function for Value comparisons. 
      */
-    bool operator == (Value const & other) {
+    bool operator == (RVal const & other) {
         if (type != other.type)
             return false;
         switch (type) {
@@ -364,7 +364,7 @@ struct Value {
 
     The operator is only expected to be used by the tests. rift should use the genericNeq() function for Value comparisons.
     */
-    bool operator != (Value const & other) {
+    bool operator != (RVal const & other) {
         if (type != other.type)
             return true;
         switch (type) {
@@ -393,7 +393,7 @@ struct Value {
 
 /** Standard C++ printing support. 
  */
-inline std::ostream & operator << (std::ostream & s, ::Value const & value) {
+inline std::ostream & operator << (std::ostream & s, RVal const & value) {
     value.print(s);
     return s;
 }
@@ -412,11 +412,11 @@ Environment * envCreate(Environment * parent);
 
 Raises an error if not found. 
  */
-::Value * envGet(Environment * env, int symbol);
+RVal * envGet(Environment * env, int symbol);
 
 /** Binds given symbol to the value in the specified environment. 
  */
-void envSet(Environment * env, int symbol, ::Value * value);
+void envSet(Environment * env, int symbol, RVal * value);
 
 /** Creates a double vector from the literal. 
  */
@@ -428,19 +428,19 @@ CharacterVector * characterVectorLiteral(int cpIndex);
 
 /** Boxes double vector into a Value. 
  */
-::Value * fromDoubleVector(DoubleVector * from);
+RVal * fromDoubleVector(DoubleVector * from);
 
 /** Boxes character vector into a Value. 
  */
-::Value * fromCharacterVector(CharacterVector * from);
+RVal * fromCharacterVector(CharacterVector * from);
 
 /** Boxes function into Value. 
  */
-::Value * fromFunction(::Function * from);
+RVal * fromFunction(::Function * from);
 
 /** Unboxes value to the double vector it contains. 
  */
-DoubleVector * doubleFromValue(::Value * v);
+DoubleVector * doubleFromValue(RVal * v);
 
 /** Unboxes double vector to the scalar double it contains. 
  */
@@ -448,11 +448,11 @@ double scalarFromVector(DoubleVector * v);
 
 /** Unboxes value to the character vector it contains. 
  */
-CharacterVector * characterFromValue(::Value *v);
+CharacterVector * characterFromValue(RVal *v);
 
 /** Unboxes value to the function object it contains. 
  */
-::Function * functionFromValue(::Value *v);
+::Function * functionFromValue(RVal *v);
 
 /** Returns a scalar double element from given double vector. 
  */
@@ -468,7 +468,7 @@ CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * ind
 
 /** Returns a subset of given value. 
  */
-::Value * genericGetElement(::Value * from, ::Value * index);
+RVal * genericGetElement(RVal * from, RVal * index);
 
 /** Sets the index-th element of given double vector. 
  */
@@ -484,7 +484,7 @@ void characterSetElement(CharacterVector * target, DoubleVector * index, Charact
 
 /** Sets given subset of the value. 
  */
-void genericSetElement(::Value * target, ::Value * index, ::Value * value);
+void genericSetElement(RVal * target, RVal * index, RVal * value);
 
 /** Adds two double vectors. 
  */
@@ -496,7 +496,7 @@ CharacterVector * characterAdd(CharacterVector * lhs, CharacterVector * rhs);
 
 /** Adds or concatenates two values. 
  */
-::Value * genericAdd(::Value * lhs, ::Value * rhs);
+RVal * genericAdd(RVal * lhs, RVal * rhs);
 
 /** Subtracts two double vectors. 
  */
@@ -504,7 +504,7 @@ DoubleVector * doubleSub(DoubleVector * lhs, DoubleVector * rhs);
 
 /** Subtracts two boxed double vectors, or raises an error. 
  */
-::Value * genericSub(::Value * lhs, ::Value * rhs);
+RVal * genericSub(RVal * lhs, RVal * rhs);
 
 /** Multiplies two double vectors. 
  */
@@ -512,7 +512,7 @@ DoubleVector * doubleMul(DoubleVector * lhs, DoubleVector * rhs);
 
 /** Multiplies two boxed double vectors, or raises an error.
 */
-::Value * genericMul(::Value * lhs, ::Value * rhs);
+RVal * genericMul(RVal * lhs, RVal * rhs);
 
 /** DIvides two double vectors. 
  */
@@ -520,7 +520,7 @@ DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs);
 
 /** Divides two boxed double vectors, or raises an error.
 */
-::Value * genericDiv(::Value * lhs, ::Value * rhs);
+RVal * genericDiv(RVal * lhs, RVal * rhs);
 
 /** Compares the equality of two double vectors. 
  */
@@ -532,7 +532,7 @@ DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs);
 
 /** Compares the equality of two values. 
  */
-::Value * genericEq(::Value * lhs, ::Value * rhs);
+RVal * genericEq(RVal * lhs, RVal * rhs);
 
 /** Compaes the inequality of two double vectors. 
  */
@@ -544,7 +544,7 @@ DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs);
 
 /** Compares the inequality of two values. 
  */
-::Value * genericNeq(::Value * lhs, ::Value * rhs);
+RVal * genericNeq(RVal * lhs, RVal * rhs);
 
 /** Compares two double vectors. 
  */
@@ -552,7 +552,7 @@ DoubleVector * doubleLt(DoubleVector * lhs, DoubleVector * rhs);
 
 /** Compares two values, raising error if they are not double vectors. 
  */
-::Value * genericLt(::Value * lhs, ::Value * rhs);
+RVal * genericLt(RVal * lhs, RVal * rhs);
 
 /** Compares two double vectors.
 */
@@ -560,7 +560,7 @@ DoubleVector * doubleGt(DoubleVector * lhs, DoubleVector * rhs);
 
 /** Compares two values, raising error if they are not double vectors.
 */
-::Value * genericGt(::Value * lhs, ::Value * rhs);
+RVal * genericGt(RVal * lhs, RVal * rhs);
 
 /** Creates new function and binds it to the specified environment. 
 
@@ -572,33 +572,33 @@ The function is specified by its index (each function is assigned this index whe
 
 The result of this call is used in conditional branches (if-then-else and while loop). 
  */
-bool toBoolean(::Value * value);
+bool toBoolean(RVal * value);
 
 /** Calls the given function with specified arguments. 
 
 The number of arguments is matched agains the arguments of the function, new environment is created for the callee and its arguments are populated by the values given. Then the function is called, and its return value is returned. 
 
  */
-::Value * call(::Value * callee, unsigned argc, ...);
+RVal * call(RVal * callee, unsigned argc, ...);
 
 /** Returns the length of given value if it is a vector. 
  */
-double length(::Value * value);
+double length(RVal * value);
 
 /** Returns the type of given value. The result is a character vector of either 'double', 'character', or 'function'. 
  */
-CharacterVector * type(::Value * value);
+CharacterVector * type(RVal * value);
 
 /** Evaluates given rift source in the specified environment and returns the return value. 
  */
-::Value * eval(Environment * env, char const * value);
+RVal * eval(Environment * env, char const * value);
 
 /** Evaluates given character vector in the specified environment and returns its result. 
  */
-::Value * characterEval(Environment * env, CharacterVector * value);
+RVal * characterEval(Environment * env, CharacterVector * value);
 
 /** Evaluates given value, raising an error if it is not a characer vector, returning the result otherwise. */
-::Value * genericEval(Environment * env, ::Value * value);
+RVal * genericEval(Environment * env, RVal * value);
 
 /** Joins N double vectors together. 
  */
@@ -610,7 +610,7 @@ CharacterVector * characterc(int size, ...);
 
 /** Joins given values together, raising an error if they are not of the same type, or if there is a function among them. 
  */
-::Value * c(int size, ...);
+RVal * c(int size, ...);
 
 }
 

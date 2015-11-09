@@ -5,10 +5,10 @@ using namespace std;
 using namespace rift;
 namespace rift {
 
-    void test(int line, char const * source, Value * expected) {
+    void test(int line, char const * source, RVal * expected) {
         try {
             Environment * env = new Environment(nullptr);
-            Value * actual = eval(env, source);
+            RVal * actual = eval(env, source);
             if (*expected != *actual) {
                 cout << "Expected: " << *expected << endl;
                 cout << "Actual: " << *actual << endl;
@@ -26,7 +26,7 @@ namespace rift {
         delete expected;
     }
 
-#define TEST(code, ...) test(__LINE__, code, new Value({__VA_ARGS__}))
+#define TEST(code, ...) test(__LINE__, code, new RVal({__VA_ARGS__}))
 
 
     void tests() {

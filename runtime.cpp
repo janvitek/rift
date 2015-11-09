@@ -21,16 +21,16 @@ Environment * envCreate(Environment * parent) {
     return new Environment(parent);
 }
 
-Value * envGet(Environment * env, int symbol) {
+RVal * envGet(Environment * env, int symbol) {
     return env->get(symbol);
 }
 
-void envSet(Environment * env, int symbol, Value * value) {
-    env->set(symbol, value);
+void envSet(Environment * env, int symbol, RVal * RVal) {
+    env->set(symbol, RVal);
 }
 
-DoubleVector * doubleVectorLiteral(double value) {
-    return new DoubleVector(value);
+DoubleVector * doubleVectorLiteral(double RVal) {
+    return new DoubleVector(RVal);
 }
 
 CharacterVector * characterVectorLiteral(int cpIndex) {
@@ -42,20 +42,20 @@ CharacterVector * characterVectorLiteral(int cpIndex) {
 
 }
 
-Value * fromDoubleVector(DoubleVector * from) {
-    return new Value(from);
+RVal * fromDoubleVector(DoubleVector * from) {
+    return new RVal(from);
 }
 
-Value * fromCharacterVector(CharacterVector * from) {
-    return new Value(from);
+RVal * fromCharacterVector(CharacterVector * from) {
+    return new RVal(from);
 }
 
-Value * fromFunction(Function * from) {
-    return new Value(from);
+RVal * fromFunction(Function * from) {
+    return new RVal(from);
 }
 
-DoubleVector * doubleFromValue(Value * v) {
-    if (v->type != Value::Type::Double)
+DoubleVector * doubleFromValue(RVal * v) {
+    if (v->type != RVal::Type::Double)
         throw "Invalid type";
     return v->d;
 }
@@ -66,14 +66,14 @@ double scalarFromVector(DoubleVector * v) {
     return v->data[0];
 }
 
-CharacterVector * characterFromValue(Value *v) {
-    if (v->type != Value::Type::Character)
+CharacterVector * characterFromValue(RVal *v) {
+    if (v->type != RVal::Type::Character)
         throw "Invalid type";
     return v->c;
 
 }
-Function * functionFromValue(Value *v) {
-    if (v->type != Value::Type::Function)
+Function * functionFromValue(RVal *v) {
+    if (v->type != RVal::Type::Function)
         throw "Invalid type";
     return v->f;
 
@@ -113,57 +113,57 @@ CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * ind
 }
 
 
-Value * genericGetElement(Value * from, Value * index) {
-    if (index->type != Value::Type::Double)
+RVal * genericGetElement(RVal * from, RVal * index) {
+    if (index->type != RVal::Type::Double)
         throw "Index vector must be double";
     switch (from->type) {
-    case Value::Type::Double:
-        return new Value(doubleGetElement(from->d, index->d));
-    case Value::Type::Character:
-        return new Value(characterGetElement(from->c, index->d));
+    case RVal::Type::Double:
+        return new RVal(doubleGetElement(from->d, index->d));
+    case RVal::Type::Character:
+        return new RVal(characterGetElement(from->c, index->d));
     default:
         throw "Cannot index a function";
     }
 }
 
-void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * value) {
+void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * RVal) {
     for (unsigned i = 0; i < index->size; ++i) {
         unsigned idx = index->data[i];
         if (idx >= target->size)
             throw "Index out of bound";
-        double val = value->data[i % value->size];
+        double val = RVal->data[i % RVal->size];
         target->data[idx] = val;
     }
 }
 
-void scalarSetElement(DoubleVector * target, double index, double value) {
+void scalarSetElement(DoubleVector * target, double index, double RVal) {
     unsigned idx = index;
     if (idx >= target->size)
         throw "Index out of bound";
-    target->data[idx] = value;
+    target->data[idx] = RVal;
 }
 
-void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * value) {
+void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * RVal) {
     for (unsigned i = 0; i < index->size; ++i) {
         unsigned idx = index->data[i];
         if (idx >= target->size)
             throw "Index out of bound";
-        char val = value->data[i % value->size];
+        char val = RVal->data[i % RVal->size];
         target->data[idx] = val;
     }
 }
 
-void genericSetElement(Value * target, Value * index, Value * value) {
-    if (index->type != Value::Type::Double)
+void genericSetElement(RVal * target, RVal * index, RVal * RVal) {
+    if (index->type != RVal::Type::Double)
         throw "Index vector must be double";
-    if (target->type != value->type)
+    if (target->type != RVal->type)
         throw "Vector and element must be of same type";
     switch (target->type) {
-    case Value::Type::Double:
-        doubleSetElement(target->d, index->d, value->d);
+    case RVal::Type::Double:
+        doubleSetElement(target->d, index->d, RVal->d);
         break;
-    case Value::Type::Character:
-        characterSetElement(target->c, index->d, value->c);
+    case RVal::Type::Character:
+        characterSetElement(target->c, index->d, RVal->c);
         break;
     default:
         throw "Cannot index a function";
@@ -189,14 +189,14 @@ CharacterVector * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
 }
 
 
-Value * genericAdd(Value * lhs, Value * rhs) {
+RVal * genericAdd(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleAdd(lhs->d, rhs->d));
-    case Value::Type::Character:
-        return new Value(characterAdd(lhs->c, rhs->c));
+    case RVal::Type::Double:
+        return new RVal(doubleAdd(lhs->d, rhs->d));
+    case RVal::Type::Character:
+        return new RVal(characterAdd(lhs->c, rhs->c));
     default:
         throw "Invalid types for binary add";
     }
@@ -212,12 +212,12 @@ DoubleVector * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
 
 
 
-Value * genericSub(Value * lhs, Value * rhs) {
+RVal * genericSub(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleSub(lhs->d, rhs->d));
+    case RVal::Type::Double:
+        return new RVal(doubleSub(lhs->d, rhs->d));
     default:
         throw "Invalid types for binary sub";
     }
@@ -231,12 +231,12 @@ DoubleVector * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-Value * genericMul(Value * lhs, Value * rhs) {
+RVal * genericMul(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleMul(lhs->d, rhs->d));
+    case RVal::Type::Double:
+        return new RVal(doubleMul(lhs->d, rhs->d));
     default:
         throw "Invalid types for binary mul";
     }
@@ -250,12 +250,12 @@ DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-Value * genericDiv(Value * lhs, Value * rhs) {
+RVal * genericDiv(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleDiv(lhs->d, rhs->d));
+    case RVal::Type::Double:
+        return new RVal(doubleDiv(lhs->d, rhs->d));
     default:
         throw "Invalid types for binary div";
     }
@@ -277,17 +277,17 @@ DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-Value * genericEq(Value * lhs, Value * rhs) {
+RVal * genericEq(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
-        return new Value(new DoubleVector(0));
+        return new RVal(new DoubleVector(0));
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleEq(lhs->d, rhs->d));
-    case Value::Type::Character:
-        return new Value(characterEq(lhs->c, rhs->c));
-    case Value::Type::Function:
+    case RVal::Type::Double:
+        return new RVal(doubleEq(lhs->d, rhs->d));
+    case RVal::Type::Character:
+        return new RVal(characterEq(lhs->c, rhs->c));
+    case RVal::Type::Function:
     default:
-        return new Value(new DoubleVector(lhs->f->code == rhs->f->code));
+        return new RVal(new DoubleVector(lhs->f->code == rhs->f->code));
     }
 }
 
@@ -307,17 +307,17 @@ DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-Value * genericNeq(Value * lhs, Value * rhs) {
+RVal * genericNeq(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
-        return new Value(new DoubleVector(1));
+        return new RVal(new DoubleVector(1));
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleNeq(lhs->d, rhs->d));
-    case Value::Type::Character:
-        return new Value(characterNeq(lhs->c, rhs->c));
-    case Value::Type::Function:
+    case RVal::Type::Double:
+        return new RVal(doubleNeq(lhs->d, rhs->d));
+    case RVal::Type::Character:
+        return new RVal(characterNeq(lhs->c, rhs->c));
+    case RVal::Type::Function:
     default:
-        return new Value(new DoubleVector(lhs->f->code != rhs->f->code));
+        return new RVal(new DoubleVector(lhs->f->code != rhs->f->code));
     }
 }
 
@@ -329,12 +329,12 @@ DoubleVector * doubleLt(DoubleVector * lhs, DoubleVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-Value * genericLt(Value * lhs, Value * rhs) {
+RVal * genericLt(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleLt(lhs->d, rhs->d));
+    case RVal::Type::Double:
+        return new RVal(doubleLt(lhs->d, rhs->d));
     default:
         throw "Invalid types for lt";
     }
@@ -349,12 +349,12 @@ DoubleVector * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
 }
 
 
-Value * genericGt(Value * lhs, Value * rhs) {
+RVal * genericGt(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     switch (lhs->type) {
-    case Value::Type::Double:
-        return new Value(doubleGt(lhs->d, rhs->d));
+    case RVal::Type::Double:
+        return new RVal(doubleGt(lhs->d, rhs->d));
     default:
         throw "Invalid types for gt";
     }
@@ -364,22 +364,22 @@ Function * createFunction(int index, Environment * env) {
     return new Function(Pool::getFunction(index), env);
 }
 
-bool toBoolean(Value * value) {
-    switch (value->type) {
-    case Value::Type::Function:
+bool toBoolean(RVal * RVal) {
+    switch (RVal->type) {
+    case RVal::Type::Function:
         return true;
-    case Value::Type::Character:
-        return (value->c->size > 0) and (value->c->data[0] != 0);
-    case Value::Type::Double:
-        return (value->d->size > 0) and (value->d->data[0] != 0);
+    case RVal::Type::Character:
+        return (RVal->c->size > 0) and (RVal->c->data[0] != 0);
+    case RVal::Type::Double:
+        return (RVal->d->size > 0) and (RVal->d->data[0] != 0);
     default:
         return false;
     }
 
 }
 
-Value * call(Value * callee, unsigned argc, ...) {
-    if (callee->type != Value::Type::Function)
+RVal * call(RVal * callee, unsigned argc, ...) {
+    if (callee->type != RVal::Type::Function)
         throw "Only functions can be called";
     Function * f = callee->f;
     if (f->argsSize != argc)
@@ -389,58 +389,58 @@ Value * call(Value * callee, unsigned argc, ...) {
     va_start(ap, argc);
     for (unsigned i = 0; i < argc; ++i)
         // TODO this is pass by reference always!
-        calleeEnv->set(f->args[i], va_arg(ap, Value *));
+        calleeEnv->set(f->args[i], va_arg(ap, RVal *));
     va_end(ap);
     return f->code(calleeEnv);
 }
 
-double length(Value * value) {
-    switch (value->type) {
-    case Value::Type::Double:
-        return value->d->size;
-    case Value::Type::Character:
-        return value->c->size;
+double length(RVal * RVal) {
+    switch (RVal->type) {
+    case RVal::Type::Double:
+        return RVal->d->size;
+    case RVal::Type::Character:
+        return RVal->c->size;
     default:
         throw "Cannot determine length of a function";
     }
 
 }
 
-CharacterVector * type(Value * value) {
-    switch (value->type) {
-    case Value::Type::Double:
+CharacterVector * type(RVal * RVal) {
+    switch (RVal->type) {
+    case RVal::Type::Double:
         return new CharacterVector("double");
-    case Value::Type::Character:
+    case RVal::Type::Character:
         return new CharacterVector("character");
-    case Value::Type::Function:
+    case RVal::Type::Function:
         return new CharacterVector("function");
     default:
         return nullptr;
     }
 }
 
-Value * eval(Environment * env, char const * value) {
+RVal * eval(Environment * env, char const * value) {
     std::string s(value);
     Parser p;
     ast::Fun * x = new ast::Fun(p.parse(s));
     if (x->body->body.empty())
-        return new Value({0.0});
+        return new RVal({0.0});
     FunPtr f = compile(x);
-    Value * result = f(env);
+    RVal * result = f(env);
     delete x;
     return result;
 }
 
-Value * characterEval(Environment * env, CharacterVector * value) {
-    if (value->size == 0)
+RVal * characterEval(Environment * env, CharacterVector * RVal) {
+    if (RVal->size == 0)
         throw "Cannot evaluate empty character vector";
-    return eval(env, value->data);
+    return eval(env, RVal->data);
 }
 
-Value * genericEval(Environment * env, Value * value) {
-    if (value->type != Value::Type::Character)
+RVal * genericEval(Environment * env, RVal * RVal) {
+    if (RVal->type != RVal::Type::Character)
         throw "Only character vectors can be evaluated";
-    return characterEval(env, value->c);
+    return characterEval(env, RVal->c);
 }
 
 DoubleVector * doublec(int size, ...) {
@@ -482,45 +482,45 @@ CharacterVector * characterc(int size, ...) {
     return new CharacterVector(result, size);
 }
 
-Value * c(int size, ...) {
+RVal * c(int size, ...) {
     if (size == 0)
-        return new Value(new DoubleVector(nullptr, 0));
-    std::vector<Value *> args;
+        return new RVal(new DoubleVector(nullptr, 0));
+    std::vector<RVal *> args;
     va_list ap;
     va_start(ap, size);
     for (int i = 0; i < size; ++i)
-        args.push_back(va_arg(ap, Value*));
+        args.push_back(va_arg(ap, RVal*));
     va_end(ap);
-    Value::Type t = args[0]->type;
-    if (t == Value::Type::Function)
+    RVal::Type t = args[0]->type;
+    if (t == RVal::Type::Function)
         throw "Cannot concatenate functions";
     for (unsigned i = 1; i < args.size(); ++i) {
         if (args[i]->type != t)
             throw "Types of all c arguments must be the same";
     }
-    if (t == Value::Type::Double) {
+    if (t == RVal::Type::Double) {
         int size = 0;
-        for (Value * v : args)
+        for (RVal * v : args)
             size += v->d->size;
         double * result = new double[size];
         int offset = 0;
-        for (Value * v : args) {
+        for (RVal * v : args) {
             memcpy(result + offset, v->d->data, v->d->size * sizeof(double));
             offset += v->d->size;
         }
-        return new Value(new DoubleVector(result, size));
+        return new RVal(new DoubleVector(result, size));
     } else { // Character
         int size = 0;
-        for (Value * v : args)
+        for (RVal * v : args)
             size += v->c->size;
         char * result = new char[size + 1];
         int offset = 0;
-        for (Value * v : args) {
+        for (RVal * v : args) {
             memcpy(result + offset, v->d->data, v->c->size * sizeof(char));
             offset += v->c->size;
         }
         result[size] = 0;
-        return new Value(new CharacterVector(result, size));
+        return new RVal(new CharacterVector(result, size));
     }
 }
 
