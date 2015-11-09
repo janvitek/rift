@@ -266,8 +266,8 @@ namespace rift {
             for (unsigned i = 1; i < ci->getNumArgOperands(); ++i)
                 args.push_back(unbox(ci, ci->getOperand(i)));
             llvm::Value * result = CallInst::Create(m->characterc, args, "", ci);
-            ta->setValueType(result, Type::DoubleVector);
-            ci->replaceAllUsesWith(boxDoubleVector(ci, result));
+            ta->setValueType(result, Type::CharacterVector);
+            ci->replaceAllUsesWith(boxCharacterVector(ci, result));
             return true;
         } else {
             return false;

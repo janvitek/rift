@@ -470,12 +470,13 @@ CharacterVector * characterc(int size, ...) {
     size = 0;
     for (CharacterVector * v : args)
         size += v->size;
-    char * result = new char[size];
+    char * result = new char[size + 1];
     int offset = 0;
     for (CharacterVector * v : args) {
         memcpy(result + offset, v->data, v->size * sizeof(char));
         offset += v->size;
     }
+    result[size] = 0;
     return new CharacterVector(result, size);
 }
 
