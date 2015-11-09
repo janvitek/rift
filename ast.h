@@ -15,6 +15,8 @@ class Visitor;
 
 namespace ast {
 
+    /** Base class for all expressions in rift. 
+     */
     class Exp {
     public:
         virtual ~Exp() {}
@@ -22,7 +24,8 @@ namespace ast {
         void print(std::ostream & s);
     };
 
-
+    /** Double scalar literal. 
+     */
     class Num : public Exp {
     public:
         Num(double value):
@@ -35,6 +38,8 @@ namespace ast {
     };
 
 
+    /** Character literal. 
+     */
     class Str : public Exp {
     public:
         Str(unsigned index):
@@ -45,6 +50,8 @@ namespace ast {
         unsigned index;
     };
 
+    /** Variable read. 
+     */
     class Var : public Exp  {
     public:
         Var(Symbol symbol):
@@ -55,6 +62,8 @@ namespace ast {
         unsigned symbol;
     };
 
+    /** Block of statements. 
+     */
     class Seq : public Exp {
     public:
         ~Seq() override  {
@@ -67,6 +76,8 @@ namespace ast {
         std::vector<Exp*> body;
     };
 
+    /** Function definition. 
+     */
     class Fun: public Exp {
     public:
 
@@ -90,6 +101,8 @@ namespace ast {
         std::vector<Var *> args;
     };
 
+    /** Binary expression. 
+     */
     class BinExp : public Exp {
     public:
         enum class Type {
@@ -121,6 +134,10 @@ namespace ast {
         Type type;
     };
 
+    /** Generic call to a function. 
+
+    Only stores a vector of arguments. Calls are divided into user calls and special calls to intrinsics. 
+     */
     class Call: public Exp {
     public:
 
@@ -135,6 +152,8 @@ namespace ast {
 
     };
 
+    /** Call to user defined rift function. 
+     */
     class UserCall : public Call {
     public:
         UserCall(Exp * name):
@@ -149,6 +168,8 @@ namespace ast {
         Exp * name;
     };
 
+    /** Special call to rift intrinsics. 
+     */
     class SpecialCall : public Call {
     public:
 
@@ -156,11 +177,15 @@ namespace ast {
 
     };
 
+    /** Call to c function for concatenating both characters and doubles. 
+     */
     class CCall : public SpecialCall {
     public:
         void accept(Visitor * v) override;
     };
 
+    /** Call to eval function. 
+     */
     class EvalCall : public SpecialCall {
     public:
         EvalCall(ast::Exp * arg) {
@@ -170,6 +195,8 @@ namespace ast {
         void accept(Visitor * v) override;
     };
 
+    /** Call to length call determining the length of a vector. 
+     */
     class LengthCall : public SpecialCall {
     public:
         LengthCall(ast::Exp * arg) {
@@ -178,6 +205,8 @@ namespace ast {
         void accept(Visitor * v) override;
     };
 
+    /** Call to a type function returning the type of a value. 
+     */
     class TypeCall : public SpecialCall {
     public:
         TypeCall(ast::Exp * arg) {
@@ -187,8 +216,9 @@ namespace ast {
     };
 
 
+    /** Indexed read. 
+     */
     class Index : public Exp {
-
     public:
         Index(Exp * name):
             name(name),
@@ -206,12 +236,16 @@ namespace ast {
         Exp * index;
     };
 
+    /** Assignment base class. 
+     */
     class Assignment : public Exp {
     public:
         void accept(Visitor * v) override;
 
     };
 
+    /** Assignment in the environment, i.e. assignment to a symbol. 
+     */
     class SimpleAssignment : public Assignment {
     public:
 
@@ -232,6 +266,8 @@ namespace ast {
 
     };
 
+    /** Assignment to respective indices of existing value. 
+     */
     class IndexAssignment : public Assignment {
     public:
 
@@ -252,6 +288,8 @@ namespace ast {
 
     };
 
+    /** Conditional statement. 
+     */
     class IfElse : public Exp {
     public:
         IfElse(Exp * guard):
@@ -273,6 +311,8 @@ namespace ast {
         Exp * elseClause;
     };
 
+    /** While loop. 
+     */
     class WhileLoop : public Exp {
     public:
         WhileLoop(Exp * guard):

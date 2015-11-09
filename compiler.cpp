@@ -71,7 +71,7 @@ namespace type {
 
     FunctionType * b_v = FUN_TYPE(Bool, ptrValue);
 
-    FunctionType * v_veiVA = FUN_TYPE_VARARG(ptrValue, ptrValue, ptrEnvironment, Int);
+    FunctionType * v_viVA = FUN_TYPE_VARARG(ptrValue, ptrValue, Int);
 
     FunctionType * void_vvv = FUN_TYPE(Void, ptrValue, ptrValue, ptrValue);
     FunctionType * void_dvdvdv = FUN_TYPE(Void, ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
@@ -200,9 +200,11 @@ public:
         pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         for (llvm::Function & f : *m) {
+            //f.dump();
             pm->run(f);
             //f.dump();
         }
+
         delete pm;
     }
 
@@ -308,7 +310,6 @@ public:
         node->name->accept(this);
         std::vector<llvm::Value *> args;
         args.push_back(result);
-        args.push_back(env);
         args.push_back(fromInt(static_cast<int>(node->args.size())));
         for (ast::Exp * arg : node->args) {
             arg->accept(this);

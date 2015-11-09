@@ -94,6 +94,10 @@ namespace rift {
         TEST("f = function(a, b) { a + b } f(1, 2)", 3);
         TEST("f = function() { a + b } a = 1 b = 2 f()", 3);
         TEST("f = function() { a = 1 a } a = 2 c(f(), a)", 1, 2);
+
+        TEST("a = c(1, 2, 3) a[1]", 2);
+        TEST("a = \"aba\" a[c(0,2)]", "aa");
+        TEST("a = c(1,2,3) a[c(0,1)] = 56 a", 56, 56, 3);
     }
 
 } // namespace rift

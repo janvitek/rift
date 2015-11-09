@@ -377,13 +377,13 @@ bool toBoolean(Value * value) {
 
 }
 
-Value * call(Value * callee, Environment * parent, unsigned argc, ...) {
+Value * call(Value * callee, Environment * caller, unsigned argc, ...) {
     if (callee->type != Value::Type::Function)
         throw "Only functions can be called";
     Function * f = callee->f;
     if (f->argsSize != argc)
         throw "Invalid number of arguments given";
-    Environment * calleeEnv = new Environment(parent);
+    Environment * calleeEnv = new Environment(caller);
     va_list ap;
     va_start(ap, argc);
     for (unsigned i = 0; i < argc; ++i)
@@ -408,11 +408,11 @@ double length(Value * value) {
 CharacterVector * type(Value * value) {
     switch (value->type) {
     case Value::Type::Double:
-        return CharacterVector::copy("double");
+        return new CharacterVector("double");
     case Value::Type::Character:
-        return CharacterVector::copy("character");
+        return new CharacterVector("character");
     case Value::Type::Function:
-        return CharacterVector::copy("function");
+        return new CharacterVector("function");
     default:
         return nullptr;
     }

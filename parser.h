@@ -175,9 +175,6 @@ namespace rift {
             }
         }
 
-//        E3 :: = F{INDEX | CALL | ASSIGNMENT}
-//            F :: = NUMBER | STRING | IDENT | SPECIAL_CALL | '(' EXPRESSION ')'
-
         ast::Exp * parseE3() {
             std::unique_ptr<ast::Exp> f(parseF());
             while (true) {

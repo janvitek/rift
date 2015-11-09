@@ -7,6 +7,7 @@
 
 namespace rift {
 
+    /** Boxing removal optimization deletes all pure (readnone in llvm's terminology) functions. As the unboxing pass makes many boxing statements dead and creates more boxing statements which might be dead, this pass is essential in removing this code. */
     class BoxingRemoval : public llvm::FunctionPass {
     public:
         static char ID;

@@ -65,7 +65,7 @@ namespace rift {
 
         extern llvm::FunctionType * b_v;
 
-        extern llvm::FunctionType * v_veiVA;
+        extern llvm::FunctionType * v_viVA;
 
         extern llvm::FunctionType * void_vvv;
         extern llvm::FunctionType * void_dvdvdv;
@@ -87,58 +87,70 @@ namespace rift {
 
 
     class RiftModule : public llvm::Module {
+    private:
+        static llvm::Function * readnone(llvm::Function * f) {
+            llvm::AttributeSet as;
+            {
+                llvm::AttrBuilder b;
+                b.addAttribute(llvm::Attribute::ReadNone);
+                as = llvm::AttributeSet::get(llvm::getGlobalContext(), llvm::AttributeSet::FunctionIndex, b);
+            }            
+            f->setAttributes(as);
+            return f;
+        }
     public:
         RiftModule() :
             llvm::Module("rift", llvm::getGlobalContext()) {}
 
+#define DEF_FUN_PURE(name, signature) llvm::Function * name = readnone(llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this))
 #define DEF_FUN(name, signature) llvm::Function * name = llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this)
-        DEF_FUN(doubleVectorLiteral, type::dv_d);
-        DEF_FUN(characterVectorLiteral, type::cv_i);
-        DEF_FUN(fromDoubleVector, type::v_dv);
-        DEF_FUN(fromCharacterVector, type::v_cv);
-        DEF_FUN(fromFunction, type::v_f);
-        DEF_FUN(doubleFromValue, type::dv_v);
-        DEF_FUN(scalarFromVector, type::d_dv);
-        DEF_FUN(characterFromValue, type::cv_v);
-        DEF_FUN(functionFromValue, type::f_v);
-        DEF_FUN(doubleGetSingleElement, type::d_dvd);
-        DEF_FUN(doubleGetElement, type::dv_dvdv);
-        DEF_FUN(characterGetElement, type::cv_cvdv);
-        DEF_FUN(genericGetElement, type::v_vv);
+        DEF_FUN_PURE(doubleVectorLiteral, type::dv_d);
+        DEF_FUN_PURE(characterVectorLiteral, type::cv_i);
+        DEF_FUN_PURE(fromDoubleVector, type::v_dv);
+        DEF_FUN_PURE(fromCharacterVector, type::v_cv);
+        DEF_FUN_PURE(fromFunction, type::v_f);
+        DEF_FUN_PURE(doubleFromValue, type::dv_v);
+        DEF_FUN_PURE(scalarFromVector, type::d_dv);
+        DEF_FUN_PURE(characterFromValue, type::cv_v);
+        DEF_FUN_PURE(functionFromValue, type::f_v);
+        DEF_FUN_PURE(doubleGetSingleElement, type::d_dvd);
+        DEF_FUN_PURE(doubleGetElement, type::dv_dvdv);
+        DEF_FUN_PURE(characterGetElement, type::cv_cvdv);
+        DEF_FUN_PURE(genericGetElement, type::v_vv);
         DEF_FUN(doubleSetElement, type::void_dvdvdv);
         DEF_FUN(scalarSetElement, type::void_dvdd);
         DEF_FUN(characterSetElement, type::void_cvdvcv);
         DEF_FUN(genericSetElement, type::void_vvv);
         DEF_FUN(envGet, type::v_ei);
         DEF_FUN(envSet, type::void_eiv);
-        DEF_FUN(doubleAdd, type::dv_dvdv);
-        DEF_FUN(characterAdd, type::cv_cvcv);
-        DEF_FUN(genericAdd, type::v_vv);
-        DEF_FUN(doubleSub, type::dv_dvdv);
-        DEF_FUN(genericSub, type::v_vv);
-        DEF_FUN(doubleMul, type::dv_dvdv);
-        DEF_FUN(genericMul, type::v_vv);
-        DEF_FUN(doubleDiv, type::dv_dvdv);
-        DEF_FUN(genericDiv, type::v_vv);
-        DEF_FUN(doubleEq, type::dv_dvdv);
-        DEF_FUN(characterEq, type::dv_cvcv);
-        DEF_FUN(genericEq, type::v_vv);
-        DEF_FUN(doubleNeq, type::dv_dvdv);
-        DEF_FUN(characterNeq, type::dv_cvcv);
-        DEF_FUN(genericNeq, type::v_vv);
-        DEF_FUN(doubleLt, type::dv_dvdv);
-        DEF_FUN(genericLt, type::v_vv);
-        DEF_FUN(doubleGt, type::dv_dvdv);
-        DEF_FUN(genericGt, type::v_vv);
-        DEF_FUN(createFunction, type::f_ie);
-        DEF_FUN(toBoolean, type::b_v);
-        DEF_FUN(call, type::v_veiVA);
-        DEF_FUN(length, type::d_v);
-        DEF_FUN(type, type::cv_v);
+        DEF_FUN_PURE(doubleAdd, type::dv_dvdv);
+        DEF_FUN_PURE(characterAdd, type::cv_cvcv);
+        DEF_FUN_PURE(genericAdd, type::v_vv);
+        DEF_FUN_PURE(doubleSub, type::dv_dvdv);
+        DEF_FUN_PURE(genericSub, type::v_vv);
+        DEF_FUN_PURE(doubleMul, type::dv_dvdv);
+        DEF_FUN_PURE(genericMul, type::v_vv);
+        DEF_FUN_PURE(doubleDiv, type::dv_dvdv);
+        DEF_FUN_PURE(genericDiv, type::v_vv);
+        DEF_FUN_PURE(doubleEq, type::dv_dvdv);
+        DEF_FUN_PURE(characterEq, type::dv_cvcv);
+        DEF_FUN_PURE(genericEq, type::v_vv);
+        DEF_FUN_PURE(doubleNeq, type::dv_dvdv);
+        DEF_FUN_PURE(characterNeq, type::dv_cvcv);
+        DEF_FUN_PURE(genericNeq, type::v_vv);
+        DEF_FUN_PURE(doubleLt, type::dv_dvdv);
+        DEF_FUN_PURE(genericLt, type::v_vv);
+        DEF_FUN_PURE(doubleGt, type::dv_dvdv);
+        DEF_FUN_PURE(genericGt, type::v_vv);
+        DEF_FUN_PURE(createFunction, type::f_ie);
+        DEF_FUN_PURE(toBoolean, type::b_v);
+        DEF_FUN(call, type::v_viVA);
+        DEF_FUN_PURE(length, type::d_v);
+        DEF_FUN_PURE(type, type::cv_v);
         DEF_FUN(genericEval, type::v_ev);
-        DEF_FUN(doublec, type::dv_iVA);
-        DEF_FUN(characterc, type::cv_iVA);
-        DEF_FUN(c, type::v_iVA);
+        DEF_FUN_PURE(doublec, type::dv_iVA);
+        DEF_FUN_PURE(characterc, type::cv_iVA);
+        DEF_FUN_PURE(c, type::v_iVA);
 
     };
 

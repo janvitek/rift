@@ -111,7 +111,7 @@ namespace rift {
 
     }
 
-    bool Unboxing::characterOperator(llvm::CallInst * ci, llvm::Function * fop) {
+    bool Unboxing::characterArithmetic(llvm::CallInst * ci, llvm::Function * fop) {
         llvm::Value * lhs = ci->getOperand(0);
         llvm::Value * rhs = ci->getOperand(1);
         lhs = unbox(ci, lhs);
@@ -141,7 +141,7 @@ namespace rift {
         llvm::Value * lhs = ci->getOperand(0);
         llvm::Value * rhs = ci->getOperand(1);
         if (ta->valueType(lhs).isCharacter() and ta->valueType(rhs).isCharacter()) {
-            characterOperator(ci, m->characterAdd);
+            characterArithmetic(ci, m->characterAdd);
             return true;
         } else {
             return doubleArithmetic(ci, Instruction::FAdd, m->doubleAdd);
