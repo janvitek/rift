@@ -18,9 +18,7 @@ struct CharacterVector {
 
     unsigned size;
 
-    /** Creates a CV from given data and size. 
-    
-    Takes ownership of the data. 
+    /** Creates a CV from given data and size. Takes ownership of the data.
     */
     CharacterVector(char * data, unsigned size):
         data(data),
@@ -28,8 +26,7 @@ struct CharacterVector {
     }
 
     /** Creates the character vector from existing null terminated string. 
-    
-    Creates a copy of the string internally. 
+        Creates a copy of the string internally. 
     */
     CharacterVector(char const * from) {
         size = strlen(from);
@@ -37,23 +34,19 @@ struct CharacterVector {
         memcpy(data, from, size + 1);
     }
 
-    /** Deletes the character vector and its data. 
-    */
+    /** Deletes data. */
     ~CharacterVector() {
         delete [] data;
     }
 
-    /** Prints the character vector to given stream. 
-     */
+    /** Prints to given stream. */
     void print(std::ostream & s) {
         s << data;
     }
 
 };
 
-/** Double vector implementation. 
-
-Contains array of double values together with its size. 
+/** A Double vector consists of an array of doubles and a size.
 */
 struct DoubleVector {
     
@@ -61,7 +54,7 @@ struct DoubleVector {
 
     unsigned size;
     
-    /** Creates double vector from given double scalar. 
+    /** Creates vector of length one.
      */
     DoubleVector(double value):
         data(new double[1]),
@@ -69,16 +62,14 @@ struct DoubleVector {
         data[0] = value;
     }
 
-    /** Creates double vector from given double array and its size. 
-    
-    The data array will become owned by the vector. 
+    /** Creates vector from array. The array is owned by the vector.
     */
     DoubleVector(double * data, unsigned size):
         data(data),
         size(size) {
     }
 
-    /** Creates double vector from given doubles. 
+    /** Creates vector from doubles.
      */
     DoubleVector(std::initializer_list<double> d) {
         size = d.size();
@@ -88,13 +79,13 @@ struct DoubleVector {
             data[i++] = dd;
     }
 
-    /** Deletes the vector and its data. 
+    /** Deletes data. 
      */
     ~DoubleVector() {
         delete [] data;
     }
 
-    /** Prints the vector to given stream. 
+    /** Prints to given stream. 
      */
     void print(std::ostream & s) {
         for (unsigned i = 0; i < size; ++i)
