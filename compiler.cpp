@@ -216,7 +216,7 @@ public:
         pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
-        for (Function & f : *m) {
+        for (llvm::Function & f : *m) {
             pm->run(f);
         }
         delete pm;
@@ -227,12 +227,12 @@ public:
       */
     int compileFunction(ast::Fun * node) {
         // Backup context in case we are creating a nested function
-        Function * oldF = f;
+        llvm::Function * oldF = f;
         BasicBlock * oldB = b;
         llvm::Value * oldEnv = env;
         // Create the function and its first BB
-        f = Function::Create(type::NativeCode,
-                Function::ExternalLinkage,
+        f = llvm::Function::Create(type::NativeCode,
+                llvm::Function::ExternalLinkage,
                 "riftFunction",
                 m);
         b = BasicBlock::Create(getGlobalContext(),
@@ -241,7 +241,7 @@ public:
                 nullptr);
         // Get the (single) argument of the function and store is as the
         // environment
-        Function::arg_iterator args = f->arg_begin();
+        llvm::Function::arg_iterator args = f->arg_begin();
         env = args++;
         env->setName("env");
         // Compile body 
@@ -320,9 +320,9 @@ public:
             e->accept(this);
     }
 
-    /** Function declaration.  Compiles function, use its id as a constant for
-      createFunction() which binding the function code to the
-      environment. Box result into a value.
+    /** Function declaration.  Compiles function, use its id as a constant
+        for createFunction() which binding the function code to the
+        environment. Box result into a value.
       */
     void visit(ast::Fun * node) override {
         int fi = compileFunction(node);
@@ -330,8 +330,8 @@ public:
         result = RUNTIME_CALL(fromFunction, result);
     }
 
-    /** Binary expression first compiles its arguments and then calls
-      respective runtime based on the type of the operation.
+    /** Binary expression. First compile arguments and then call respective
+        runtime function.
       */
     void visit(ast::BinExp * node) override {
         node->lhs->accept(this);
@@ -368,9 +368,7 @@ public:
         }
     }
 
-    /** Rift Function Call. First obtain the function pointer, then the
-      arguments.
-      */
+    /** Rift Function Call. First obtain the function pointer, then arguments. */
     void visit(ast::UserCall * node) override {
         node->name->accept(this);
         std::vector<Value *> args;
@@ -383,9 +381,7 @@ public:
         result = CallInst::Create(m->call, args, "", b);
     }
 
-    /** Call the runtime function length, box the scalar result into a vector
-      and then an RVal.
-      */
+    /** Call length runtime, box the scalar result  */
     void visit(ast::LengthCall * node) override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(length, result);
@@ -393,23 +389,20 @@ public:
         result = RUNTIME_CALL(fromDoubleVector, result);
     }
 
-    /** Call to type() function is a call to type() runtime and then boxing of the character vector.
-    */
+    /** Call type runtime and then boxing of the character vector. */
     void visit(ast::TypeCall * node)  override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(type, result);
         result = RUNTIME_CALL(fromCharacterVector, result);
     }
 
-    /** Eval call is translated to runtime eval function.
-    */
+    /** Eval.  */
     void visit(ast::EvalCall * node)  override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(genericEval, env, result);
     }
 
-    /** C call is translated to the concatenation runtime call.
-    */
+    /** Concatenate.  */
     void visit(ast::CCall * node)  override {
         std::vector<llvm::Value *> args;
         args.push_back(fromInt(static_cast<int>(node->args.size())));
@@ -420,8 +413,7 @@ public:
         result = CallInst::Create(m->c, args, "", b);
     }
 
-    /** Index read conpiles the source, and indices expressions and then calls the getElement runtime.
-    */
+    /** Indexed read.  */
     void visit(ast::Index * node) override {
         node->name->accept(this);
         llvm::Value * obj = result;
@@ -448,9 +440,9 @@ public:
         result = rhs;
     }
 
-    /** Conditionals in rift.  Compile the guard, convert the result to a boolean,
-      and branch on that. PHI nodes have to be inserted when control flow merges
-      after the conditional.
+    /** Conditional.  Compile the guard, convert the result to a boolean,
+       and branch on that. PHI nodes have to be inserted when control flow
+       merges after the conditional.
       */
     void visit(ast::IfElse * node) override {
         node->guard->accept(this);
@@ -466,7 +458,7 @@ public:
         node->ifClause->accept(this);
         llvm::Value * trueResult = result;
         BranchInst::Create(merge, b);
-        // remember the last basic block of the case (this will denote the incomming path to the phi node)
+        // remember the last BB of the case (this will denote the incomming path to the phi node)
         ifTrue = b;
         // do the same for else case
         b = ifFalse;
@@ -483,28 +475,28 @@ public:
         result = phi;
     }
 
-    /** Compiles while loop.
-
-      Due to the simple nature of the while loop, we do not have to worry about phi nodes, which would normally pop up in loop as well as in conditionals.
+    /** While. The loop is simple enough that we don't have to worry about
+	PHI nodes.
       */
     void visit(ast::WhileLoop * node) override {
-        // create basic blocks for the loop start (evaluation of the guard), loop body, and the block after the loop, when we exit it
+        // create BB for loop start (evaluation of the guard), loop body, and exit
         BasicBlock * loopStart = BasicBlock::Create(getGlobalContext(), "loopStart", f, nullptr);
         BasicBlock * loopBody = BasicBlock::Create(getGlobalContext(), "loopBody", f, nullptr);
         BasicBlock * loopNext = BasicBlock::Create(getGlobalContext(), "afterLoop", f, nullptr);
-        // jump to loop start 
+        // jump to start 
         BranchInst::Create(loopStart, b);
-        // compile loop start as the evaluation of the guard and conditional branch to the body, or after the loop
+        // compile start as the evaluation of the guard and conditional branch
         b = loopStart;
         node->guard->accept(this);
         llvm::Value * whileResult = result;
         llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
         BranchInst::Create(loopBody, loopNext, guard, b);
-        // compile the loop body, at the end of the loop body, branch to loop start to evaluate the guard again
+        // compile loop body, at the end of the loop body, branch to start
         b = loopBody;
         node->body->accept(this);
         BranchInst::Create(loopStart, b);
-        // set the current basic block to the one after the loop, the result is the guard (just because the result must be soething)
+        // set the current BB to the one after the loop, the result is the
+        // guard (just because the result must be soething)
         b = loopNext;
         result = whileResult;
     }
@@ -514,7 +506,7 @@ private:
     BasicBlock * b;
 
     /** Current function. */
-    Function * f;
+    llvm::Function * f;
 
     /** Current Module */
     RiftModule * m;
