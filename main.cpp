@@ -19,7 +19,18 @@ void interactive() {
         try {
             cout << "> ";
             std::string in;
-            getline(cin, in);
+            while (true) {
+                std::string i;
+                getline(cin, i);
+                if (i.empty()) break;
+                if (i.at(i.length() - 1) == '\\') {
+                    in.append(i.substr(0, i.length() - 1));
+                    in.append("\n");
+                } else {
+                    in.append(i);
+                    break;
+                }
+            }
             if (in == "exit")
                 break;
             if (in.empty())
