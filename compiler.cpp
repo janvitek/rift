@@ -1,10 +1,6 @@
 #include "parser.h"
 #include "runtime.h"
-#include "specializedRuntime.h"
 #include "compiler.h"
-#include "type_analysis.h"
-#include "unboxing.h"
-#include "boxing_removal.h"
 #include "pool.h"
 
 #include <initializer_list>
@@ -126,36 +122,15 @@ public:
         NAME_IS(fromDoubleVector);
         NAME_IS(fromCharacterVector);
         NAME_IS(fromFunction);
-        NAME_IS(doubleFromValue);
-        NAME_IS(scalarFromVector);
-        NAME_IS(characterFromValue);
-        NAME_IS(functionFromValue);
-        NAME_IS(doubleGetSingleElement);
-        NAME_IS(doubleGetElement);
-        NAME_IS(characterGetElement);
         NAME_IS(genericGetElement);
-        NAME_IS(doubleSetElement);
-        NAME_IS(scalarSetElement);
-        NAME_IS(characterSetElement);
         NAME_IS(genericSetElement);
-        NAME_IS(doubleAdd);
-        NAME_IS(characterAdd);
         NAME_IS(genericAdd);
-        NAME_IS(doubleSub);
         NAME_IS(genericSub);
-        NAME_IS(doubleMul);
         NAME_IS(genericMul);
-        NAME_IS(doubleDiv);
         NAME_IS(genericDiv);
-        NAME_IS(doubleEq);
-        NAME_IS(characterEq);
         NAME_IS(genericEq);
-        NAME_IS(doubleNeq);
-        NAME_IS(characterNeq);
         NAME_IS(genericNeq);
-        NAME_IS(doubleLt);
         NAME_IS(genericLt);
-        NAME_IS(doubleGt);
         NAME_IS(genericGt);
         NAME_IS(createFunction);
         NAME_IS(toBoolean);
@@ -163,10 +138,7 @@ public:
         NAME_IS(length);
         NAME_IS(type);
         NAME_IS(eval);
-        NAME_IS(characterEval);
         NAME_IS(genericEval);
-        NAME_IS(doublec);
-        NAME_IS(characterc);
         NAME_IS(c);
         report_fatal_error("Extern function '" + Name + "' couldn't be resolved!");
     }
@@ -193,7 +165,6 @@ public:
                 .setMCJITMemoryManager(
                         std::unique_ptr<MemoryManager>(new MemoryManager()))
                 .create();
-        optimizeModule(engine);
         engine->finalizeObject();
         // Compile newly registered functions; update their native code in the
         // registered functions vector
@@ -202,24 +173,6 @@ public:
             rec->code = reinterpret_cast<FunPtr>(engine->getPointerToFunction(rec->bitcode));
         }
         return Pool::getFunction(result)->code;
-    }
-
-    /** Optimize on the bitcode before native code generation. The
-      TypeAnalysis, Unboxing and BoxingRemoval are Rift passes, the rest is
-      from LLVM.
-      */
-    void optimizeModule(ExecutionEngine * ee) {
-        auto *pm = new legacy::FunctionPassManager(m);
-        m->setDataLayout(*ee->getDataLayout());
-        pm->add(new TypeAnalysis());
-        pm->add(new Unboxing());
-        pm->add(new BoxingRemoval());
-        pm->add(createConstantPropagationPass());
-        // Optimize each function of this module
-        for (llvm::Function & f : *m) {
-            pm->run(f);
-        }
-        delete pm;
     }
 
     /** Translates a function to bitcode, registers it with the runtime, and
@@ -370,15 +323,7 @@ public:
 
     /** Rift Function Call. First obtain the function pointer, then arguments. */
     void visit(ast::UserCall * node) override {
-        node->name->accept(this);
-        std::vector<Value *> args;
-        args.push_back(result);
-        args.push_back(fromInt(node->args.size()));
-        for (ast::Exp * arg : node->args) {
-            arg->accept(this);
-            args.push_back(result);
-        }
-        result = CallInst::Create(m->call, args, "", b);
+        throw "Caaally caaaly caaaly call";
     }
 
     /** Call length runtime, box the scalar result  */
@@ -479,26 +424,7 @@ public:
 	PHI nodes.
       */
     void visit(ast::WhileLoop * node) override {
-        // create BB for loop start (evaluation of the guard), loop body, and exit
-        BasicBlock * loopStart = BasicBlock::Create(getGlobalContext(), "loopStart", f, nullptr);
-        BasicBlock * loopBody = BasicBlock::Create(getGlobalContext(), "loopBody", f, nullptr);
-        BasicBlock * loopNext = BasicBlock::Create(getGlobalContext(), "afterLoop", f, nullptr);
-        // jump to start 
-        BranchInst::Create(loopStart, b);
-        // compile start as the evaluation of the guard and conditional branch
-        b = loopStart;
-        node->guard->accept(this);
-        llvm::Value * whileResult = result;
-        llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
-        BranchInst::Create(loopBody, loopNext, guard, b);
-        // compile loop body, at the end of the loop body, branch to start
-        b = loopBody;
-        node->body->accept(this);
-        BranchInst::Create(loopStart, b);
-        // set the current BB to the one after the loop, the result is the
-        // guard (just because the result must be soething)
-        b = loopNext;
-        result = whileResult;
+        throw "Looopy looopy looopy loop";
     }
 
 private:
