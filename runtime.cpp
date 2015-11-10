@@ -377,14 +377,8 @@ RVal * call(RVal * callee, unsigned argc, ...) {
     if (callee->type != RVal::Type::Function) throw "Not a function!";
     Function * f = callee->f;
     if (f->argsSize != argc) throw "Wrong number of arguments";
-    Environment * calleeEnv = new Environment(f->env);
-    va_list ap;
-    va_start(ap, argc);
-    for (unsigned i = 0; i < argc; ++i)
-        // TODO this is pass by reference always!
-        calleeEnv->set(f->args[i], va_arg(ap, RVal *));
-    va_end(ap);
-    return f->code(calleeEnv);
+    assert(false and "You have to implement me too!");
+    return nullptr;
 }
 
 double length(RVal * RVal) {
