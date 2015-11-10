@@ -94,7 +94,6 @@ namespace type {
     FunctionType * d_dv = FUN_TYPE(Double, ptrDoubleVector);
     FunctionType * f_v = FUN_TYPE(ptrFunction, ptrValue);
 
-
     StructType * environmentType() {
         StructType * result = StructType::create(getGlobalContext(), "Environment");
         ptrEnvironment = PointerType::get(result, 0);
@@ -104,83 +103,76 @@ namespace type {
 
 } // namespace rift::type
 
-/** Memory manager helps with loading symbols of runtime functions. 
+/** The Rift Memory manager extends the default LLVM memory manager with
+    support for resolving the Rift runtime functions. This is achieved by
+    extending the behavior of the getSymbolAddress function.
  */
 class MemoryManager : public llvm::SectionMemoryManager {
     MemoryManager(const MemoryManager&) = delete;
     void operator=(const MemoryManager&) = delete;
 
 public:
-    MemoryManager() = default;
-    virtual ~MemoryManager() {}
-
-#define CHECK_RUNTIME(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
-    /** Given a string name, returns the symbol corresponding to it, nullptr if no such symbol exists. 
-    
-    The purpose of this function is to aid LLVM's runtime symbol resolving, which differs between platforms. Thus in a rather trivial way, we check for our own runtime symbols and return pointers to their respective functions if applicable. 
+#define NAME_IS(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
+    /** Return the address of symbol, or nullptr if undefind. We extend the
+	default LLVM resolution with the list of RIFT runtime functions.
     */
-    uint64_t getSymbolAddress(const std::string &Name) override {
-        uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
-        if (addr) {
-            return addr;
-        } else {
-            CHECK_RUNTIME(envCreate);
-            CHECK_RUNTIME(envGet);
-            CHECK_RUNTIME(envSet);
-            CHECK_RUNTIME(doubleVectorLiteral);
-            CHECK_RUNTIME(characterVectorLiteral);
-            CHECK_RUNTIME(fromDoubleVector);
-            CHECK_RUNTIME(fromCharacterVector);
-            CHECK_RUNTIME(fromFunction);
-            CHECK_RUNTIME(doubleFromValue);
-            CHECK_RUNTIME(scalarFromVector);
-            CHECK_RUNTIME(characterFromValue);
-            CHECK_RUNTIME(functionFromValue);
-            CHECK_RUNTIME(doubleGetSingleElement);
-            CHECK_RUNTIME(doubleGetElement);
-            CHECK_RUNTIME(characterGetElement);
-            CHECK_RUNTIME(genericGetElement);
-            CHECK_RUNTIME(doubleSetElement);
-            CHECK_RUNTIME(scalarSetElement);
-            CHECK_RUNTIME(characterSetElement);
-            CHECK_RUNTIME(genericSetElement);
-            CHECK_RUNTIME(doubleAdd);
-            CHECK_RUNTIME(characterAdd);
-            CHECK_RUNTIME(genericAdd);
-            CHECK_RUNTIME(doubleSub);
-            CHECK_RUNTIME(genericSub);
-            CHECK_RUNTIME(doubleMul);
-            CHECK_RUNTIME(genericMul);
-            CHECK_RUNTIME(doubleDiv);
-            CHECK_RUNTIME(genericDiv);
-            CHECK_RUNTIME(doubleEq);
-            CHECK_RUNTIME(characterEq);
-            CHECK_RUNTIME(genericEq);
-            CHECK_RUNTIME(doubleNeq);
-            CHECK_RUNTIME(characterNeq);
-            CHECK_RUNTIME(genericNeq);
-            CHECK_RUNTIME(doubleLt);
-            CHECK_RUNTIME(genericLt);
-            CHECK_RUNTIME(doubleGt);
-            CHECK_RUNTIME(genericGt);
-            CHECK_RUNTIME(createFunction);
-            CHECK_RUNTIME(toBoolean);
-            CHECK_RUNTIME(call);
-            CHECK_RUNTIME(length);
-            CHECK_RUNTIME(type);
-            CHECK_RUNTIME(eval);
-            CHECK_RUNTIME(characterEval);
-            CHECK_RUNTIME(genericEval);
-            CHECK_RUNTIME(doublec);
-            CHECK_RUNTIME(characterc);
-            CHECK_RUNTIME(c);
-            report_fatal_error("Program used extern function '" + Name +
-                "' which could not be resolved!");
-        }
-        return addr;
-
-    }
-
+  uint64_t getSymbolAddress(const std::string & Name) override {
+    uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
+    if (addr != 0) return addr;
+    // This bit is for some OSes (Windows and OSX where the MCJIT symbol
+    // loading is broken)
+    NAME_IS(envCreate);
+    NAME_IS(envGet);
+    NAME_IS(envSet);
+    NAME_IS(doubleVectorLiteral);
+    NAME_IS(characterVectorLiteral);
+    NAME_IS(fromDoubleVector);
+    NAME_IS(fromCharacterVector);
+    NAME_IS(fromFunction);
+    NAME_IS(doubleFromValue);
+    NAME_IS(scalarFromVector);
+    NAME_IS(characterFromValue);
+    NAME_IS(functionFromValue);
+    NAME_IS(doubleGetSingleElement);
+    NAME_IS(doubleGetElement);
+    NAME_IS(characterGetElement);
+    NAME_IS(genericGetElement);
+    NAME_IS(doubleSetElement);
+    NAME_IS(scalarSetElement);
+    NAME_IS(characterSetElement);
+    NAME_IS(genericSetElement);
+    NAME_IS(doubleAdd);
+    NAME_IS(characterAdd);
+    NAME_IS(genericAdd);
+    NAME_IS(doubleSub);
+    NAME_IS(genericSub);
+    NAME_IS(doubleMul);
+    NAME_IS(genericMul);
+    NAME_IS(doubleDiv);
+    NAME_IS(genericDiv);
+    NAME_IS(doubleEq);
+    NAME_IS(characterEq);
+    NAME_IS(genericEq);
+    NAME_IS(doubleNeq);
+    NAME_IS(characterNeq);
+    NAME_IS(genericNeq);
+    NAME_IS(doubleLt);
+    NAME_IS(genericLt);
+    NAME_IS(doubleGt);
+    NAME_IS(genericGt);
+    NAME_IS(createFunction);
+    NAME_IS(toBoolean);
+    NAME_IS(call);
+    NAME_IS(length);
+    NAME_IS(type);
+    NAME_IS(eval);
+    NAME_IS(characterEval);
+    NAME_IS(genericEval);
+    NAME_IS(doublec);
+    NAME_IS(characterc);
+    NAME_IS(c);
+    report_fatal_error("Extern function '"+Name+"' couldn't be resolved!");
+  }
 };
 
 /** The compiler: a visitor over the AST.
