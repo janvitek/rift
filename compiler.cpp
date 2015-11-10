@@ -13,13 +13,17 @@ namespace rift {
 
 namespace type {
 
-    /** Initialization of the type declarations.
+  /** Initialization of the type declarations.
 
-    Each C/C++ type we are using must be declared here in LLVM structures so that LLVM understands it. 
-     */
-#define STRUCT(name, ...) StructType::create(name, __VA_ARGS__, nullptr)
-#define FUN_TYPE(result, ...) FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
-#define FUN_TYPE_VARARG(result, ...) FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
+      Each C/C++ type we are using must be declared here in LLVM structures
+      so that LLVM understands it.
+  */
+#define STRUCT(name, ...) \
+  StructType::create(name, __VA_ARGS__, nullptr)
+#define FUN_TYPE(result, ...) \
+  FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
+#define FUN_TYPE_VARARG(result, ...) \
+  FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
 
     StructType * environmentType();
 
