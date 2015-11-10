@@ -112,71 +112,69 @@ StructType * environmentType() {
   extending the behavior of the getSymbolAddress function.
   */
 class MemoryManager : public llvm::SectionMemoryManager {
-    MemoryManager(const MemoryManager&) = delete;
-    void operator=(const MemoryManager&) = delete;
 
     public:
 #define NAME_IS(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
-    /** Return the address of symbol, or nullptr if undefind. We extend the
-      default LLVM resolution with the list of RIFT runtime functions.
-      */
-    uint64_t getSymbolAddress(const std::string & Name) override {
-        uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
-        if (addr != 0) return addr;
-        // This bit is for some OSes (Windows and OSX where the MCJIT symbol
-        // loading is broken)
-        NAME_IS(envCreate);
-        NAME_IS(envGet);
-        NAME_IS(envSet);
-        NAME_IS(doubleVectorLiteral);
-        NAME_IS(characterVectorLiteral);
-        NAME_IS(fromDoubleVector);
-        NAME_IS(fromCharacterVector);
-        NAME_IS(fromFunction);
-        NAME_IS(doubleFromValue);
-        NAME_IS(scalarFromVector);
-        NAME_IS(characterFromValue);
-        NAME_IS(functionFromValue);
-        NAME_IS(doubleGetSingleElement);
-        NAME_IS(doubleGetElement);
-        NAME_IS(characterGetElement);
-        NAME_IS(genericGetElement);
-        NAME_IS(doubleSetElement);
-        NAME_IS(scalarSetElement);
-        NAME_IS(characterSetElement);
-        NAME_IS(genericSetElement);
-        NAME_IS(doubleAdd);
-        NAME_IS(characterAdd);
-        NAME_IS(genericAdd);
-        NAME_IS(doubleSub);
-        NAME_IS(genericSub);
-        NAME_IS(doubleMul);
-        NAME_IS(genericMul);
-        NAME_IS(doubleDiv);
-        NAME_IS(genericDiv);
-        NAME_IS(doubleEq);
-        NAME_IS(characterEq);
-        NAME_IS(genericEq);
-        NAME_IS(doubleNeq);
-        NAME_IS(characterNeq);
-        NAME_IS(genericNeq);
-        NAME_IS(doubleLt);
-        NAME_IS(genericLt);
-        NAME_IS(doubleGt);
-        NAME_IS(genericGt);
-        NAME_IS(createFunction);
-        NAME_IS(toBoolean);
-        NAME_IS(call);
-        NAME_IS(length);
-        NAME_IS(type);
-        NAME_IS(eval);
-        NAME_IS(characterEval);
-        NAME_IS(genericEval);
-        NAME_IS(doublec);
-        NAME_IS(characterc);
-        NAME_IS(c);
-        report_fatal_error("Extern function '"+Name+"' couldn't be resolved!");
-    }
+        /** Return the address of symbol, or nullptr if undefind. We extend the
+          default LLVM resolution with the list of RIFT runtime functions.
+          */
+        uint64_t getSymbolAddress(const std::string & Name) override {
+            uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
+            if (addr != 0) return addr;
+            // This bit is for some OSes (Windows and OSX where the MCJIT symbol
+            // loading is broken)
+            NAME_IS(envCreate);
+            NAME_IS(envGet);
+            NAME_IS(envSet);
+            NAME_IS(doubleVectorLiteral);
+            NAME_IS(characterVectorLiteral);
+            NAME_IS(fromDoubleVector);
+            NAME_IS(fromCharacterVector);
+            NAME_IS(fromFunction);
+            NAME_IS(doubleFromValue);
+            NAME_IS(scalarFromVector);
+            NAME_IS(characterFromValue);
+            NAME_IS(functionFromValue);
+            NAME_IS(doubleGetSingleElement);
+            NAME_IS(doubleGetElement);
+            NAME_IS(characterGetElement);
+            NAME_IS(genericGetElement);
+            NAME_IS(doubleSetElement);
+            NAME_IS(scalarSetElement);
+            NAME_IS(characterSetElement);
+            NAME_IS(genericSetElement);
+            NAME_IS(doubleAdd);
+            NAME_IS(characterAdd);
+            NAME_IS(genericAdd);
+            NAME_IS(doubleSub);
+            NAME_IS(genericSub);
+            NAME_IS(doubleMul);
+            NAME_IS(genericMul);
+            NAME_IS(doubleDiv);
+            NAME_IS(genericDiv);
+            NAME_IS(doubleEq);
+            NAME_IS(characterEq);
+            NAME_IS(genericEq);
+            NAME_IS(doubleNeq);
+            NAME_IS(characterNeq);
+            NAME_IS(genericNeq);
+            NAME_IS(doubleLt);
+            NAME_IS(genericLt);
+            NAME_IS(doubleGt);
+            NAME_IS(genericGt);
+            NAME_IS(createFunction);
+            NAME_IS(toBoolean);
+            NAME_IS(call);
+            NAME_IS(length);
+            NAME_IS(type);
+            NAME_IS(eval);
+            NAME_IS(characterEval);
+            NAME_IS(genericEval);
+            NAME_IS(doublec);
+            NAME_IS(characterc);
+            NAME_IS(c);
+            report_fatal_error("Extern function '"+Name+"' couldn't be resolved!");
+        }
 };
 
 /** The compiler: a visitor over the AST.
@@ -261,6 +259,16 @@ class Compiler : public Visitor {
             return result;
         }
 
+        /** Runtime function call. The first argument is the name of a runtime
+          function defined in the RiftModule. The remaining arguments are passed
+          to the function. The string is the name of the register where the result
+          of the call will be stored, when empty, LLVM picks. The last argument is
+          the BB where to append. */
+#define RUNTIME_CALL(name, ...) \
+        CallInst::Create(m->name,				     \
+                std::vector<llvm::Value*>({__VA_ARGS__}), \
+                "", \
+                b)
 
         /** Shorthand for calling runtime functions.  */
 #define RUNTIME_CALL(name, ...) \
