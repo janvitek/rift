@@ -403,8 +403,7 @@ RVal * genericNeq(RVal * lhs, RVal * rhs);
 /** Compares doubles using '<', or raises an error. */
 RVal * genericLt(RVal * lhs, RVal * rhs);
 
-  /** Compares doubles using '>', or raises an  errror. */
-*/
+/** Compares doubles using '>', or raises an  errror. */
 RVal * genericGt(RVal * lhs, RVal * rhs);
 
 /** Creates a function and binds it to env. Functions are identified by an
