@@ -383,12 +383,11 @@ RVal * call(RVal * callee, unsigned argc, ...) {
 
 double length(RVal * RVal) {
     switch (RVal->type) {
-    case RVal::Type::Double:
-        return RVal->d->size;
-    case RVal::Type::Character:
-        return RVal->c->size;
-    default:
+        // TODO: implement length
+    case RVal::Type::Function:
         throw "Cannot determine length of a function";
+    default:
+        throw "Cannot determine length of unknown object";
     }
 
 }
