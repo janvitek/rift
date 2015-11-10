@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <ciso646>
+#pragma warning(disable : 4267 4297)
 
 #include "lexer.h"
 
