@@ -175,7 +175,7 @@ typedef RVal * (*FunPtr)(Environment *);
     bitcode, an argument list, and an arity.  The bitcode and argument names
     are there for debugging purposes.
  */
-struct Function {
+struct RFun {
 
     Environment * env;
 
@@ -190,7 +190,7 @@ struct Function {
     /** Create a Rift function. A new argument list is needed, everything
 	else is shared.
     */
-    Function(rift::ast::Fun * fun, llvm::Function * bitcode):
+    RFun(rift::ast::Fun * fun, llvm::Function * bitcode):
         env(nullptr),
         code(nullptr),
         bitcode(bitcode),
@@ -204,7 +204,7 @@ struct Function {
     /** Create a closure by copying function f and binding it to environment
 	e. Arguments are shared.
      */
-    Function(Function * f, Environment * e):
+    RFun(RFun * f, Environment * e):
         env(e),
         code(f->code),
         bitcode(f->bitcode),
@@ -213,7 +213,7 @@ struct Function {
     }
   
   /* Args and env are shared, they are not deleted. */
-    ~Function() { }
+    ~RFun() { }
 
     /** Prints bitcode to given stream.  */
     void print(std::ostream & s) {
@@ -238,7 +238,7 @@ struct RVal {
     union {
         DoubleVector * d;
         CharacterVector * c;
-        ::Function * f;
+        RFun * f;
     };
 
     /** Creates a boxed double vector from given numbers.   */
@@ -266,7 +266,7 @@ struct RVal {
     }
 
     /** Boxes given Function. Takes ownership of the vector. */
-    RVal(::Function * f):
+    RVal(RFun * f):
         type(Type::Function),
         f(f) {
     }
@@ -374,7 +374,7 @@ RVal * fromDoubleVector(DoubleVector * from);
 RVal * fromCharacterVector(CharacterVector * from);
 
 /** Boxes function. */
-RVal * fromFunction(::Function * from);
+RVal * fromFunction(RFun * from);
 
 /** Returns the value at index.  */
 RVal * genericGetElement(RVal * from, RVal * index);
@@ -409,7 +409,7 @@ RVal * genericGt(RVal * lhs, RVal * rhs);
 /** Creates a function and binds it to env. Functions are identified by an
     index assigned at compile time.
  */
-::Function * createFunction(int index, Environment * env);
+RFun * createFunction(int index, Environment * env);
 
 /** Given a value, converts it to a boolean. Used in branches. */
 bool toBoolean(RVal * value);

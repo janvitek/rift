@@ -47,7 +47,7 @@ RVal * fromCharacterVector(CharacterVector * from) {
     return new RVal(from);
 }
 
-RVal * fromFunction(Function * from) {
+RVal * fromFunction(RFun * from) {
     return new RVal(from);
 }
 
@@ -69,7 +69,7 @@ CharacterVector * characterFromValue(RVal *v) {
     return v->c;
 
 }
-Function * functionFromValue(RVal *v) {
+RFun * functionFromValue(RVal *v) {
     if (v->type != RVal::Type::Function)
         throw "Invalid type";
     return v->f;
@@ -354,8 +354,8 @@ RVal * genericGt(RVal * lhs, RVal * rhs) {
     }
 }
 
-Function * createFunction(int index, Environment * env) {
-    return new Function(Pool::getFunction(index), env);
+RFun * createFunction(int index, Environment * env) {
+    return new RFun(Pool::getFunction(index), env);
 }
 
 bool toBoolean(RVal * RVal) {
@@ -374,7 +374,7 @@ bool toBoolean(RVal * RVal) {
 
 RVal * call(RVal * callee, unsigned argc, ...) {
     if (callee->type != RVal::Type::Function) throw "Not a function!";
-    Function * f = callee->f;
+    RFun * f = callee->f;
     if (f->argsSize != argc) throw "Wrong number of arguments";
     Environment * calleeEnv = new Environment(f->env);
     va_list ap;

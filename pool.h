@@ -20,14 +20,14 @@ public:
 
     /** Returns the index-th compiled function. 
      */
-    static ::Function * getFunction(int index) {
+    static RFun * getFunction(int index) {
         return f_[index];
     }
 
     /** Adds given function to the list of compiled objects. 
      */
     static int addFunction(ast::Fun * fun, llvm::Function * bitcode) {
-        ::Function * f = new ::Function(fun, bitcode);
+        RFun * f = new RFun(fun, bitcode);
         f_.push_back(f);
         return f_.size() - 1;
     }
@@ -52,7 +52,7 @@ private:
 
     /** List of compiled functions. 
      */
-    static std::vector<::Function *> f_;
+    static std::vector<RFun *> f_;
 
     /** List of constant pool objects. 
      */

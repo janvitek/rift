@@ -20,7 +20,7 @@ extern "C" {
 
     /** Unboxes value to the function object it contains.
     */
-    ::Function * functionFromValue(RVal *v);
+    RFun * functionFromValue(RVal *v);
 
 
     /** Returns a scalar double element from given double vector.

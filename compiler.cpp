@@ -195,7 +195,7 @@ public:
         // Compile newly registered functions; update their native code in the
         // registered functions vector
         for (; start < Pool::functionsCount(); ++start) {
-            ::Function * rec = Pool::getFunction(start);
+            RFun * rec = Pool::getFunction(start);
             rec->code = reinterpret_cast<FunPtr>(engine->getPointerToFunction(rec->bitcode));
         }
         return Pool::getFunction(result)->code;
@@ -213,7 +213,7 @@ public:
         pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
-        for (llvm::Function & f : *m) {
+        for (Function & f : *m) {
             pm->run(f);
         }
         delete pm;
@@ -224,12 +224,12 @@ public:
       */
     int compileFunction(ast::Fun * node) {
         // Backup context in case we are creating a nested function
-        llvm::Function * oldF = f;
+        Function * oldF = f;
         BasicBlock * oldB = b;
         llvm::Value * oldEnv = env;
         // Create the function and its first BB
-        f = llvm::Function::Create(type::NativeCode,
-                llvm::Function::ExternalLinkage,
+        f = Function::Create(type::NativeCode,
+                Function::ExternalLinkage,
                 "riftFunction",
                 m);
         b = BasicBlock::Create(getGlobalContext(),
@@ -238,7 +238,7 @@ public:
                 nullptr);
         // Get the (single) argument of the function and store is as the
         // environment
-        llvm::Function::arg_iterator args = f->arg_begin();
+        Function::arg_iterator args = f->arg_begin();
         env = args++;
         env->setName("env");
         // Compile body 
@@ -511,7 +511,7 @@ private:
     BasicBlock * b;
 
     /** Current function. */
-    llvm::Function * f;
+    Function * f;
 
     /** Current Module */
     RiftModule * m;
