@@ -14,17 +14,15 @@ namespace rift {
 
 namespace type {
 
-/** Initialization of the type declarations.
-
-  Each C/C++ type we are using must be declared here in LLVM
-  structures so that LLVM understands it.
+/** Initialization type declarations. Each Rift type must be declared to
+    LLVM.
   */
 #define STRUCT(name, ...) \
-StructType::create(name, __VA_ARGS__, nullptr)
+    StructType::create(name, __VA_ARGS__, nullptr)
 #define FUN_TYPE(result, ...) \
-FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
+    FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
 #define FUN_TYPE_VARARG(result, ...) \
-FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
+    FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
 
 StructType * environmentType();
 
@@ -43,10 +41,8 @@ StructType * CharacterVector = STRUCT("CharacterVector", ptrCharacter, Int);
 PointerType * ptrDoubleVector = PointerType::get(DoubleVector, 0);
 PointerType * ptrCharacterVector = PointerType::get(CharacterVector, 0);
 
-// union
 StructType * Value = STRUCT("Value", Int, ptrDoubleVector);
 PointerType * ptrValue = PointerType::get(Value, 0);
-
 
 StructType * Binding = STRUCT("Binding", Int, ptrValue);
 PointerType * ptrBinding = PointerType::get(Binding, 0);
@@ -58,7 +54,6 @@ FunctionType * NativeCode = FUN_TYPE(ptrValue, ptrEnvironment);
 
 StructType * Function = STRUCT("Function", ptrEnvironment, NativeCode, ptrInt, Int);
 PointerType * ptrFunction = PointerType::get(Function, 0);
-
 
 FunctionType * dv_d = FUN_TYPE(ptrDoubleVector, Double);
 FunctionType * cv_i = FUN_TYPE(ptrCharacterVector, Int);
@@ -105,19 +100,18 @@ StructType * environmentType() {
     result->setBody(ptrEnvironment, ptrBinding, Int, nullptr);
     return result;
 }
-
 } // namespace rift::type
 
 /** The Rift Memory manager extends the default LLVM memory manager with
-  support for resolving the Rift runtime functions. This is achieved by
-  extending the behavior of the getSymbolAddress function.
+    support for resolving the Rift runtime functions. This is achieved by
+    extending the behavior of the getSymbolAddress function.
   */
 class MemoryManager : public llvm::SectionMemoryManager {
 
 public:
 #define NAME_IS(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
     /** Return the address of symbol, or nullptr if undefind. We extend the
-      default LLVM resolution with the list of RIFT runtime functions.
+        default LLVM resolution with the list of RIFT runtime functions.
       */
     uint64_t getSymbolAddress(const std::string & Name) override {
         uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
@@ -178,7 +172,8 @@ public:
     }
 };
 
-/** The compiler: a visitor over the AST.
+/** 
+    The compiler: a visitor over the AST.
 */
 class Compiler : public Visitor {
 public:
