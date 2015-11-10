@@ -14,13 +14,17 @@ namespace rift {
 
 namespace type {
 
-    /** Initialization of the type declarations.
+  /** Initialization of the type declarations.
 
-    Each C/C++ type we are using must be declared here in LLVM structures so that LLVM understands it. 
-     */
-#define STRUCT(name, ...) StructType::create(name, __VA_ARGS__, nullptr)
-#define FUN_TYPE(result, ...) FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
-#define FUN_TYPE_VARARG(result, ...) FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
+      Each C/C++ type we are using must be declared here in LLVM structures
+      so that LLVM understands it.
+  */
+#define STRUCT(name, ...) \
+  StructType::create(name, __VA_ARGS__, nullptr)
+#define FUN_TYPE(result, ...) \
+  FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
+#define FUN_TYPE_VARARG(result, ...) \
+  FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
 
     StructType * environmentType();
 
@@ -109,8 +113,6 @@ namespace type {
     extending the behavior of the getSymbolAddress function.
  */
 class MemoryManager : public llvm::SectionMemoryManager {
-    MemoryManager(const MemoryManager&) = delete;
-    void operator=(const MemoryManager&) = delete;
 
 public:
 #define NAME_IS(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
@@ -259,7 +261,11 @@ public:
     }
 
 
-    /** Shorthand for calling runtime functions.  */
+/** Runtime function call. The first argument is the name of a runtime
+    function defined in the RiftModule. The remaining arguments are passed
+    to the function. The string is the name of the register where the result
+    of the call will be stored, when empty, LLVM picks. The last argument is
+    the BB where to append. */
 #define RUNTIME_CALL(name, ...) \
   CallInst::Create(m->name, \
            std::vector<llvm::Value*>({__VA_ARGS__}), \

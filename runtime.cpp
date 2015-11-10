@@ -80,7 +80,6 @@ Function * functionFromValue(RVal *v) {
 }
 
 
-
 double doubleGetSingleElement(DoubleVector * from, double index) {
     if (index < 0 or index >= from->size)
         throw "Index out of bounds";
@@ -379,11 +378,9 @@ bool toBoolean(RVal * RVal) {
 }
 
 RVal * call(RVal * callee, unsigned argc, ...) {
-    if (callee->type != RVal::Type::Function)
-        throw "Only functions can be called";
+    if (callee->type != RVal::Type::Function) throw "Not a function!";
     Function * f = callee->f;
-    if (f->argsSize != argc)
-        throw "Invalid number of arguments given";
+    if (f->argsSize != argc) throw "Wrong number of arguments";
     Environment * calleeEnv = new Environment(f->env);
     va_list ap;
     va_start(ap, argc);
