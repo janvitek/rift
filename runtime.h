@@ -311,8 +311,7 @@ struct RVal {
                     if (c->data[i] != other.c->data[i]) return false;
                 return true;
             }
-            case Type::Function:
-            default: // just to silence warnings
+            default: // For functions...
 	      return f == other.f;
         }
     }
@@ -333,8 +332,7 @@ struct RVal {
                     if (c->data[i] != other.c->data[i]) return true;
                 return false;
             }
-            case Type::Function:
-            default: // just to silence warnings
+            default: // Functions
                 return f != other.f;
         }
     }
@@ -346,126 +344,100 @@ inline std::ostream & operator << (std::ostream & s, RVal const & value) {
     return s;
 }
 
-/** Functions available to the rift runtime. While the above mentioned objects and their methods could have been used, the C++ name mangling and other peculiarities of the OOP would make the llvm's code very complex. 
+/** Functions are defined "extern C" to avoid exposing C++ name mangling to
+    LLVM. Dealing with C++ would make the compiler less readable.
 
-Therefore all interaction with the runtime objects is done by these functions with rather simple interface. The additional level of indirection this creates can be easily elliminated by obtaining the bitcode of the functions using clang and then letting LLVM inline them directly into the code. 
+    For better performance, one could obtain the bitcode of these functions
+    and inline that at code generation time.
 */
 extern "C" {
 
-/** Creates new environment using given parent. 
-*/
+/** Creates new environment from parent. */
 Environment * envCreate(Environment * parent);
 
-/** Returns value of given symbol in the specified environment or its parents. 
-
-Raises an error if not found. 
- */
+/** Get value of symbol in env or its parent. Throw if not found. */
 RVal * envGet(Environment * env, int symbol);
 
-/** Binds given symbol to the value in the specified environment. 
- */
+/** Binds symbol to the value in env. */
 void envSet(Environment * env, int symbol, RVal * value);
 
-/** Creates a double vector from the literal. 
- */
+/** Creates a double vector from the literal. */
 DoubleVector * doubleVectorLiteral(double value);
 
-/** Creates a character vector from the literal. 
- */
+/** Creates a CV from the literal at cpIndex in the constant pool */
 CharacterVector * characterVectorLiteral(int cpIndex);
 
-/** Boxes double vector into a Value. 
- */
+/** Boxes double vector. */
 RVal * fromDoubleVector(DoubleVector * from);
 
-/** Boxes character vector into a Value. 
- */
+/** Boxes character vector. */
 RVal * fromCharacterVector(CharacterVector * from);
 
-/** Boxes function into Value. 
- */
+/** Boxes function. */
 RVal * fromFunction(::Function * from);
 
-/** Returns a subset of given value. 
- */
+/** Returns the value at index.  */
 RVal * genericGetElement(RVal * from, RVal * index);
 
-/** Sets given subset of the value. 
- */
+/** Sets the value at index.  */
 void genericSetElement(RVal * target, RVal * index, RVal * value);
 
-/** Adds or concatenates two values. 
- */
+/** Adds doubles and concatenates strings. */
 RVal * genericAdd(RVal * lhs, RVal * rhs);
 
-/** Subtracts two boxed double vectors, or raises an error. 
- */
+/** Subtracts doubles, or raises an error. */
 RVal * genericSub(RVal * lhs, RVal * rhs);
 
-/** Multiplies two boxed double vectors, or raises an error.
-*/
+/** Multiplies doubles, or raises an error. */
 RVal * genericMul(RVal * lhs, RVal * rhs);
 
-/** Divides two boxed double vectors, or raises an error.
-*/
+/** Divides  doubles, or raises an error. */
 RVal * genericDiv(RVal * lhs, RVal * rhs);
 
-/** Compares the equality of two values. 
- */
+/** Compares values for equality. */
 RVal * genericEq(RVal * lhs, RVal * rhs);
 
-/** Compares the inequality of two values. 
- */
+/** Compares values for inequality */
 RVal * genericNeq(RVal * lhs, RVal * rhs);
 
-/** Compares two values, raising error if they are not double vectors. 
- */
+/** Compares doubles using '<', or raises an error. */
 RVal * genericLt(RVal * lhs, RVal * rhs);
 
-/** Compares two values, raising error if they are not double vectors.
+  /** Compares doubles using '>', or raises an  errror. */
 */
 RVal * genericGt(RVal * lhs, RVal * rhs);
 
-/** Creates new function and binds it to the specified environment. 
-
-The function is specified by its index (each function is assigned this index when it is compiled, so that the native code can be quickly recovered. 
+/** Creates a function and binds it to env. Functions are identified by an
+    index assigned at compile time.
  */
 ::Function * createFunction(int index, Environment * env);
 
-/** Given any value, converts it to a single boolean result. 
-
-The result of this call is used in conditional branches (if-then-else and while loop). 
- */
+/** Given a value, converts it to a boolean. Used in branches. */
 bool toBoolean(RVal * value);
 
-/** Calls the given function with specified arguments. 
-
-The number of arguments is matched agains the arguments of the function, new environment is created for the callee and its arguments are populated by the values given. Then the function is called, and its return value is returned. 
-
+/** Calls function with argc arguments.  argc must match the arity of the
+    function. A new env is create for the callee and populated by the
+    arguments.
  */
 RVal * call(RVal * callee, unsigned argc, ...);
 
-/** Returns the length of given value if it is a vector. 
- */
+/** Returns the length of a vector.  */
 double length(RVal * value);
 
-/** Returns the type of given value. The result is a character vector of either 'double', 'character', or 'function'. 
+/** Returns the type of a value as a character vector: 'double',
+    'character', or 'function'.
  */
 CharacterVector * type(RVal * value);
 
-/** Evaluates given rift source in the specified environment and returns the return value. 
- */
+/** Evaluates character vector in env. */
 RVal * eval(Environment * env, char const * value);
 
-/** Evaluates given value, raising an error if it is not a characer vector, returning the result otherwise. */
+  /** Evaluates value, raising an error if it is not a characer vector. */
 RVal * genericEval(Environment * env, RVal * value);
 
-/** Joins given values together, raising an error if they are not of the same type, or if there is a function among them. 
+/** Creates a vector, raising an error if they are not of the same type, or
+    if there is a function among them.
  */
 RVal * c(int size, ...);
-
 }
-
-
 #endif // RUNTIME_H
-
