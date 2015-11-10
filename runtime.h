@@ -6,20 +6,19 @@
 #include "llvm.h"
 #include "ast.h"
 
-/** Value forward declaration 
+/** Value: forward declaration 
 */
 struct RVal;
 
-/** Character vector. 
-
-Character vector is essentally a string. Any non-negative lengths are supported and characters are null terminated. The size of the character vector is the size of the data array minus one for the null termination which is not user accessible. 
+/** Character vector: strings of variable size. They are null
+    terminated. Size excludes the trailing terminator.
 */
 struct CharacterVector {
     char * data;
 
     unsigned size;
 
-    /** Creates the character vector from given data and size. 
+    /** Creates a CV from given data and size. 
     
     Takes ownership of the data. 
     */
