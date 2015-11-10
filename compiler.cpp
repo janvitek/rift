@@ -1,6 +1,5 @@
 #include "parser.h"
 #include "runtime.h"
-#include "specializedRuntime.h"
 #include "compiler.h"
 #include "type_checker.h"
 #include "type_analysis.h"
@@ -125,36 +124,15 @@ public:
         NAME_IS(fromDoubleVector);
         NAME_IS(fromCharacterVector);
         NAME_IS(fromFunction);
-        NAME_IS(doubleFromValue);
-        NAME_IS(scalarFromVector);
-        NAME_IS(characterFromValue);
-        NAME_IS(functionFromValue);
-        NAME_IS(doubleGetSingleElement);
-        NAME_IS(doubleGetElement);
-        NAME_IS(characterGetElement);
         NAME_IS(genericGetElement);
-        NAME_IS(doubleSetElement);
-        NAME_IS(scalarSetElement);
-        NAME_IS(characterSetElement);
         NAME_IS(genericSetElement);
-        NAME_IS(doubleAdd);
-        NAME_IS(characterAdd);
         NAME_IS(genericAdd);
-        NAME_IS(doubleSub);
         NAME_IS(genericSub);
-        NAME_IS(doubleMul);
         NAME_IS(genericMul);
-        NAME_IS(doubleDiv);
         NAME_IS(genericDiv);
-        NAME_IS(doubleEq);
-        NAME_IS(characterEq);
         NAME_IS(genericEq);
-        NAME_IS(doubleNeq);
-        NAME_IS(characterNeq);
         NAME_IS(genericNeq);
-        NAME_IS(doubleLt);
         NAME_IS(genericLt);
-        NAME_IS(doubleGt);
         NAME_IS(genericGt);
         NAME_IS(createFunction);
         NAME_IS(toBoolean);
@@ -162,10 +140,7 @@ public:
         NAME_IS(length);
         NAME_IS(type);
         NAME_IS(eval);
-        NAME_IS(characterEval);
         NAME_IS(genericEval);
-        NAME_IS(doublec);
-        NAME_IS(characterc);
         NAME_IS(c);
         report_fatal_error("Extern function '" + Name + "' couldn't be resolved!");
     }
@@ -210,7 +185,6 @@ public:
                 .setMCJITMemoryManager(
                         std::unique_ptr<MemoryManager>(new MemoryManager()))
                 .create();
-        optimizeModule(engine);
         engine->finalizeObject();
         // Compile newly registered functions; update their native code in the
         // registered functions vector
@@ -230,8 +204,6 @@ public:
         m->setDataLayout(*ee->getDataLayout());
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
-        //        pm->add(new Unboxing());
-//        pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
