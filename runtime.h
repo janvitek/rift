@@ -20,7 +20,7 @@ struct CharacterVector {
 
     /** Creates a CV from given data and size. Takes ownership of the data.
     */
-    CharacterVector(int size):
+    CharacterVector(size_t size):
         data(new char[size + 1]),
         size(size) {
         data[size] = 0;
