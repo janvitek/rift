@@ -35,10 +35,7 @@ DoubleVector * doubleVectorLiteral(double RVal) {
 
 CharacterVector * characterVectorLiteral(int cpIndex) {
     std::string const & original = Pool::getPoolObject(cpIndex);
-    char * dest = new char[original.size() + 1];
-    memcpy(dest, original.c_str(), original.size());
-    dest[original.size()] = 0;
-    return new CharacterVector(dest, original.size());
+    return new CharacterVector(original.c_str());
 
 }
 
@@ -100,15 +97,14 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
 
 CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
-    char * result = new char[resultSize + 1];
+    CharacterVector * result = new CharacterVector(resultSize);
     for (unsigned i = 0; i < resultSize; ++i) {
         unsigned idx = index->data[i];
         if (idx >= from->size)
             throw "Index out of bounds";
-        result[i] = from->data[idx];
+        result->data[i] = from->data[idx];
     }
-    result[resultSize] = 0;
-    return new CharacterVector(result, resultSize);
+    return result;
 }
 
 
@@ -180,11 +176,10 @@ DoubleVector * doubleAdd(DoubleVector * lhs, DoubleVector * rhs) {
 
 CharacterVector * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = lhs->size + rhs->size;
-    char * result = new char(resultSize + 1);
-    memcpy(result, lhs->data, lhs->size);
-    memcpy(result + lhs->size, rhs->data, rhs->size);
-    result[resultSize] = 0;
-    return new CharacterVector(result, resultSize);
+    CharacterVector * result = new CharacterVector(resultSize);
+    memcpy(result->data, lhs->data, lhs->size);
+    memcpy(result->data + lhs->size, rhs->data, rhs->size);
+    return result;
 }
 
 
@@ -469,14 +464,13 @@ CharacterVector * characterc(int size, ...) {
     size = 0;
     for (CharacterVector * v : args)
         size += v->size;
-    char * result = new char[size + 1];
+    CharacterVector * result = new CharacterVector(size);
     int offset = 0;
     for (CharacterVector * v : args) {
-        memcpy(result + offset, v->data, v->size * sizeof(char));
+        memcpy(result->data + offset, v->data, v->size * sizeof(char));
         offset += v->size;
     }
-    result[size] = 0;
-    return new CharacterVector(result, size);
+    return result;
 }
 
 RVal * c(int size, ...) {
@@ -510,14 +504,13 @@ RVal * c(int size, ...) {
         int size = 0;
         for (RVal * v : args)
             size += v->c->size;
-        char * result = new char[size + 1];
+        CharacterVector * result = new CharacterVector(size);
         int offset = 0;
         for (RVal * v : args) {
-            memcpy(result + offset, v->d->data, v->c->size * sizeof(char));
+            memcpy(result->data + offset, v->d->data, v->c->size * sizeof(char));
             offset += v->c->size;
         }
-        result[size] = 0;
-        return new RVal(new CharacterVector(result, size));
+        return new RVal(result);
     }
 }
 
