@@ -188,8 +188,11 @@ public:
     FunPtr compile(ast::Fun * what) {
         unsigned start = Pool::functionsCount();
         int result = compileFunction(what);
-        ExecutionEngine * engine = EngineBuilder(std::unique_ptr<Module>(m))
-            .setMCJITMemoryManager(std::unique_ptr<MemoryManager>(new MemoryManager())).create();
+        ExecutionEngine * engine =
+            EngineBuilder(std::unique_ptr<Module>(m))
+                .setMCJITMemoryManager(
+                        std::unique_ptr<MemoryManager>(new MemoryManager()))
+                .create();
         optimizeModule(engine);
         engine->finalizeObject();
         // Compile newly registered functions; update their native code in the
