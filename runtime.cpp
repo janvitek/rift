@@ -392,8 +392,10 @@ double length(RVal * RVal) {
         return RVal->d->size;
     case RVal::Type::Character:
         return RVal->c->size;
-    default:
+    case RVal::Type::Function:
         throw "Cannot determine length of a function";
+    default:
+        throw "Cannot determine length of unknown object";
     }
 
 }
