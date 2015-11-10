@@ -30,7 +30,7 @@ add_executable(${PROJECT_NAME} ${SRC})
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
-llvm_map_components_to_libnames(llvm_libs support core mcjit native irreader linker ipo)
+llvm_map_components_to_libnames(llvm_libs support core mcjit native irreader linker ipo executionengine runtimedyld)
 
 # Link against LLVM libraries
 target_link_libraries(${PROJECT_NAME} ${llvm_libs})
