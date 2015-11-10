@@ -109,83 +109,83 @@ extern llvm::FunctionType * f_v;
   Apart from LLVM module's usage it also contains declarations of the runtime functions the module might use. 
   */
 class RiftModule : public llvm::Module {
-    private:
+private:
 
-        /** Adds attribute readnone (pure function in LLVM) to given function declaration. 
-        */
-        static llvm::Function * readnone(llvm::Function * f) {
-            llvm::AttributeSet as;
-            {
-                llvm::AttrBuilder b;
-                b.addAttribute(llvm::Attribute::ReadNone);
-                as = llvm::AttributeSet::get(llvm::getGlobalContext(), llvm::AttributeSet::FunctionIndex, b);
-            }            
-            f->setAttributes(as);
-            return f;
-        }
-    public:
-        /** Creates the module.
-        */
-        RiftModule() :
-            llvm::Module("rift", llvm::getGlobalContext()) {}
+    /** Adds attribute readnone (pure function in LLVM) to given function declaration. 
+    */
+    static llvm::Function * readnone(llvm::Function * f) {
+        llvm::AttributeSet as;
+        {
+            llvm::AttrBuilder b;
+            b.addAttribute(llvm::Attribute::ReadNone);
+            as = llvm::AttributeSet::get(llvm::getGlobalContext(), llvm::AttributeSet::FunctionIndex, b);
+        }            
+        f->setAttributes(as);
+        return f;
+    }
+public:
+    /** Creates the module.
+    */
+    RiftModule() :
+        llvm::Module("rift", llvm::getGlobalContext()) {}
 
-        /** Shorthand macro for declaring functions and marking them as pure. 
-        */
+    /** Shorthand macro for declaring functions and marking them as pure. 
+    */
 #define DEF_FUN_PURE(name, signature) llvm::Function * name = readnone(llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this))
 
-        /** Shorthand macro for declaring functions that are not pure. 
-        */
+    /** Shorthand macro for declaring functions that are not pure. 
+    */
 #define DEF_FUN(name, signature) llvm::Function * name = llvm::Function::Create(signature, llvm::Function::ExternalLinkage, #name, this)
 
-        /** All runtime functions must be declared properly. Declaration consists of the name of the function (i.e. the symbol under which it can be found) and the type. 
-        */
-        DEF_FUN_PURE(doubleVectorLiteral, type::dv_d);
-        DEF_FUN_PURE(characterVectorLiteral, type::cv_i);
-        DEF_FUN_PURE(fromDoubleVector, type::v_dv);
-        DEF_FUN_PURE(fromCharacterVector, type::v_cv);
-        DEF_FUN_PURE(fromFunction, type::v_f);
-        DEF_FUN_PURE(doubleFromValue, type::dv_v);
-        DEF_FUN_PURE(scalarFromVector, type::d_dv);
-        DEF_FUN_PURE(characterFromValue, type::cv_v);
-        DEF_FUN_PURE(functionFromValue, type::f_v);
-        DEF_FUN_PURE(doubleGetSingleElement, type::d_dvd);
-        DEF_FUN_PURE(doubleGetElement, type::dv_dvdv);
-        DEF_FUN_PURE(characterGetElement, type::cv_cvdv);
-        DEF_FUN_PURE(genericGetElement, type::v_vv);
-        DEF_FUN(doubleSetElement, type::void_dvdvdv);
-        DEF_FUN(scalarSetElement, type::void_dvdd);
-        DEF_FUN(characterSetElement, type::void_cvdvcv);
-        DEF_FUN(genericSetElement, type::void_vvv);
-        DEF_FUN(envGet, type::v_ei);
-        DEF_FUN(envSet, type::void_eiv);
-        DEF_FUN_PURE(doubleAdd, type::dv_dvdv);
-        DEF_FUN_PURE(characterAdd, type::cv_cvcv);
-        DEF_FUN_PURE(genericAdd, type::v_vv);
-        DEF_FUN_PURE(doubleSub, type::dv_dvdv);
-        DEF_FUN_PURE(genericSub, type::v_vv);
-        DEF_FUN_PURE(doubleMul, type::dv_dvdv);
-        DEF_FUN_PURE(genericMul, type::v_vv);
-        DEF_FUN_PURE(doubleDiv, type::dv_dvdv);
-        DEF_FUN_PURE(genericDiv, type::v_vv);
-        DEF_FUN_PURE(doubleEq, type::dv_dvdv);
-        DEF_FUN_PURE(characterEq, type::dv_cvcv);
-        DEF_FUN_PURE(genericEq, type::v_vv);
-        DEF_FUN_PURE(doubleNeq, type::dv_dvdv);
-        DEF_FUN_PURE(characterNeq, type::dv_cvcv);
-        DEF_FUN_PURE(genericNeq, type::v_vv);
-        DEF_FUN_PURE(doubleLt, type::dv_dvdv);
-        DEF_FUN_PURE(genericLt, type::v_vv);
-        DEF_FUN_PURE(doubleGt, type::dv_dvdv);
-        DEF_FUN_PURE(genericGt, type::v_vv);
-        DEF_FUN_PURE(createFunction, type::f_ie);
-        DEF_FUN_PURE(toBoolean, type::b_v);
-        DEF_FUN(call, type::v_viVA);
-        DEF_FUN_PURE(length, type::d_v);
-        DEF_FUN_PURE(type, type::cv_v);
-        DEF_FUN(genericEval, type::v_ev);
-        DEF_FUN_PURE(doublec, type::dv_iVA);
-        DEF_FUN_PURE(characterc, type::cv_iVA);
-        DEF_FUN_PURE(c, type::v_iVA);
+    /** All runtime functions must be declared properly. Declaration consists of the name of the function (i.e. the symbol under which it can be found) and the type. 
+    */
+    DEF_FUN_PURE(doubleVectorLiteral, type::dv_d);
+    DEF_FUN_PURE(characterVectorLiteral, type::cv_i);
+    DEF_FUN_PURE(fromDoubleVector, type::v_dv);
+    DEF_FUN_PURE(fromCharacterVector, type::v_cv);
+    DEF_FUN_PURE(fromFunction, type::v_f);
+    DEF_FUN_PURE(doubleFromValue, type::dv_v);
+    DEF_FUN_PURE(scalarFromVector, type::d_dv);
+    DEF_FUN_PURE(characterFromValue, type::cv_v);
+    DEF_FUN_PURE(functionFromValue, type::f_v);
+    DEF_FUN_PURE(doubleGetSingleElement, type::d_dvd);
+    DEF_FUN_PURE(doubleGetElement, type::dv_dvdv);
+    DEF_FUN_PURE(characterGetElement, type::cv_cvdv);
+    DEF_FUN_PURE(genericGetElement, type::v_vv);
+    DEF_FUN(doubleSetElement, type::void_dvdvdv);
+    DEF_FUN(scalarSetElement, type::void_dvdd);
+    DEF_FUN(characterSetElement, type::void_cvdvcv);
+    DEF_FUN(genericSetElement, type::void_vvv);
+    DEF_FUN(envGet, type::v_ei);
+    DEF_FUN(envSet, type::void_eiv);
+    DEF_FUN_PURE(doubleAdd, type::dv_dvdv);
+    DEF_FUN_PURE(characterAdd, type::cv_cvcv);
+    DEF_FUN_PURE(genericAdd, type::v_vv);
+    DEF_FUN_PURE(doubleSub, type::dv_dvdv);
+    DEF_FUN_PURE(genericSub, type::v_vv);
+    DEF_FUN_PURE(doubleMul, type::dv_dvdv);
+    DEF_FUN_PURE(genericMul, type::v_vv);
+    DEF_FUN_PURE(doubleDiv, type::dv_dvdv);
+    DEF_FUN_PURE(genericDiv, type::v_vv);
+    DEF_FUN_PURE(doubleEq, type::dv_dvdv);
+    DEF_FUN_PURE(characterEq, type::dv_cvcv);
+    DEF_FUN_PURE(genericEq, type::v_vv);
+    DEF_FUN_PURE(doubleNeq, type::dv_dvdv);
+    DEF_FUN_PURE(characterNeq, type::dv_cvcv);
+    DEF_FUN_PURE(genericNeq, type::v_vv);
+    DEF_FUN_PURE(doubleLt, type::dv_dvdv);
+    DEF_FUN_PURE(genericLt, type::v_vv);
+    DEF_FUN_PURE(doubleGt, type::dv_dvdv);
+    DEF_FUN_PURE(genericGt, type::v_vv);
+    DEF_FUN_PURE(createFunction, type::f_ie);
+    DEF_FUN_PURE(toBoolean, type::b_v);
+    DEF_FUN(call, type::v_viVA);
+    DEF_FUN_PURE(length, type::d_v);
+    DEF_FUN_PURE(type, type::cv_v);
+    DEF_FUN(genericEval, type::v_ev);
+    DEF_FUN_PURE(doublec, type::dv_iVA);
+    DEF_FUN_PURE(characterc, type::cv_iVA);
+    DEF_FUN_PURE(c, type::v_iVA);
 
 };
 
