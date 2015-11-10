@@ -166,13 +166,14 @@ struct Environment {
     }
 };
 
-/** Pointer to rift functions compiled to native code, i.e. a function which takes Environment * as an argument and returns Value *. 
+/** Pointer to Rift function. These functions all takes Environment* and
+    return an RVal*.
  */
 typedef RVal * (*FunPtr)(Environment *);
 
-/** Function object. 
-
-Contains the environment in which the function has been created, i.e. parent environment of all environments of the function itself, pointer to the native code, the llvm function itself for debugging purposes such as displaying the bitcode and the argument names and argument size so that the arguments can be matched at runtime. 
+/** Rift Function.  Each function contains an environment, compiled code,
+    bitcode, an argument list, and an arity.  The bitcode and argument names
+    are there for debugging purposes.
  */
 struct Function {
 
@@ -186,24 +187,22 @@ struct Function {
     
     unsigned argsSize;
     
-    /** Creates the function object from given function definition AST (this is where we take the arguments from) and llvm function bitcode. 
-
-    Keeps all other fields empty. Hard copies the arguments.
+    /** Create a Rift function. A new argument list is needed, everything
+	else is shared.
     */
     Function(rift::ast::Fun * fun, llvm::Function * bitcode):
         env(nullptr),
         code(nullptr),
         bitcode(bitcode),
-        args(fun->args.size() == 0 ? nullptr : new int[fun->args.size()]),
+        args(fun->args.size()==0 ? nullptr : new int[fun->args.size()]),
         argsSize(fun->args.size()) {
         unsigned i = 0;
         for (rift::ast::Var * arg : fun->args)
             args[i++] = arg->symbol;
     }
 
-    /** Takes a function object and creates a copy of it binding it to environment, creating a closure. 
-
-    Args are shallow copied. 
+    /** Create a closure by copying function f and binding it to environment
+	e. Arguments are shared.
      */
     Function(Function * f, Environment * e):
         env(e),
@@ -212,15 +211,11 @@ struct Function {
         args(f->args),
         argsSize(f->argsSize) {
     }
+  
+  /* Args and env are shared, they are not deleted. */
+    ~Function() { }
 
-    ~Function() {
-        // do not delete args, or env, or anything else
-    }
-
-    /** Prints the function to given stream. 
-    
-    Prints the llvm bitcode. 
-    */
+    /** Prints bitcode to given stream.  */
     void print(std::ostream & s) {
         llvm::raw_os_ostream ss(s);
         bitcode->print(ss);
@@ -228,10 +223,9 @@ struct Function {
 
 };
 
-/** Generic value. 
-
-A value comprises of the type specifier (double vector, character vector, or function) and union of pointers to the respective classes. 
- */
+/** A Rift Value. All values have a type tage and can point either of a
+    vector of doubles or chararcters, or a function.
+*/
 struct RVal {
     enum class Type {
         Double,
@@ -247,49 +241,37 @@ struct RVal {
         ::Function * f;
     };
 
-    /** Creates a boxed double vector from given numbers. 
-     */
+    /** Creates a boxed double vector from given numbers.   */
     RVal(std::initializer_list<double> d) :
         type(Type::Double),
         d(new DoubleVector(d)) {
     }
 
-    /** Creates a boxed character vector from given string. 
-     */
+    /** Creates a boxed character vector from given string.    */
     RVal(char const * c) :
         type(Type::Character),
         c(new CharacterVector(c)) {
     }
 
-    /** Boxes given DoubleVector into a Value. 
-
-    Takes ownership of the vector. 
-     */
+    /** Boxes given DoubleVector. Takes ownership of the vector. */
     RVal(DoubleVector * d):
         type(Type::Double),
         d(d) {
     }
 
-    /** Boxes given CharacterVector into a Value.
-
-    Takes ownership of the vector.
-    */
+    /** Boxes given CharacterVector. Takes ownership of the vector.  */
     RVal(CharacterVector * c):
         type(Type::Character),
         c(c) {
     }
 
-    /** Boxes given Function into a Value.
-
-    Takes ownership of the vector.
-    */
+    /** Boxes given Function. Takes ownership of the vector. */
     RVal(::Function * f):
         type(Type::Function),
         f(f) {
     }
 
-    /** Deletes the value, deleting its boxed element based on value's type. 
-     */
+    /** Deletes the boxed value.  */
     ~RVal() {
         switch (type) {
         case Type::Double:
@@ -304,75 +286,51 @@ struct RVal {
         }
     }
 
-    /** Prints the value to given stream. 
-     */
+    /** Prints to given stream.  */
     void print(std::ostream & s) const {
         switch (type) {
-        case Type::Double:
-            d->print(s);
-            break;
-        case Type::Character:
-            c->print(s);
-            break;
-        case Type::Function:
-            f->print(s);
-            break;
+        case Type::Double:    d->print(s); break;
+        case Type::Character: c->print(s); break;
+        case Type::Function:  f->print(s); break;
         }
     }
 
-    /** Compares two values for equality. 
-    
-    The operator is only expected to be used by the tests. rift should use the genericEq() function for Value comparisons. 
-     */
+    /** Compares values for equality. Only use in tests.  */
     bool operator == (RVal const & other) {
-        if (type != other.type)
-            return false;
+        if (type != other.type)  return false;
         switch (type) {
             case Type::Double: {
-                if (d->size != other.d->size)
-                    return false;
+                if (d->size != other.d->size) return false;
                 for (unsigned i = 0; i < d->size; ++i)
-                    if (d->data[i] != other.d->data[i])
-                        return false;
+                    if (d->data[i] != other.d->data[i]) return false;
                 return true;
             }
             case Type::Character: {
-                if (c->size != other.c->size)
-                    return false;
+                if (c->size != other.c->size) return false;
                 for (unsigned i = 0; i < c->size; ++i)
-                    if (c->data[i] != other.c->data[i])
-                        return false;
+                    if (c->data[i] != other.c->data[i]) return false;
                 return true;
             }
             case Type::Function:
-            default:
-                // just to silence warnings
-                return f == other.f;
+            default: // just to silence warnings
+	      return f == other.f;
         }
     }
 
-    /** Compares two values for inequality.
-
-    The operator is only expected to be used by the tests. rift should use the genericNeq() function for Value comparisons.
-    */
+    /** Compares values for inequality. Only used in tests.    */
     bool operator != (RVal const & other) {
-        if (type != other.type)
-            return true;
+        if (type != other.type)   return true;
         switch (type) {
             case Type::Double: {
-                if (d->size != other.d->size)
-                    return true;
+                if (d->size != other.d->size) return true;
                 for (unsigned i = 0; i < d->size; ++i)
-                    if (d->data[i] != other.d->data[i])
-                        return true;
+                    if (d->data[i] != other.d->data[i]) return true;
                 return false;
             }
             case Type::Character: {
-                if (c->size != other.c->size)
-                    return true;
+                if (c->size != other.c->size) return true;
                 for (unsigned i = 0; i < c->size; ++i)
-                    if (c->data[i] != other.c->data[i])
-                        return true;
+                    if (c->data[i] != other.c->data[i]) return true;
                 return false;
             }
             case Type::Function:
@@ -382,8 +340,7 @@ struct RVal {
     }
 };
 
-/** Standard C++ printing support. 
- */
+/** Standard C++ printing support. */
 inline std::ostream & operator << (std::ostream & s, RVal const & value) {
     value.print(s);
     return s;
