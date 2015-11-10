@@ -45,8 +45,9 @@ public:
             v->accept(this);
             s << ", ";
         }
-        s << ")\n";
+        s << ") {\n";
         node->body->accept(this);
+        s << "}";
 
     }
     void visit(ast::BinExp * node) override {
