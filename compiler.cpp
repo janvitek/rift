@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "runtime.h"
+#include "specializedRuntime.h"
 #include "compiler.h"
 #include "type_analysis.h"
 #include "unboxing.h"
@@ -114,7 +115,7 @@ class MemoryManager : public llvm::SectionMemoryManager {
 public:
 #define NAME_IS(name) if (Name == #name) return reinterpret_cast<uint64_t>(::name)
     /** Return the address of symbol, or nullptr if undefind. We extend the
-	default LLVM resolution with the list of RIFT runtime functions.
+    default LLVM resolution with the list of RIFT runtime functions.
     */
   uint64_t getSymbolAddress(const std::string & Name) override {
     uint64_t addr = SectionMemoryManager::getSymbolAddress(Name);
@@ -222,22 +223,22 @@ public:
     }
 
     /** Translates a function to bitcode, registers it with the runtime, and
-	returns its index.
+    returns its index.
     */
     int compileFunction(ast::Fun * node) {
         // Backup context in case we are creating a nested function
         llvm::Function * oldF = f;
         BasicBlock * oldB = b;
         llvm::Value * oldEnv = env;
-	// Create the function and its first BB
+    // Create the function and its first BB
         f = llvm::Function::Create(type::NativeCode, 
-				   llvm::Function::ExternalLinkage, 
-				   "riftFunction", 
-				   m);
+                   llvm::Function::ExternalLinkage, 
+                   "riftFunction", 
+                   m);
         b = BasicBlock::Create(getGlobalContext(), 
-			       "entry", 
-			       f, 
-			       nullptr);
+                   "entry", 
+                   f, 
+                   nullptr);
         // Get the (single) argument of the function and store is as the
         // environment
         llvm::Function::arg_iterator args = f->arg_begin();
@@ -261,9 +262,9 @@ public:
     /** Shorthand for calling runtime functions.  */
 #define RUNTIME_CALL(name, ...) \
   CallInst::Create(m->name, \
-		   std::vector<llvm::Value*>({__VA_ARGS__}), \
-		   "", \
-		   b)
+           std::vector<llvm::Value*>({__VA_ARGS__}), \
+           "", \
+           b)
 
 
     /** Create Value from double scalar .  */
@@ -320,7 +321,7 @@ public:
   }
 
   /** Binary expression first compiles its arguments and then calls
-	respective runtime based on the type of the operation.
+    respective runtime based on the type of the operation.
      */
     void visit(ast::BinExp * node) override {
         node->lhs->accept(this);
