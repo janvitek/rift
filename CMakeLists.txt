@@ -15,7 +15,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 if(${CMAKE_CXX_COMPILER_ID} EQUAL "MSVC")
-
+    add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 else()
     add_definitions(-Wall -std=c++11 -Wno-unknown-pragmas)
 endif()

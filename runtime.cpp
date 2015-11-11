@@ -87,8 +87,8 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
     double * result = new double[resultSize];
     for (unsigned i = 0; i < resultSize; ++i) {
-        unsigned idx = index->data[i];
-        if (idx >= from->size)
+        int idx = static_cast<int>(index->data[i]);
+        if (idx < 0 or idx >= from->size)
             throw "Index out of bounds";
         result[i] = from->data[idx];
     }
@@ -99,8 +99,8 @@ CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * ind
     unsigned resultSize = index->size;
     CharacterVector * result = new CharacterVector(resultSize);
     for (unsigned i = 0; i < resultSize; ++i) {
-        unsigned idx = index->data[i];
-        if (idx >= from->size)
+        int idx = static_cast<int>(index->data[i]);
+        if (idx < 0 or idx >= from->size)
             throw "Index out of bounds";
         result->data[i] = from->data[idx];
     }
@@ -123,8 +123,8 @@ RVal * genericGetElement(RVal * from, RVal * index) {
 
 void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * RVal) {
     for (unsigned i = 0; i < index->size; ++i) {
-        unsigned idx = index->data[i];
-        if (idx >= target->size)
+        int idx = static_cast<int>(index->data[i]);
+        if (idx < 0 or idx >= target->size)
             throw "Index out of bound";
         double val = RVal->data[i % RVal->size];
         target->data[idx] = val;
@@ -132,16 +132,16 @@ void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector 
 }
 
 void scalarSetElement(DoubleVector * target, double index, double RVal) {
-    unsigned idx = index;
-    if (idx >= target->size)
+    int idx = static_cast<int>(index);
+    if (idx < 0 or idx >= target->size)
         throw "Index out of bound";
     target->data[idx] = RVal;
 }
 
 void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * RVal) {
     for (unsigned i = 0; i < index->size; ++i) {
-        unsigned idx = index->data[i];
-        if (idx >= target->size)
+        int  idx = static_cast<int>(index->data[i]);
+        if (idx < 0 or idx >= target->size)
             throw "Index out of bound";
         char val = RVal->data[i % RVal->size];
         target->data[idx] = val;

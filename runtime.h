@@ -6,6 +6,8 @@
 #include "llvm.h"
 #include "ast.h"
 
+#pragma warning(disable : 4267 4297 4018)
+
 /** Value: forward declaration 
 */
 struct RVal;
