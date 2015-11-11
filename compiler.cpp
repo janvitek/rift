@@ -230,9 +230,6 @@ public:
         m->setDataLayout(*ee->getDataLayout());
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
-        //        pm->add(new Unboxing());
-//        pm->add(new BoxingRemoval());
-        pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
             pm->run(f);

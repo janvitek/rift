@@ -9,14 +9,18 @@ using namespace llvm;
 
 namespace rift {
 
-    AType * AType::top = nullptr; 
-
-
     char TypeAnalysis::ID = 0;
 
     AType * TypeAnalysis::genericArithmetic(CallInst * ci) {
         AType * lhs = valueType(ci->getOperand(0));
         AType * rhs = valueType(ci->getOperand(1));
+        if (not lhs->isDouble()) {
+            lhs = new AType(AType::Kind::R, AType::Kind::DV, ci->getOperand(0));
+            setValueType(ci->getOperand(0), lhs);
+        }
+        if (not rhs->isDouble()) {
+
+        }
         return lhs->merge(rhs)->setValue(ci);
     }
 
@@ -37,16 +41,15 @@ namespace rift {
             if (index->isScalar()) {
                 AType * s = new AType(AType::Kind::D);
                 AType * v = new AType(AType::Kind::DV, s);
-                return new AType(AType::Kind::R, v, ci);
                 return new AType(AType::Kind::R, AType::Kind::DV, AType::Kind::D, ci);
             } else {
                 AType * v = new AType(AType::Kind::DV);
-                return new AType(AType::Kind::R, v, ci);
                 return new AType(AType::Kind::R, AType::Kind::DV, ci);
             }
+        } else if (from->isCharacter()) {
+            return new AType(AType::Kind::R, AType::Kind::CV, ci);
         } else {
-            AType * v = new AType(AType::Kind::CV);
-            return new AType(AType::Kind::R, v, ci);
+            return new AType(AType::Kind::T);
         }
     }
 
@@ -129,8 +132,8 @@ namespace rift {
                 }
             }
         } while (changed);
-        //f.dump();
-        //cout << *this << endl;
+        f.dump();
+        cout << *this << endl;
         return false;
     }
 

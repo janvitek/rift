@@ -49,8 +49,9 @@ namespace rift {
         AType(AType const & other) = default;
 
         AType * merge(AType * other) {
-            if (other == nullptr)
-                return top;
+
+            if (other == nullptr or other->isTop())
+                return new AType(AType::Kind::T);
             if (kind == Kind::B)
                 return new AType(*other);
             else if (other->kind == Kind::B)
@@ -58,47 +59,51 @@ namespace rift {
             switch (kind) {
                 case Kind::D:
                     if (*other != Kind::D)
-                        return top;
+                        return new AType(AType::Kind::T);
                     if (loc == other->loc)
                         return new AType(*this);
                     else
                         return new AType(Kind::D);
                 case Kind::CV:
                     if (*other != Kind::CV)
-                        return top;
+                        return new AType(AType::Kind::T);
                     if (loc == other->loc)
                         return new AType(*this);
                     else
                         return new AType(Kind::CV);
                 case Kind::F:
                     if (*other != Kind::F)
-                        return top;
+                        return new AType(AType::Kind::T);
                     if (loc == other->loc)
                         return new AType(*this);
                     else
                         return new AType(Kind::F);
                 case Kind::DV:
                     if (*other != Kind::DV)
-                        return top;
+                        return new AType(AType::Kind::T);
                     if (loc == other->loc)
                         return new AType(*this);
                     else
                         return new AType(Kind::DV, payload == nullptr ? nullptr : payload->merge(other->payload));
                 case Kind::R:
                     if (*other != Kind::R)
-                        return top;
+                        return new AType(AType::Kind::T);
                     if (loc == other->loc)
                         return new AType(*this);
                     else
                         return new AType(Kind::R, payload == nullptr ? nullptr : payload->merge(other->payload));
                 default:
-                    return top;
+                    return new AType(AType::Kind::T);
             }
         }
 
         AType * setValue(llvm::Value * loc) {
             this->loc = loc;
             return this;
+        }
+
+        bool isTop() const {
+            return kind == Kind::T;
         }
 
         bool isScalar() {
@@ -117,6 +122,13 @@ namespace rift {
                 return payload != nullptr and (payload->isDouble());
         }
 
+        bool isCharacter() {
+            if (kind == Kind::CV)
+                return true;
+            else
+                return payload != nullptr and (payload->isCharacter());
+        }
+
         bool operator == (AType::Kind other) const {
             return kind == other;
         }
@@ -126,14 +138,14 @@ namespace rift {
         }
 
 
-        /** We are only interested in the R types as phi nodes are typed.
+        bool operator < (AType const & other) const {
+            /** We are only interested in the R types as phi nodes are typed.
             Having a loc is smaller than not having a loc
 
             R(DV(D)) < R(DV) < R < T
             R(CV) < R < T
             R(F) < R < T
-         */
-        bool operator < (AType const & other) const {
+            */
             if (payload == nullptr and other.payload == nullptr)
                 return loc != nullptr and other.loc == nullptr;
             if (payload == nullptr)
@@ -142,8 +154,6 @@ namespace rift {
                 return true;
             else return *payload < *other.payload;
         }
-
-        static AType * top;
 
     };
 
