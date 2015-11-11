@@ -129,8 +129,8 @@ namespace rift {
                 }
             }
         } while (changed);
-        f.dump();
-        cout << *this << endl;
+        //f.dump();
+        //cout << *this << endl;
         return false;
     }
 
