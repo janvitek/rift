@@ -133,6 +133,12 @@ namespace rift {
         /** We are only interested in the R types as phi nodes are typed.
             Having a value is smaller than not having a value
 
+
+
+
+
+
+
             R(DV(D)) < R(DV) < R < T
             R(CV) < R < T
             R(F) < R < T
