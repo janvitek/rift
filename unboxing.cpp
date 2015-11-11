@@ -1,3 +1,5 @@
+#ifdef HAHA
+
 #include <iostream>
 #include <ciso646>
 
@@ -328,3 +330,4 @@ namespace rift {
 
 } // namespace rift
 
+#endif

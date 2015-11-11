@@ -1,9 +1,12 @@
+#define BOXING_REMOVAL_H
+
 #pragma once
 #ifndef BOXING_REMOVAL_H
 #define BOXING_REMOVAL_H
 
 #include "llvm.h"
 #include "unboxing.h"
+
 
 namespace rift {
 
@@ -28,5 +31,7 @@ namespace rift {
 
 
 } // namespace rift
+
+
 
 #endif // BOXING_REMOVAL_H
