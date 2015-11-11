@@ -9,7 +9,7 @@ using namespace llvm;
 
 namespace rift {
 
-    AType * AType::top = nullptr; // new AType(AType::Type::T);
+    AType * AType::top = nullptr; 
 
 
     char TypeAnalysis::ID = 0;

@@ -9,7 +9,7 @@ namespace rift {
     class AType {
     public:
         enum class Kind {
-	    B, // bottom 
+	        B, // bottom 
             D,
             DV,
             CV, 
@@ -55,9 +55,6 @@ namespace rift {
                 return new AType(*other);
             else if (other->kind == Kind::B)
                 return new AType(*this);
-// seems to me we do not need this
-//          if (*this == *other)
-//              return new AType(*this);
             switch (kind) {
                 case Kind::D:
                     if (*other != Kind::D)
@@ -132,12 +129,6 @@ namespace rift {
         /** We are only interested in the R types as phi nodes are typed.
             Having a loc is smaller than not having a loc
 
-
-
-
-
-
-
             R(DV(D)) < R(DV) < R < T
             R(CV) < R < T
             R(F) < R < T
@@ -145,7 +136,6 @@ namespace rift {
         bool operator < (AType const & other) const {
             if (payload == nullptr and other.payload == nullptr)
                 return loc != nullptr and other.loc == nullptr;
-
             if (payload == nullptr)
                 return false;
             if (payload != nullptr and other.payload == nullptr)
