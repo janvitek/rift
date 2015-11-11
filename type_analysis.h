@@ -8,43 +8,42 @@ namespace rift {
 
     class AType {
     public:
-
-        enum class Type {
-            B,
+        enum class Kind {
+	    B, // bottom 
             D,
             DV,
             CV, 
             F,
             R,
-            T
-        } type;
+            T  // top
+        } kind;
 
-        AType * targetType;
+        AType * payload;
 
-        llvm::Value * value;
+        llvm::Value * loc;
 
-        AType(Type t, AType * targetType, llvm::Value * value = nullptr) :
-            type(t),
-            targetType(targetType),
-            value(value) {
+        AType(Kind t, AType * payload, llvm::Value * loc = nullptr) :
+            kind(t),
+            payload(payload),
+            loc(loc) {
         }
 
-        AType(Type t, llvm::Value * value = nullptr) :
-            type(t),
-            targetType(nullptr),
-            value(value) {
+        AType(Kind t, llvm::Value * loc = nullptr) :
+            kind(t),
+            payload(nullptr),
+            loc(loc) {
         }
 
-        AType(Type t, Type t2, llvm::Value * value = nullptr) :
-            type(t),
-            targetType(new AType(t2)),
-            value(value) {
+        AType(Kind t, Kind t2, llvm::Value * loc = nullptr) :
+            kind(t),
+            payload(new AType(t2)),
+            loc(loc) {
         }
 
-        AType(Type t, Type t2, Type t3, llvm::Value * value = nullptr) :
-            type(t),
-            targetType(new AType(t2, t3)),
-            value(value) {
+        AType(Kind t, Kind t2, Kind t3, llvm::Value * loc = nullptr) :
+            kind(t),
+            payload(new AType(t2, t3)),
+            loc(loc) {
         }
 
         AType(AType const & other) = default;
@@ -52,86 +51,86 @@ namespace rift {
         AType * merge(AType * other) {
             if (other == nullptr)
                 return top;
-            if (type == Type::B)
+            if (kind == Kind::B)
                 return new AType(*other);
-            else if (other->type == Type::B)
+            else if (other->kind == Kind::B)
                 return new AType(*this);
 // seems to me we do not need this
 //          if (*this == *other)
 //              return new AType(*this);
-            switch (type) {
-                case Type::D:
-                    if (*other != Type::D)
+            switch (kind) {
+                case Kind::D:
+                    if (*other != Kind::D)
                         return top;
-                    if (value == other->value)
+                    if (loc == other->loc)
                         return new AType(*this);
                     else
-                        return new AType(Type::D);
-                case Type::CV:
-                    if (*other != Type::CV)
+                        return new AType(Kind::D);
+                case Kind::CV:
+                    if (*other != Kind::CV)
                         return top;
-                    if (value == other->value)
+                    if (loc == other->loc)
                         return new AType(*this);
                     else
-                        return new AType(Type::CV);
-                case Type::F:
-                    if (*other != Type::F)
+                        return new AType(Kind::CV);
+                case Kind::F:
+                    if (*other != Kind::F)
                         return top;
-                    if (value == other->value)
+                    if (loc == other->loc)
                         return new AType(*this);
                     else
-                        return new AType(Type::F);
-                case Type::DV:
-                    if (*other != Type::DV)
+                        return new AType(Kind::F);
+                case Kind::DV:
+                    if (*other != Kind::DV)
                         return top;
-                    if (value == other->value)
+                    if (loc == other->loc)
                         return new AType(*this);
                     else
-                        return new AType(Type::DV, targetType == nullptr ? nullptr : targetType->merge(other->targetType));
-                case Type::R:
-                    if (*other != Type::R)
+                        return new AType(Kind::DV, payload == nullptr ? nullptr : payload->merge(other->payload));
+                case Kind::R:
+                    if (*other != Kind::R)
                         return top;
-                    if (value == other->value)
+                    if (loc == other->loc)
                         return new AType(*this);
                     else
-                        return new AType(Type::R, targetType == nullptr ? nullptr : targetType->merge(other->targetType));
+                        return new AType(Kind::R, payload == nullptr ? nullptr : payload->merge(other->payload));
                 default:
                     return top;
             }
         }
 
-        AType * setValue(llvm::Value * value) {
-            this->value = value;
+        AType * setValue(llvm::Value * loc) {
+            this->loc = loc;
             return this;
         }
 
         bool isScalar() {
-            if (type == Type::D)
+            if (kind == Kind::D)
                 return true;
             else 
-                return targetType != nullptr and targetType->isScalar();
+                return payload != nullptr and payload->isScalar();
         }
 
         bool isDouble() {
-            if (type == Type::D)
+            if (kind == Kind::D)
                 return true;
-            else if (type == Type::DV)
+            else if (kind == Kind::DV)
                 return true;
             else 
-                return targetType != nullptr and (targetType->isDouble());
+                return payload != nullptr and (payload->isDouble());
         }
 
-        bool operator == (AType::Type other) const {
-            return type == other;
+        bool operator == (AType::Kind other) const {
+            return kind == other;
         }
 
-        bool operator != (AType::Type other) const {
-            return type != other;
+        bool operator != (AType::Kind other) const {
+            return kind != other;
         }
 
 
         /** We are only interested in the R types as phi nodes are typed.
-            Having a value is smaller than not having a value
+            Having a loc is smaller than not having a loc
 
 
 
@@ -144,14 +143,14 @@ namespace rift {
             R(F) < R < T
          */
         bool operator < (AType const & other) const {
-            if (targetType == nullptr and other.targetType == nullptr)
-                return value != nullptr and other.value == nullptr;
+            if (payload == nullptr and other.payload == nullptr)
+                return loc != nullptr and other.loc == nullptr;
 
-            if (targetType == nullptr)
+            if (payload == nullptr)
                 return false;
-            if (targetType != nullptr and other.targetType == nullptr)
+            if (payload != nullptr and other.payload == nullptr)
                 return true;
-            else return *targetType < *other.targetType;
+            else return *payload < *other.payload;
         }
 
         static AType * top;
@@ -165,7 +164,7 @@ namespace rift {
      
      Based on the calls to the runtime functions, the analysis tracks the following key attributes:
 
-     - for each value it remembers its shape. 
+     - for each loc it remembers its shape. 
      - if the value is boxed, and there exists an unboxed version of the same value, it pairs the two together. 
 
      The unboxing can have one pair (Value -> DoubleVector, Value->CharacterVector, Value->Function), or two pairs(Value->DoubleScalarVector->DoubleScalar).
@@ -188,19 +187,19 @@ namespace rift {
         If the value was not yet seen, assumes the bottom type. 
 
         */
-        AType * valueType(llvm::Value * value) {
-            auto i = types_.find(value);
+        AType * valueType(llvm::Value * loc) {
+            auto i = types_.find(loc);
             if (i == types_.end())
-                return new AType(AType::Type::B);
+                return new AType(AType::Kind::B);
             else
                 return i->second;
         }
 
-        void setValueType(llvm::Value * value, AType * type) {
-            auto i = types_.find(value);
+        void setValueType(llvm::Value * loc, AType * type) {
+            auto i = types_.find(loc);
             if (i == types_.end()) {
                 changed = true;
-                types_[value] = type;
+                types_[loc] = type;
             } else {
                 AType * t = i->second;
                 if ((t != nullptr) and (*t < *type)) {
@@ -218,15 +217,12 @@ namespace rift {
         AType * genericRelational(llvm::CallInst * ci);
         AType * genericGetElement(llvm::CallInst * ci);
 
-        
-        
         /** For each value specifies its actual type. */
         std::map<llvm::Value *, AType *> types_;
 
         bool changed;
 
     };
-
 
 } // namespace rift
 

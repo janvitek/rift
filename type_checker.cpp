@@ -42,7 +42,7 @@ namespace rift {
                             }
                         }
                         //  fill me in
-                    } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
+                 // } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                         // fill me in
                     }
                 }

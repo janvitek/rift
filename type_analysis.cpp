@@ -24,9 +24,9 @@ namespace rift {
         AType * lhs = valueType(ci->getOperand(0));
         AType * rhs = valueType(ci->getOperand(1));
         if (lhs->isScalar() and rhs->isScalar())
-            return new AType(AType::Type::R, AType::Type::DV, AType::Type::D, ci);
+            return new AType(AType::Kind::R, AType::Kind::DV, AType::Kind::D, ci);
         else
-            return new AType(AType::Type::R, AType::Type::DV, ci);
+            return new AType(AType::Kind::R, AType::Kind::DV, ci);
     }
 
 
@@ -35,18 +35,18 @@ namespace rift {
         AType * index = valueType(ci->getOperand(1));
         if (from->isDouble()) {
             if (index->isScalar()) {
-                AType * s = new AType(AType::Type::D);
-                AType * v = new AType(AType::Type::DV, s);
-                return new AType(AType::Type::R, v, ci);
-                return new AType(AType::Type::R, AType::Type::DV, AType::Type::D, ci);
+                AType * s = new AType(AType::Kind::D);
+                AType * v = new AType(AType::Kind::DV, s);
+                return new AType(AType::Kind::R, v, ci);
+                return new AType(AType::Kind::R, AType::Kind::DV, AType::Kind::D, ci);
             } else {
-                AType * v = new AType(AType::Type::DV);
-                return new AType(AType::Type::R, v, ci);
-                return new AType(AType::Type::R, AType::Type::DV, ci);
+                AType * v = new AType(AType::Kind::DV);
+                return new AType(AType::Kind::R, v, ci);
+                return new AType(AType::Kind::R, AType::Kind::DV, ci);
             }
         } else {
-            AType * v = new AType(AType::Type::CV);
-            return new AType(AType::Type::R, v, ci);
+            AType * v = new AType(AType::Kind::CV);
+            return new AType(AType::Kind::R, v, ci);
         }
     }
 
@@ -64,16 +64,16 @@ namespace rift {
                         if (s == "doubleVectorLiteral") {
                             // when creating literal from a double, it is always double scalar
                             llvm::Value * op = ci->getOperand(0);
-                            setValueType(op, new AType(AType::Type::D, op));
-                            setValueType(ci, new AType(AType::Type::DV, valueType(op), ci));
+                            setValueType(op, new AType(AType::Kind::D, op));
+                            setValueType(ci, new AType(AType::Kind::DV, valueType(op), ci));
                         } else if (s == "characterVectorLiteral") {
-                            setValueType(ci, new AType(AType::Type::CV, ci));
+                            setValueType(ci, new AType(AType::Kind::CV, ci));
                         } else if (s == "fromDoubleVector") {
-                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                            setValueType(ci, new AType(AType::Kind::R, valueType(ci->getOperand(0)), ci));
                         } else if (s == "fromCharacterVector") {
-                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                            setValueType(ci, new AType(AType::Kind::R, valueType(ci->getOperand(0)), ci));
                         } else if (s == "fromFunction") {
-                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                            setValueType(ci, new AType(AType::Kind::R, valueType(ci->getOperand(0)), ci));
                         } else if (s == "genericGetElement") {
                             setValueType(ci, genericGetElement(ci));
                         } else if (s == "genericSetElement") {
@@ -96,10 +96,10 @@ namespace rift {
                             setValueType(ci, genericRelational(ci));
                         } else if (s == "length") {
                             // result of length operation is always double scalar
-                            setValueType(ci, new AType(AType::Type::D, ci));
+                            setValueType(ci, new AType(AType::Kind::D, ci));
                         } else if (s == "type") {
                             // result of type operation is always character vector
-                            setValueType(ci, new AType(AType::Type::CV, ci));
+                            setValueType(ci, new AType(AType::Kind::CV, ci));
                         } else if (s == "c") {
                             // make sure the types to c are correct
                             AType * t1 = valueType(ci->getArgOperand(1));
@@ -107,15 +107,15 @@ namespace rift {
                                 t1 = t1->merge(valueType(ci->getArgOperand(i)));
                             if (t1->isScalar())
                                 // concatenation of scalars is a vector
-                                t1 = new AType(AType::Type::R, AType::Type::DV, ci);
+                                t1 = new AType(AType::Kind::R, AType::Kind::DV, ci);
                             else
                                 // c(c(1,2), c(2,3) !
                                 t1->setValue(ci);
                             setValueType(ci, t1);
                         } else if (s == "genericEval") {
-                            setValueType(ci, new AType(AType::Type::R, ci));
+                            setValueType(ci, new AType(AType::Kind::R, ci));
                         } else if (s == "envGet") {
-                            setValueType(ci, new AType(AType::Type::R, ci));
+                            setValueType(ci, new AType(AType::Kind::R, ci));
                         } else if (s == "envSet") {
                             setValueType(ci->getOperand(1), valueType(ci->getOperand(2)));
                         }
@@ -136,41 +136,42 @@ namespace rift {
 
     std::ostream & operator << (std::ostream & s, AType const & t) {
         llvm::raw_os_ostream ss(s);
-        if (t.value != nullptr)
-            t.value->printAsOperand(ss, false);
-        switch (t.type) {
-            case AType::Type::D:
+        if (t.loc != nullptr)
+            t.loc->printAsOperand(ss, false);
+        switch (t.kind) {
+            case AType::Kind::D:
                 ss << " D ";
                 break;
-            case AType::Type::DV:
+            case AType::Kind::DV:
                 ss << " DV ";
                 break;
-            case AType::Type::CV:
+            case AType::Kind::CV:
                 ss << " CV ";
                 break;
-            case AType::Type::F:
+            case AType::Kind::F:
                 ss << " F ";
                 break;
-            case AType::Type::R:
+            case AType::Kind::R:
                 ss << " R ";
-                break;
-            case AType::Type::T:
+                break; 
+            case AType::Kind::T:
                 ss << " T ";
                 break;
-        }
+	   case AType::Kind::B:
+                ss << " B ";
+                break;
+       }
         ss.flush();
-        if (t.targetType != nullptr)
-            s << " -> " << *(t.targetType);
+        if (t.payload != nullptr)
+            s << " -> " << *(t.payload);
         return s;
     }
 
 
     std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta) {
         s << "Type Analysis: " << "\n";
-        for (auto const & v : ta.types_) {
-            llvm::Value * vv = v.first;
+        for (auto const & v : ta.types_) 
             s << *v.second << endl;
-        }
         return s;
     }
 
