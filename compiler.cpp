@@ -2,9 +2,8 @@
 #include "runtime.h"
 #include "specializedRuntime.h"
 #include "compiler.h"
+#include "type_checker.h"
 #include "type_analysis.h"
-#include "unboxing.h"
-#include "boxing_removal.h"
 #include "pool.h"
 
 #include <initializer_list>
@@ -229,8 +228,9 @@ public:
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
         m->setDataLayout(*ee->getDataLayout());
+        pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
-//        pm->add(new Unboxing());
+        //        pm->add(new Unboxing());
 //        pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
