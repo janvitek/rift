@@ -260,7 +260,7 @@ private:
         return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or c == '_';
     }
 
-    Token number(int n, std::istream & input) {
+    Token number(double n, std::istream & input) {
         while (true) {
             char c = input.peek();
             if (isNumber(c)) {
