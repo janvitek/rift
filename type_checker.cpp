@@ -30,7 +30,7 @@ namespace rift {
                             setValueType(ci, Type::D);
                         }
                         //  fill me in
-                    } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
+                 // } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                         // fill me in
                     }
                 }
