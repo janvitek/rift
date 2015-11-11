@@ -20,14 +20,26 @@ namespace rift {
                             setValueType(ci, Type::D);
                         } else if (s == "characterVectorLiteral") {
                             setValueType(ci, Type::C);
+                        } else if (s == "fromCharacterVector") {
+                            setValueType(ci, Type::C);
                         } else if (s == "genericSub") {
                             Type t1 = valueType(ci->getOperand(0));
                             Type t2 = valueType(ci->getOperand(1));
-                            if (t1 != t2)
-                                throw "Types into binary minus must be the same";
-                            if (t1 != Type::D)
-                                throw "Only doubles can be subtracted";
-                            setValueType(ci, Type::D);
+                            switch (t1) {
+                                case Type::D:
+                                case Type::T:
+                                    switch (t2) {
+                                        case Type::D:
+                                        case Type::T:
+                                            setValueType(ci, Type::D);
+                                            break;
+                                        default:
+                                            throw "Invalid types for binary subtraction";
+                                    }
+                                    break;
+                                default:
+                                    throw "Invalid types for binary subtraction";
+                            }
                         }
                         //  fill me in
                     } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
