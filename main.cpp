@@ -67,7 +67,7 @@ int main(int argc, char * argv[]) {
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeAsmParser();
     if (argc == 1) {
-        tests();
+        //tests();
         interactive();
     } else {
         if (argc > 2)

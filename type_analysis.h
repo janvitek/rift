@@ -6,143 +6,151 @@
 
 namespace rift {
 
-    /** Determines the type of a Value in rift. 
-    
-    Reflects both information about the type (Value, DoubleVector, CharacterVector, Function, DoubleScalar) and the shape in case of Values and doubles where the type also tells us the underlying type of the value, if one is known, as well as the shape of double vectors - i.e. if they are vectors or scalars. 
-    
-     */
-    class Type {
+    class AType {
     public:
-        static const Type bottom;
-        /** Scalar double (primitive double type) */
-        static const Type DoubleScalar;
-        /** Double vector, but of length 1 - can be unboxed to scalar */
-        static const Type DoubleScalarVector;
-        /** Double vector of arbitrary length */
-        static const Type DoubleVector;
-        /** Character vector of arbitrary length */
-        static const Type CharacterVector;
-        /** Function object. */
-        static const Type Function;
-        /** Double vector of size 1 boxed into Value. */
-        static const Type BoxedDoubleScalarVector;
-        /** Double vector of arbitrary length boxed into Value */
-        static const Type BoxedDoubleVector;
-        /** Character vector of arbitrary length boxed into Value */
-        static const Type BoxedCharacterVector;
-        /** Function boxed into Value. */
-        static const Type BoxedFunction;
-        /** Any value object, Top value */
-        static const Type Value;
 
-        Type() :
-            value_(Internal::Value) {}
+        enum class Type {
+            B,
+            D,
+            DV,
+            CV, 
+            F,
+            R,
+            T
+        } type;
 
-        Type(Type const & from) = default;
+        AType * targetType;
 
-        bool operator == (const Type & other) const {
-            return value_ == other.value_;
+        llvm::Value * value;
+
+        AType(Type t, AType * targetType, llvm::Value * value = nullptr) :
+            type(t),
+            targetType(targetType),
+            value(value) {
         }
 
-        bool operator != (const Type & other) const {
-            return value_ != other.value_;
+        AType(Type t, llvm::Value * value = nullptr) :
+            type(t),
+            targetType(nullptr),
+            value(value) {
         }
 
-        /** Returns true if the shape of the value is double scalar. 
-         */
-        bool isScalar() const {
-            switch (value_) {
-                case Internal::DoubleScalar:
-                case Internal::DoubleScalarVector:
-                case Internal::BoxedDoubleScalarVector:
-                    return true;
+        AType(Type t, Type t2, llvm::Value * value = nullptr) :
+            type(t),
+            targetType(new AType(t2)),
+            value(value) {
+        }
+
+        AType(Type t, Type t2, Type t3, llvm::Value * value = nullptr) :
+            type(t),
+            targetType(new AType(t2, t3)),
+            value(value) {
+        }
+
+        AType(AType const & other) = default;
+
+        AType * merge(AType * other) {
+            if (other == nullptr)
+                return top;
+            if (type == Type::B)
+                return new AType(*other);
+            else if (other->type == Type::B)
+                return new AType(*this);
+// seems to me we do not need this
+//          if (*this == *other)
+//              return new AType(*this);
+            switch (type) {
+                case Type::D:
+                    if (*other != Type::D)
+                        return top;
+                    if (value == other->value)
+                        return new AType(*this);
+                    else
+                        return new AType(Type::D);
+                case Type::CV:
+                    if (*other != Type::CV)
+                        return top;
+                    if (value == other->value)
+                        return new AType(*this);
+                    else
+                        return new AType(Type::CV);
+                case Type::F:
+                    if (*other != Type::F)
+                        return top;
+                    if (value == other->value)
+                        return new AType(*this);
+                    else
+                        return new AType(Type::F);
+                case Type::DV:
+                    if (*other != Type::DV)
+                        return top;
+                    if (value == other->value)
+                        return new AType(*this);
+                    else
+                        return new AType(Type::DV, targetType == nullptr ? nullptr : targetType->merge(other->targetType));
+                case Type::R:
+                    if (*other != Type::R)
+                        return top;
+                    if (value == other->value)
+                        return new AType(*this);
+                    else
+                        return new AType(Type::R, targetType == nullptr ? nullptr : targetType->merge(other->targetType));
                 default:
-                    return false;
+                    return top;
             }
         }
 
-        /** Returns true if the shape of the value is double vector (including scalars). 
-         */
-        bool isDouble() const {
-            switch (value_) {
-                case Internal::DoubleScalar:
-                case Internal::DoubleScalarVector:
-                case Internal::DoubleVector:
-                case Internal::BoxedDoubleScalarVector:
-                case Internal::BoxedDoubleVector:
-                    return true;
-                default:
-                    return false;
-            }
+        AType * setValue(llvm::Value * value) {
+            this->value = value;
+            return this;
         }
 
-        /** Returns true if the shape of the value is character vector. 
-         */
-        bool isCharacter() const {
-            switch (value_) {
-                case Internal::CharacterVector:
-                case Internal::BoxedCharacterVector:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /** Returns true if the shape of the value is function pointer. 
-         */
-        bool isFunction() const {
-            switch (value_) {
-                case Internal::Function:
-                case Internal::BoxedFunction:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /** Returns true if the Value is boxed double vector (or scalar) 
-         */
-        bool isBoxedDouble() const {
-            switch (value_) {
-                case Internal::BoxedDoubleScalarVector:
-                case Internal::BoxedDoubleVector:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /** Returns true if the two value types and definitely distinctive (distinctive types are Doubles, Characters and Functions). 
-         */
-        bool isDifferentClassAs(Type const & other) {
-            if (isDouble() and not other.isDouble())
+        bool isScalar() {
+            if (type == Type::D)
                 return true;
-            if (isCharacter() and not other.isCharacter())
-                return true;
-            if (isFunction() and not other.isFunction())
-                return true;
-            return false;
+            else 
+                return targetType != nullptr and targetType->isScalar();
         }
 
-    private:
-        enum class Internal {
-            DoubleScalar,
-            DoubleScalarVector,
-            DoubleVector,
-            CharacterVector,
-            Function,
-            BoxedDoubleScalarVector,
-            BoxedDoubleVector,
-            BoxedCharacterVector,
-            BoxedFunction,
-            Value
-        };
+        bool isDouble() {
+            if (type == Type::D)
+                return true;
+            else if (type == Type::DV)
+                return true;
+            else 
+                return targetType != nullptr and (targetType->isDouble());
+        }
 
-        Type(Internal value) :
-            value_(value) {}
+        bool operator == (AType::Type other) const {
+            return type == other;
+        }
 
-        Internal value_;
+        bool operator != (AType::Type other) const {
+            return type != other;
+        }
+
+
+        /** We are only interested in the R types as phi nodes are typed.
+            Having a value is smaller than not having a value
+
+            R(DV(D)) < R(DV) < R < T
+            R(CV) < R < T
+            R(F) < R < T
+         */
+        bool operator < (AType const & other) const {
+            if (targetType == nullptr and other.targetType == nullptr)
+                return value != nullptr and other.value == nullptr;
+
+            if (targetType != nullptr and other.targetType == nullptr)
+                return true;
+            else return *targetType < *other.targetType;
+        }
+
+        static AType * top;
+
     };
+
+    std::ostream & operator << (std::ostream & s, AType const & t);
 
 
     /** Type and shape analysis. 
@@ -169,60 +177,45 @@ namespace rift {
 
         /** For given llvm Value, returns its type. 
         
-        If the value was not yet seen, assumes the top type. 
+        If the value was not yet seen, assumes the bottom type. 
 
         */
-        Type valueType(llvm::Value * value) {
+        AType * valueType(llvm::Value * value) {
             auto i = types_.find(value);
             if (i == types_.end())
-                return Type::Value;
+                return new AType(AType::Type::B);
             else
                 return i->second;
         }
 
-        /** Sets type for given llvm value. 
-         */
-        void setValueType(llvm::Value * value, Type t) {
-            types_[value] = t;
+        void setValueType(llvm::Value * value, AType * type) {
+            auto i = types_.find(value);
+            if (i == types_.end()) {
+                changed = true;
+                types_[value] = type;
+            } else {
+                AType * t = i->second;
+                if (*t < *type) {
+                    changed = true;
+                    i->second = type;
+                }
+            }
         }
-
-        /** Stores the pairing between boxed and unboxed llvm values. 
-         */
-        void setAsBoxed(llvm::Value * boxed, llvm::Value * unboxed) {
-            unboxed_[boxed] = unboxed;
-        }
-        
-        /** Unboxes the given value by one step (i.e. from Value DoubleVector, DoubleScalarVector, CharacterVector, or Function, or DoubleScalar from DoubleScalarVector
-         */
-        llvm::Value * unbox(llvm::Value * value) {
-            auto i = unboxed_.find(value);
-            if (i == unboxed_.end())
-                return nullptr;
-            return i->second;
-        }
-
 
     private:
-        /** Type analysis of the add call. 
-         */
-        Type genericAdd(llvm::CallInst * ci);
 
-        /** Type analysis of getElement call. 
-        */
-        Type genericGetElement(llvm::CallInst * ci);
+        friend std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta);
 
-        /** Type analysis of double operators. 
-         */
-        Type doubleOperator(llvm::CallInst * ci);
+        AType * genericArithmetic(llvm::CallInst * ci);
+        AType * genericRelational(llvm::CallInst * ci);
+        AType * genericGetElement(llvm::CallInst * ci);
 
-        /** Type analysis on comparison operators. 
-         */
-        Type comparisonOperator(llvm::CallInst * ci);
-
+        
+        
         /** For each value specifies its actual type. */
-        std::map<llvm::Value *, Type> types_;
-        /** For each value, lists the unboxed version of it, if present. */
-        std::map<llvm::Value *, llvm::Value *> unboxed_;
+        std::map<llvm::Value *, AType *> types_;
+
+        bool changed;
 
     };
 

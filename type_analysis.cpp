@@ -9,167 +9,171 @@ using namespace llvm;
 
 namespace rift {
 
-    const Type Type::DoubleScalar(Type::Internal::DoubleScalar);
-    const Type Type::DoubleScalarVector(Type::Internal::DoubleScalarVector);
-    const Type Type::DoubleVector(Type::Internal::DoubleVector);
-    const Type Type::CharacterVector(Type::Internal::CharacterVector);
-    const Type Type::Function(Type::Internal::Function);
-    const Type Type::BoxedDoubleScalarVector(Type::Internal::BoxedDoubleScalarVector);
-    const Type Type::BoxedDoubleVector(Type::Internal::BoxedDoubleVector);
-    const Type Type::BoxedCharacterVector(Type::Internal::BoxedCharacterVector);
-    const Type Type::BoxedFunction(Type::Internal::BoxedFunction);
-    const Type Type::Value(Type::Internal::Value);
+    AType * AType::top = nullptr; // new AType(AType::Type::T);
+
 
     char TypeAnalysis::ID = 0;
 
-    Type TypeAnalysis::genericAdd(CallInst * ci) {
-        Type lhs = valueType(ci->getOperand(0));
-        Type rhs = valueType(ci->getOperand(1));
-        if (lhs.isScalar() and rhs.isScalar())
-            return Type::BoxedDoubleScalarVector;
-        else if (lhs.isDouble() and rhs.isDouble())
-            return Type::BoxedDoubleVector;
-        else if (lhs.isCharacter() and rhs.isCharacter())
-            return Type::BoxedCharacterVector;
-        else if (lhs.isFunction() or rhs.isFunction())
-            throw "Invalid types for binary add operator";
-        else
-            return Type::Value;
+    AType * TypeAnalysis::genericArithmetic(CallInst * ci) {
+        AType * lhs = valueType(ci->getOperand(0));
+        AType * rhs = valueType(ci->getOperand(1));
+        return lhs->merge(rhs)->setValue(ci);
     }
 
-    Type TypeAnalysis::genericGetElement(CallInst * ci) {
-        Type from = valueType(ci->getOperand(0));
-        Type index = valueType(ci->getOperand(1));
-        if (index.isFunction() or index.isCharacter())
-            throw "Index must be double";
-        if (from.isCharacter()) {
-            return Type::BoxedCharacterVector;
-        } else if (from.isDouble()) {
-            if (index.isScalar())
-                return Type::BoxedDoubleScalarVector;
-            else
-                return Type::BoxedDoubleVector;
-        } else if (from == Type::Value) {
-            return Type::Value;
+    AType * TypeAnalysis::genericRelational(CallInst * ci) {
+        AType * lhs = valueType(ci->getOperand(0));
+        AType * rhs = valueType(ci->getOperand(1));
+        if (lhs->isScalar() and rhs->isScalar())
+            return new AType(AType::Type::R, AType::Type::DV, AType::Type::D, ci);
+        else
+            return new AType(AType::Type::R, AType::Type::DV, ci);
+    }
+
+
+    AType * TypeAnalysis::genericGetElement(CallInst * ci) {
+        AType * from = valueType(ci->getOperand(0));
+        AType * index = valueType(ci->getOperand(1));
+        if (from->isDouble()) {
+            if (index->isScalar()) {
+                AType * s = new AType(AType::Type::D);
+                AType * v = new AType(AType::Type::DV, s);
+                return new AType(AType::Type::R, v, ci);
+                return new AType(AType::Type::R, AType::Type::DV, AType::Type::D, ci);
+            } else {
+                AType * v = new AType(AType::Type::DV);
+                return new AType(AType::Type::R, v, ci);
+                return new AType(AType::Type::R, AType::Type::DV, ci);
+            }
         } else {
-            throw "Cannot index a function";
+            AType * v = new AType(AType::Type::CV);
+            return new AType(AType::Type::R, v, ci);
         }
-    }
-
-    Type TypeAnalysis::doubleOperator(CallInst * ci) {
-        Type lhs = valueType(ci->getOperand(0));
-        Type rhs = valueType(ci->getOperand(1));
-        if (lhs.isScalar() and rhs.isScalar())
-            return Type::BoxedDoubleScalarVector;
-        else if (lhs.isDouble() and rhs.isDouble())
-            return Type::BoxedDoubleVector;
-        else if (lhs.isFunction() or rhs.isFunction() or lhs.isCharacter() or rhs.isCharacter())
-            throw "Invalid types for binary operator";
-        else
-            return Type::Value;
-    }
-
-    Type TypeAnalysis::comparisonOperator(CallInst * ci) {
-        Type lhs = valueType(ci->getOperand(0));
-        Type rhs = valueType(ci->getOperand(1));
-        if (lhs.isScalar() and rhs.isScalar())
-            return Type::BoxedDoubleScalarVector;
-        else if (lhs.isDouble() and rhs.isDouble())
-            return Type::BoxedDoubleVector;
-        else if (lhs.isCharacter() and rhs.isCharacter())
-            return Type::BoxedDoubleVector;
-        else if (lhs == Type::Value and rhs == Type::Value)
-            return Type::BoxedDoubleVector;
-        else
-            return Type::BoxedDoubleScalarVector;
     }
 
     bool TypeAnalysis::runOnFunction(llvm::Function & f) {
         types_.clear();
         //std::cout << "runnning TypeAnalysis..." << std::endl;
         // for all basic blocks, for all instructions
-        for (auto & b : f) {
-            for (auto & i : b) {
-                if (CallInst * ci = dyn_cast<CallInst>(&i)) {
-                    StringRef s = ci->getCalledFunction()->getName();
-                    if (s == "doubleVectorLiteral") {
-                        // when creating literal from a double, it is always double scalar
-                        types_[ci] = Type::DoubleScalarVector;
-                        types_[ci->getOperand(0)] = Type::DoubleScalar;
-                        unboxed_[ci] = ci->getOperand(0);
-                    } else if (s == "characterVectorLiteral") {
-                        types_[ci] = Type::CharacterVector;
-                        unboxed_[ci] = ci->getOperand(0);
-                    } else if (s == "fromDoubleVector") {
-                        // based on whether the value is created from boxed scalar or boxed vector
-                        types_[ci] = valueType(ci->getOperand(0)) == Type::DoubleScalarVector ? Type::BoxedDoubleScalarVector : Type::BoxedDoubleVector;
-                        unboxed_[ci] = ci->getOperand(0);
-                    } else if (s == "fromCharacterVector") {
-                        types_[ci] = Type::BoxedCharacterVector;
-                        unboxed_[ci] = ci->getOperand(0);
-                    } else if (s == "fromFunction") {
-                        types_[ci] = Type::BoxedFunction;
-                        unboxed_[ci] = ci->getOperand(0);
-                    } else if (s == "genericGetElement") {
-                        types_[ci] = genericGetElement(ci);
-                    } else if (s == "genericSetElement") {
-                        // don't do anything for set element as it does not produce any new value
-                    } else if (s == "genericAdd") {
-                        types_[ci] = genericAdd(ci);
-                    } else if (s == "genericSub") {
-                        types_[ci] = doubleOperator(ci);
-                    } else if (s == "genericMul") {
-                        types_[ci] = doubleOperator(ci);
-                    } else if (s == "genericDiv") {
-                        types_[ci] = doubleOperator(ci);
-                    } else if (s == "genericEq") {
-                        types_[ci] = comparisonOperator(ci);
-                    } else if (s == "genericNeq") {
-                        types_[ci] = comparisonOperator(ci);
-                    } else if (s == "genericLt") {
-                        types_[ci] = doubleOperator(ci);
-                    } else if (s == "genericGt") {
-                        types_[ci] = doubleOperator(ci);
-                    } else if (s == "length") {
-                        // result of length operation is always double scalar
-                        types_[ci] = Type::DoubleScalar;
-                    } else if (s == "type") {
-                        // result of type operation is always character vector
-                        types_[ci] = Type::CharacterVector;
-                    } else if (s == "c") {
-                        // make sure the types to c are correct
-                        Type t = valueType(ci->getArgOperand(1));
-                        if (t.isFunction())
-                            throw "Cannot concatenate functions";
-                        for (unsigned i = 2; i < ci->getNumArgOperands(); ++i) {
-                            Type tt = valueType(ci->getArgOperand(i));
-                            if (tt.isFunction())
-                                throw "Cannot concatenate functions";
-                            if (t == Type::Value) {
-                                t = tt;
-                            } else if (t.isDifferentClassAs(tt))
-                                throw "Cannot concatenate different types";
+        do {
+            // cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+            changed = false;
+            for (auto & b : f) {
+                for (auto & i : b) {
+                    if (CallInst * ci = dyn_cast<CallInst>(&i)) {
+                        StringRef s = ci->getCalledFunction()->getName();
+                        if (s == "doubleVectorLiteral") {
+                            // when creating literal from a double, it is always double scalar
+                            llvm::Value * op = ci->getOperand(0);
+                            setValueType(op, new AType(AType::Type::D, op));
+                            setValueType(ci, new AType(AType::Type::DV, valueType(op), ci));
+                        } else if (s == "characterVectorLiteral") {
+                            setValueType(ci, new AType(AType::Type::CV, ci));
+                        } else if (s == "fromDoubleVector") {
+                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                        } else if (s == "fromCharacterVector") {
+                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                        } else if (s == "fromFunction") {
+                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                        } else if (s == "genericGetElement") {
+                            setValueType(ci, genericGetElement(ci));
+                        } else if (s == "genericSetElement") {
+                            // don't do anything for set element as it does not produce any new value
+                        } else if (s == "genericAdd") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericSub") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericMul") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericDiv") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericEq") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "genericNeq") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "genericLt") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "genericGt") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "length") {
+                            // result of length operation is always double scalar
+                            setValueType(ci, new AType(AType::Type::D, ci));
+                        } else if (s == "type") {
+                            // result of type operation is always character vector
+                            setValueType(ci, new AType(AType::Type::CV, ci));
+                        } else if (s == "c") {
+                            // make sure the types to c are correct
+                            AType * t1 = valueType(ci->getArgOperand(1));
+                            for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
+                                t1 = t1->merge(valueType(ci->getArgOperand(i)));
+                            if (t1->isScalar())
+                                // concatenation of scalars is a vector
+                                t1 = new AType(AType::Type::R, AType::Type::DV, ci);
+                            else
+                                // c(c(1,2), c(2,3) !
+                                t1->setValue(ci);
+                            setValueType(ci, t1);
+                        } else if (s == "genericEval") {
+                            setValueType(ci, new AType(AType::Type::R, ci));
+                        } else if (s == "envGet") {
+                            setValueType(ci, new AType(AType::Type::R, ci));
+                        } else if (s == "envSet") {
+                            setValueType(ci->getOperand(1), valueType(ci->getOperand(2)));
                         }
-                        if (t.isDouble())
-                            types_[ci] = Type::BoxedDoubleVector;
-                        else if (t.isCharacter())
-                            types_[ci] = Type::BoxedCharacterVector;
-                        else
-                            types_[ci] = Type::Value;
-                    } else if (s == "genericEval") {
-                        Type t = valueType(ci->getOperand(0));
-                        if (t != Type::Value and not t.isCharacter())
-                            throw "Invalid type for eval";
-                        types_[ci] = Type::Value;
-                    } else if (s == "envGet") {
-                        types_[ci] = types_[ci->getOperand(1)];
-                    } else if (s == "envSet") {
-                        types_[ci->getOperand(1)] = types_[ci->getOperand(2)];
+                    } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
+                        AType * first = valueType(phi->getOperand(0));
+                        AType * second = valueType(phi->getOperand(1));
+                        AType * result = first->merge(second)->setValue(phi);
+
+                        setValueType(phi, result);
                     }
                 }
             }
-        }
+        } while (changed);
+        f.dump();
+        cout << *this << endl;
         return false;
     }
 
+    std::ostream & operator << (std::ostream & s, AType const & t) {
+        llvm::raw_os_ostream ss(s);
+        if (t.value != nullptr)
+            t.value->printAsOperand(ss, false);
+        switch (t.type) {
+            case AType::Type::D:
+                ss << " D ";
+                break;
+            case AType::Type::DV:
+                ss << " DV ";
+                break;
+            case AType::Type::CV:
+                ss << " CV ";
+                break;
+            case AType::Type::F:
+                ss << " F ";
+                break;
+            case AType::Type::R:
+                ss << " R ";
+                break;
+            case AType::Type::T:
+                ss << " T ";
+                break;
+        }
+        ss.flush();
+        if (t.targetType != nullptr)
+            s << " -> " << *(t.targetType);
+        return s;
+    }
+
+
+    std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta) {
+        s << "Type Analysis: " << "\n";
+        for (auto const & v : ta.types_) {
+            llvm::Value * vv = v.first;
+            s << *v.second << endl;
+        }
+        return s;
+    }
+
+
 } // namespace rift
+

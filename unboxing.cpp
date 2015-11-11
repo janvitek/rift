@@ -1,3 +1,5 @@
+#ifdef HAHA
+
 #include <iostream>
 #include <ciso646>
 
@@ -30,9 +32,9 @@ namespace rift {
             } else if (t == Type::BoxedCharacterVector) {
                 result = RUNTIME_CALL(m->characterFromValue, v);
                 ta->setValueType(result, Type::CharacterVector);
-            } else if (t == Type::BoxedFunction) {
+            } else if (t == Type::BoxedRFun) {
                 result = RUNTIME_CALL(m->functionFromValue, v);
-                ta->setValueType(result, Type::Function);
+                ta->setValueType(result, Type::RFun);
             }
             if (result != nullptr)
                 ta->setAsBoxed(v, result);
@@ -328,3 +330,4 @@ namespace rift {
 
 } // namespace rift
 
+#endif
