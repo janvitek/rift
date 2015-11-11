@@ -13,12 +13,12 @@ namespace rift {
     const Type Type::DoubleScalarVector(Type::Internal::DoubleScalarVector);
     const Type Type::DoubleVector(Type::Internal::DoubleVector);
     const Type Type::CharacterVector(Type::Internal::CharacterVector);
-    const Type Type::Function(Type::Internal::Function);
+    const Type Type::RFun(Type::Internal::RFun);
     const Type Type::BoxedDoubleScalarVector(Type::Internal::BoxedDoubleScalarVector);
     const Type Type::BoxedDoubleVector(Type::Internal::BoxedDoubleVector);
     const Type Type::BoxedCharacterVector(Type::Internal::BoxedCharacterVector);
-    const Type Type::BoxedFunction(Type::Internal::BoxedFunction);
-    const Type Type::Value(Type::Internal::Value);
+    const Type Type::BoxedRFun(Type::Internal::RFun);
+    const Type Type::RVal(Type::Internal::RVal);
 
     char TypeAnalysis::ID = 0;
 
@@ -34,7 +34,7 @@ namespace rift {
         else if (lhs.isFunction() or rhs.isFunction())
             throw "Invalid types for binary add operator";
         else
-            return Type::Value;
+            return Type::RVal;
     }
 
     Type TypeAnalysis::genericGetElement(CallInst * ci) {
@@ -49,8 +49,8 @@ namespace rift {
                 return Type::BoxedDoubleScalarVector;
             else
                 return Type::BoxedDoubleVector;
-        } else if (from == Type::Value) {
-            return Type::Value;
+        } else if (from == Type::RVal) {
+            return Type::RVal;
         } else {
             throw "Cannot index a function";
         }
@@ -66,7 +66,7 @@ namespace rift {
         else if (lhs.isFunction() or rhs.isFunction() or lhs.isCharacter() or rhs.isCharacter())
             throw "Invalid types for binary operator";
         else
-            return Type::Value;
+            return Type::RVal;
     }
 
     Type TypeAnalysis::comparisonOperator(CallInst * ci) {
@@ -78,7 +78,7 @@ namespace rift {
             return Type::BoxedDoubleVector;
         else if (lhs.isCharacter() and rhs.isCharacter())
             return Type::BoxedDoubleVector;
-        else if (lhs == Type::Value and rhs == Type::Value)
+        else if (lhs == Type::RVal and rhs == Type::RVal)
             return Type::BoxedDoubleVector;
         else
             return Type::BoxedDoubleScalarVector;
@@ -108,7 +108,7 @@ namespace rift {
                         types_[ci] = Type::BoxedCharacterVector;
                         unboxed_[ci] = ci->getOperand(0);
                     } else if (s == "fromFunction") {
-                        types_[ci] = Type::BoxedFunction;
+                        types_[ci] = Type::BoxedRFun;
                         unboxed_[ci] = ci->getOperand(0);
                     } else if (s == "genericGetElement") {
                         types_[ci] = genericGetElement(ci);
@@ -145,7 +145,7 @@ namespace rift {
                             Type tt = valueType(ci->getArgOperand(i));
                             if (tt.isFunction())
                                 throw "Cannot concatenate functions";
-                            if (t == Type::Value) {
+                            if (t == Type::RVal) {
                                 t = tt;
                             } else if (t.isDifferentClassAs(tt))
                                 throw "Cannot concatenate different types";
@@ -155,12 +155,12 @@ namespace rift {
                         else if (t.isCharacter())
                             types_[ci] = Type::BoxedCharacterVector;
                         else
-                            types_[ci] = Type::Value;
+                            types_[ci] = Type::RVal;
                     } else if (s == "genericEval") {
                         Type t = valueType(ci->getOperand(0));
-                        if (t != Type::Value and not t.isCharacter())
+                        if (t != Type::RVal and not t.isCharacter())
                             throw "Invalid type for eval";
-                        types_[ci] = Type::Value;
+                        types_[ci] = Type::RVal;
                     } else if (s == "envGet") {
                         types_[ci] = types_[ci->getOperand(1)];
                     } else if (s == "envSet") {
@@ -169,7 +169,28 @@ namespace rift {
                 }
             }
         }
+        f.dump();
+        cout << *this << endl;
+        
         return false;
     }
 
+    std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta) {
+        llvm::raw_os_ostream ss(s);
+        ss << "Type Analysis: " << "\n";
+        for (auto const & v : ta.types_) {
+            llvm::Value * vv = v.first;
+            vv->printAsOperand(ss, false);
+            ss << ": " << v.second;
+            while ((vv = ta.unbox(vv)) != nullptr) {
+                ss << " -> ";
+                vv->printAsOperand(ss, false);
+            }
+            ss << "\n";
+        }
+        return s;
+    }
+
+
 } // namespace rift
+

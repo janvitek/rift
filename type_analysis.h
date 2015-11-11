@@ -23,7 +23,7 @@ namespace rift {
         /** Character vector of arbitrary length */
         static const Type CharacterVector;
         /** Function object. */
-        static const Type Function;
+        static const Type RFun;
         /** Double vector of size 1 boxed into Value. */
         static const Type BoxedDoubleScalarVector;
         /** Double vector of arbitrary length boxed into Value */
@@ -31,12 +31,12 @@ namespace rift {
         /** Character vector of arbitrary length boxed into Value */
         static const Type BoxedCharacterVector;
         /** Function boxed into Value. */
-        static const Type BoxedFunction;
+        static const Type BoxedRFun;
         /** Any value object, Top value */
-        static const Type Value;
+        static const Type RVal;
 
         Type() :
-            value_(Internal::Value) {}
+            value_(Internal::RVal) {}
 
         Type(Type const & from) = default;
 
@@ -92,8 +92,8 @@ namespace rift {
          */
         bool isFunction() const {
             switch (value_) {
-                case Internal::Function:
-                case Internal::BoxedFunction:
+                case Internal::RFun:
+                case Internal::BoxedRFun:
                     return true;
                 default:
                     return false;
@@ -130,13 +130,50 @@ namespace rift {
             DoubleScalarVector,
             DoubleVector,
             CharacterVector,
-            Function,
+            RFun,
             BoxedDoubleScalarVector,
             BoxedDoubleVector,
             BoxedCharacterVector,
-            BoxedFunction,
-            Value
+            BoxedRFun,
+            RVal
         };
+
+        friend llvm::raw_ostream & operator << (llvm::raw_ostream & s, Type const & t) {
+            switch (t.value_) {
+                case Type::Internal::DoubleScalar:
+                    s << "DoubleScalar";
+                    break;
+                case Type::Internal::DoubleScalarVector:
+                    s << "DoubleScalarVector";
+                    break;
+                case Type::Internal::DoubleVector:
+                    s << "DoubleVector";
+                    break;
+                case Type::Internal::CharacterVector:
+                    s << "ChracterVextor";
+                    break;
+                case Type::Internal::RFun:
+                    s << "RFun";
+                    break;
+                case Type::Internal::BoxedDoubleScalarVector:
+                    s << "BoxedDoubleScalarVector";
+                    break;
+                case Type::Internal::BoxedDoubleVector:
+                    s << "BoxedDoubleVector";
+                    break;
+                case Type::Internal::BoxedCharacterVector:
+                    s << "BoxedCharacterVector";
+                    break;
+                case Type::Internal::BoxedRFun:
+                    s << "BoxedRFun";
+                    break;
+                case Type::Internal::RVal:
+                    s << "RVal";
+                    break;
+            }
+            return s;
+        }
+
 
         Type(Internal value) :
             value_(value) {}
@@ -175,7 +212,7 @@ namespace rift {
         Type valueType(llvm::Value * value) {
             auto i = types_.find(value);
             if (i == types_.end())
-                return Type::Value;
+                return Type::RVal;
             else
                 return i->second;
         }
@@ -194,15 +231,17 @@ namespace rift {
         
         /** Unboxes the given value by one step (i.e. from Value DoubleVector, DoubleScalarVector, CharacterVector, or Function, or DoubleScalar from DoubleScalarVector
          */
-        llvm::Value * unbox(llvm::Value * value) {
+        llvm::Value * unbox(llvm::Value * value) const {
             auto i = unboxed_.find(value);
             if (i == unboxed_.end())
                 return nullptr;
             return i->second;
         }
 
-
     private:
+
+        friend std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta);
+
         /** Type analysis of the add call. 
          */
         Type genericAdd(llvm::CallInst * ci);
