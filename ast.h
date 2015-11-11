@@ -1,7 +1,6 @@
 #pragma once
 #ifndef AST_H
 #define AST_H
-
 #include <iostream>
 #include <ciso646>
 
@@ -14,9 +13,7 @@ typedef int Symbol;
 class Visitor;
 
 namespace ast {
-
-    /** Base class for all expressions in rift. 
-     */
+    /** Base class for all expressions in rift.  */
     class Exp {
     public:
         virtual ~Exp() {}
@@ -24,179 +21,111 @@ namespace ast {
         void print(std::ostream & s);
     };
 
-    /** Double scalar literal. 
-     */
+    /** Double scalar literal.  */
     class Num : public Exp {
     public:
-        Num(double value):
-            value(value) {}
-
+        Num(double value): value(value) {}
         void accept(Visitor * v) override;
-
-
         double value;
     };
 
 
-    /** Character literal. 
-     */
+    /** Character literal. */
     class Str : public Exp {
     public:
-        Str(unsigned index):
-            index(index) {}
+        Str(unsigned index): index(index) {}
         void accept(Visitor * v) override;
         std::string const & value() const;
-
         unsigned index;
     };
 
-    /** Variable read. 
-     */
+    /** Variable read.  */
     class Var : public Exp  {
     public:
-        Var(Symbol symbol):
-            symbol(symbol) {}
+        Var(Symbol symbol): symbol(symbol) {}
         void accept(Visitor * v) override;
         std::string const & value() const;
-
         unsigned symbol;
     };
 
-    /** Block of statements. 
-     */
+    /** Block of statements.  */
     class Seq : public Exp {
     public:
         ~Seq() override  {
-            for (Exp * e : body)
-                delete e;
+            for (Exp * e : body) delete e;
         }
-
         void accept(Visitor * v) override;
-
         std::vector<Exp*> body;
     };
 
-    /** Function definition. 
-     */
+    /** Function definition.  */
     class Fun: public Exp {
     public:
-
-        Fun():
-            body(nullptr) {
-        }
-
+        Fun(): body(nullptr) {}
         Fun(ast::Exp * body):
             body(dynamic_cast<ast::Seq *>(body)) {
         }
-
         ~Fun() {
-            for (Var * v : args)
-                delete v;
+            for (Var * v : args) delete v;
             delete body;
         }
-
         void accept(Visitor * v) override;
-
         Seq * body;
         std::vector<Var *> args;
     };
 
-    /** Binary expression. 
-     */
+    /** Binary expression. */
     class BinExp : public Exp {
     public:
-        enum class Type {
-            add,
-            sub,
-            mul,
-            div,
-            eq,
-            neq,
-            lt,
-            gt,
-        };
+        enum class Type { add, sub, mul, div, eq, neq, lt, gt };
 
-        BinExp(Exp * lhs, Exp * rhs, Type t):
-            lhs(lhs),
-            rhs(rhs),
-            type(t) {
-        }
-
-        ~BinExp() {
-            delete lhs;
-            delete rhs;
-        }
-
+        BinExp(Exp * lhs, Exp * rhs, Type t): lhs(lhs), rhs(rhs), type(t) { }
+        ~BinExp() {   delete lhs; delete rhs; }
         void accept(Visitor * v) override;
-
         Exp * lhs;
         Exp * rhs;
         Type type;
     };
 
-    /** Generic call to a function. 
-
-    Only stores a vector of arguments. Calls are divided into user calls and special calls to intrinsics. 
-     */
+    /** Function call. Stores a vector of argument exps.  */
     class Call: public Exp {
     public:
-
-        ~Call() {
-            for (Exp * e : args)
-                delete e;
-        }
-
+        ~Call() {  for (Exp * e : args) delete e; }
         void accept(Visitor * v) override;
-
-        std::vector<Exp*> args;
-
+	std::vector<Exp*> args;
     };
 
-    /** Call to user defined rift function. 
-     */
+    /** Call to user defined function */
     class UserCall : public Call {
     public:
-        UserCall(Exp * name):
-            name(name) {
-        }
-        ~UserCall() {
-            delete name;
-        }
-
+        UserCall(Exp * name): name(name) { }
+        ~UserCall() { delete name; }
         void accept(Visitor * v) override;
-
         Exp * name;
     };
 
-    /** Special call to rift intrinsics. 
-     */
+    /** Call to Rift runtime  */
     class SpecialCall : public Call {
     public:
-
         void accept(Visitor * v) override;
-
     };
 
-    /** Call to c function for concatenating both characters and doubles. 
-     */
+    /** Call to c().   */
     class CCall : public SpecialCall {
     public:
         void accept(Visitor * v) override;
     };
 
-    /** Call to eval function. 
-     */
+    /** Call to eval(). */
     class EvalCall : public SpecialCall {
     public:
         EvalCall(ast::Exp * arg) {
             args.push_back(arg);
         }
-
         void accept(Visitor * v) override;
     };
 
-    /** Call to length call determining the length of a vector. 
-     */
+    /** Call to length().  */
     class LengthCall : public SpecialCall {
     public:
         LengthCall(ast::Exp * arg) {
@@ -205,8 +134,7 @@ namespace ast {
         void accept(Visitor * v) override;
     };
 
-    /** Call to a type function returning the type of a value. 
-     */
+    /** Call to a type().  */
     class TypeCall : public SpecialCall {
     public:
         TypeCall(ast::Exp * arg) {
@@ -215,81 +143,61 @@ namespace ast {
         void accept(Visitor * v) override;
     };
 
-
-    /** Indexed read. 
-     */
+    /** Indexed read.  */
     class Index : public Exp {
     public:
         Index(Exp * name):
             name(name),
             index(nullptr) {
         }
-
         ~Index() {
             delete name;
             delete index;
         }
-
         void accept(Visitor * v) override;
-
         Exp * name;
         Exp * index;
     };
 
-    /** Assignment base class. 
-     */
+    /** Assignment */
     class Assignment : public Exp {
     public:
         void accept(Visitor * v) override;
-
     };
 
-    /** Assignment in the environment, i.e. assignment to a symbol. 
-     */
+    /** Assignment  to a symbol.  */
     class SimpleAssignment : public Assignment {
     public:
-
         SimpleAssignment(Var * name):
             name(name),
             rhs(nullptr) {
         }
-
         ~SimpleAssignment() {
             delete name;
             delete rhs;
         }
-
         void accept(Visitor * v) override;
-
         Var * name;
         Exp * rhs;
-
     };
 
-    /** Assignment to respective indices of existing value. 
-     */
+    /** Assignment to an indexed. */
     class IndexAssignment : public Assignment {
     public:
-
         IndexAssignment(Index * index):
             index(index),
             rhs(nullptr) {
         }
-
         ~IndexAssignment() override {
             delete index;
             delete rhs;
         }
-
         void accept(Visitor * v) override;
-
         Index * index;
         Exp * rhs;
-
     };
 
-    /** Conditional statement. 
-     */
+    /** Conditional   */
     class IfElse : public Exp {
     public:
         IfElse(Exp * guard):
@@ -297,71 +205,59 @@ namespace ast {
             ifClause(nullptr),
             elseClause(nullptr) {
         }
-
         ~IfElse() {
             delete guard;
             delete ifClause;
             delete elseClause;
         }
-
         void accept(Visitor * v) override;
-
         Exp * guard;
         Exp * ifClause;
         Exp * elseClause;
     };
 
-    /** While loop. 
-     */
+    /** While loop.  */
     class WhileLoop : public Exp {
     public:
         WhileLoop(Exp * guard):
             guard(guard),
             body(nullptr) {
         }
-
         ~WhileLoop() override {
             delete guard;
             delete body;
         }
-
         void accept(Visitor * v) override;
-
         Exp * guard;
         Seq * body;
     };
-
-
-
 
 } // namespace ast
 
 class Visitor {
 public:
-    virtual void visit(ast::Exp * node) {}
-    virtual void visit(ast::Num * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::Str * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::Var * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::Seq * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::Fun * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::BinExp * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::Call * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::UserCall * node) { visit(static_cast<ast::Call*>(node)); }
-    virtual void visit(ast::SpecialCall * node) { visit(static_cast<ast::Call*>(node)); }
-    virtual void visit(ast::CCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
-    virtual void visit(ast::EvalCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
-    virtual void visit(ast::TypeCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
-    virtual void visit(ast::LengthCall * node) { visit(static_cast<ast::SpecialCall*>(node)); }
-    virtual void visit(ast::Index * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::Assignment * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::SimpleAssignment * node) { visit(static_cast<ast::Assignment*>(node)); }
-    virtual void visit(ast::IndexAssignment * node) { visit(static_cast<ast::Assignment*>(node)); }
-    virtual void visit(ast::IfElse * node) { visit(static_cast<ast::Exp*>(node)); }
-    virtual void visit(ast::WhileLoop * node) { visit(static_cast<ast::Exp*>(node)); }
+    virtual void visit(ast::Exp * n) {}
+    virtual void visit(ast::Num * n) { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::Str * n) { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::Var * n) { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::Seq * n) { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::Fun * n) { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::BinExp * n)      { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::Call * n)        { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::UserCall * n)    { visit(static_cast<ast::Call*>(n)); }
+    virtual void visit(ast::SpecialCall * n) { visit(static_cast<ast::Call*>(n)); }
+    virtual void visit(ast::CCall * n)       { visit(static_cast<ast::SpecialCall*>(n)); }
+    virtual void visit(ast::EvalCall * n)    { visit(static_cast<ast::SpecialCall*>(n)); }
+    virtual void visit(ast::TypeCall * n)    { visit(static_cast<ast::SpecialCall*>(n)); }
+    virtual void visit(ast::LengthCall * n)  { visit(static_cast<ast::SpecialCall*>(n)); }
+    virtual void visit(ast::Index * n)       { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::Assignment * n)  { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::SimpleAssignment * n) { visit(static_cast<ast::Assignment*>(n)); }
+    virtual void visit(ast::IndexAssignment * n) { visit(static_cast<ast::Assignment*>(n)); }
+    virtual void visit(ast::IfElse * n)      { visit(static_cast<ast::Exp*>(n)); }
+    virtual void visit(ast::WhileLoop * n)   { visit(static_cast<ast::Exp*>(n)); }
 };
 
-
 } // namespace rift2
-
 #endif // AST_H
 
