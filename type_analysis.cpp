@@ -166,6 +166,11 @@ namespace rift {
                     } else if (s == "envSet") {
                         types_[ci->getOperand(1)] = types_[ci->getOperand(2)];
                     }
+                } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
+                    llvm::Value * v1 = phi->getOperand(0);
+                    llvm::Value * v2 = phi->getOperand(1);
+                    Type t1 = valueType(v1);
+                    Type t2 = valueType(v2);
                 }
             }
         }

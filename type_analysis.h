@@ -48,6 +48,17 @@ namespace rift {
             return value_ != other.value_;
         }
 
+        Type merge(Type const & other) {
+            if (*this == RVal or other == RVal or isDifferentClassAs(other))
+                return RVal;
+            if (*this == other)
+                return *this;
+            switch (value_) {
+
+
+            }
+        }
+
         /** Returns true if the shape of the value is double scalar. 
          */
         bool isScalar() const {
