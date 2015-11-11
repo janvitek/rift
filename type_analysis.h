@@ -10,6 +10,7 @@ namespace rift {
     public:
 
         enum class Type {
+            B,
             D,
             DV,
             CV, 
@@ -51,6 +52,10 @@ namespace rift {
         AType * merge(AType * other) {
             if (other == nullptr)
                 return top;
+            if (type == Type::B)
+                return new AType(*other);
+            else if (other->type == Type::B)
+                return new AType(*this);
 // seems to me we do not need this
 //          if (*this == *other)
 //              return new AType(*this);
@@ -82,14 +87,14 @@ namespace rift {
                     if (value == other->value)
                         return new AType(*this);
                     else
-                        return new AType(Type::DV, targetType->merge(other->targetType));
+                        return new AType(Type::DV, targetType == nullptr ? nullptr : targetType->merge(other->targetType));
                 case Type::R:
                     if (*other != Type::R)
                         return top;
                     if (value == other->value)
                         return new AType(*this);
                     else
-                        return new AType(Type::R, targetType->merge(other->targetType));
+                        return new AType(Type::R, targetType == nullptr ? nullptr : targetType->merge(other->targetType));
                 default:
                     return top;
             }
@@ -124,8 +129,24 @@ namespace rift {
             return type != other;
         }
 
-        static AType * top;
 
+        /** We are only interested in the R types as phi nodes are typed.
+            Having a value is smaller than not having a value
+
+            R(DV(D)) < R(DV) < R < T
+            R(CV) < R < T
+            R(F) < R < T
+         */
+        bool operator < (AType const & other) const {
+            if (targetType == nullptr and other.targetType == nullptr)
+                return value != nullptr and other.value == nullptr;
+
+            if (targetType != nullptr and other.targetType == nullptr)
+                return true;
+            else return *targetType < *other.targetType;
+        }
+
+        static AType * top;
 
     };
 
@@ -156,19 +177,30 @@ namespace rift {
 
         /** For given llvm Value, returns its type. 
         
-        If the value was not yet seen, assumes the top type. 
+        If the value was not yet seen, assumes the bottom type. 
 
         */
         AType * valueType(llvm::Value * value) {
             auto i = types_.find(value);
             if (i == types_.end())
-                // envGet of variable we haven't seen yet
-                return new AType(AType::Type::R);
+                return new AType(AType::Type::B);
             else
                 return i->second;
         }
 
-
+        void setValueType(llvm::Value * value, AType * type) {
+            auto i = types_.find(value);
+            if (i == types_.end()) {
+                changed = true;
+                types_[value] = type;
+            } else {
+                AType * t = i->second;
+                if (*t < *type) {
+                    changed = true;
+                    i->second = type;
+                }
+            }
+        }
 
     private:
 
@@ -182,6 +214,8 @@ namespace rift {
         
         /** For each value specifies its actual type. */
         std::map<llvm::Value *, AType *> types_;
+
+        bool changed;
 
     };
 

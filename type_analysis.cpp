@@ -54,77 +54,83 @@ namespace rift {
         types_.clear();
         //std::cout << "runnning TypeAnalysis..." << std::endl;
         // for all basic blocks, for all instructions
-        for (auto & b : f) {
-            for (auto & i : b) {
-                if (CallInst * ci = dyn_cast<CallInst>(&i)) {
-                    StringRef s = ci->getCalledFunction()->getName();
-                    if (s == "doubleVectorLiteral") {
-                        // when creating literal from a double, it is always double scalar
-                        llvm::Value * op = ci->getOperand(0);
-                        types_[op] = new AType(AType::Type::D, op);
-                        types_[ci] = new AType(AType::Type::DV, types_[op], ci);
-                    } else if (s == "characterVectorLiteral") {
-                        types_[ci] = new AType(AType::Type::CV, ci);
-                    } else if (s == "fromDoubleVector") {
-                        types_[ci] = new AType(AType::Type::R, types_[ci->getOperand(0)], ci);
-                    } else if (s == "fromCharacterVector") {
-                        types_[ci] = new AType(AType::Type::R, types_[ci->getOperand(0)], ci);
-                    } else if (s == "fromFunction") {
-                        types_[ci] = new AType(AType::Type::R, types_[ci->getOperand(0)], ci);
-                    } else if (s == "genericGetElement") {
-                        types_[ci] = genericGetElement(ci);
-                    } else if (s == "genericSetElement") {
-                        // don't do anything for set element as it does not produce any new value
-                    } else if (s == "genericAdd") {
-                        types_[ci] = genericArithmetic(ci);
-                    } else if (s == "genericSub") {
-                        types_[ci] = genericArithmetic(ci);
-                    } else if (s == "genericMul") {
-                        types_[ci] = genericArithmetic(ci);
-                    } else if (s == "genericDiv") {
-                        types_[ci] = genericArithmetic(ci);
-                    } else if (s == "genericEq") {
-                        types_[ci] = genericRelational(ci);
-                    } else if (s == "genericNeq") {
-                        types_[ci] = genericRelational(ci);
-                    } else if (s == "genericLt") {
-                        types_[ci] = genericRelational(ci);
-                    } else if (s == "genericGt") {
-                        types_[ci] = genericRelational(ci);
-                    } else if (s == "length") {
-                        // result of length operation is always double scalar
-                        types_[ci] = new AType(AType::Type::D, ci);
-                    } else if (s == "type") {
-                        // result of type operation is always character vector
-                        types_[ci] = new AType(AType::Type::CV, ci);
-                    } else if (s == "c") {
-                        // make sure the types to c are correct
-                        AType * t1 = valueType(ci->getArgOperand(1));
-                        for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
-                            t1 = t1->merge(valueType(ci->getArgOperand(i)));
-                        if (t1->isScalar())
-                            // concatenation of scalars is a vector
-                            t1 = new AType(AType::Type::R, AType::Type::DV, ci);
-                        else 
-                            // c(c(1,2), c(2,3) !
-                            t1->setValue(ci);
-                        types_[ci] = t1;
-                    } else if (s == "genericEval") {
-                        types_[ci] = new AType(AType::Type::R, ci);
-                    } else if (s == "envGet") {
-                        types_[ci] = new AType(AType::Type::R, ci);
-                    } else if (s == "envSet") {
-                        types_[ci->getOperand(1)] = valueType(ci->getOperand(2));
+        do {
+            // cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+            changed = false;
+            for (auto & b : f) {
+                for (auto & i : b) {
+                    if (CallInst * ci = dyn_cast<CallInst>(&i)) {
+                        StringRef s = ci->getCalledFunction()->getName();
+                        if (s == "doubleVectorLiteral") {
+                            // when creating literal from a double, it is always double scalar
+                            llvm::Value * op = ci->getOperand(0);
+                            setValueType(op, new AType(AType::Type::D, op));
+                            setValueType(ci, new AType(AType::Type::DV, valueType(op), ci));
+                        } else if (s == "characterVectorLiteral") {
+                            setValueType(ci, new AType(AType::Type::CV, ci));
+                        } else if (s == "fromDoubleVector") {
+                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                        } else if (s == "fromCharacterVector") {
+                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                        } else if (s == "fromFunction") {
+                            setValueType(ci, new AType(AType::Type::R, valueType(ci->getOperand(0)), ci));
+                        } else if (s == "genericGetElement") {
+                            setValueType(ci, genericGetElement(ci));
+                        } else if (s == "genericSetElement") {
+                            // don't do anything for set element as it does not produce any new value
+                        } else if (s == "genericAdd") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericSub") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericMul") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericDiv") {
+                            setValueType(ci, genericArithmetic(ci));
+                        } else if (s == "genericEq") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "genericNeq") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "genericLt") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "genericGt") {
+                            setValueType(ci, genericRelational(ci));
+                        } else if (s == "length") {
+                            // result of length operation is always double scalar
+                            setValueType(ci, new AType(AType::Type::D, ci));
+                        } else if (s == "type") {
+                            // result of type operation is always character vector
+                            setValueType(ci, new AType(AType::Type::CV, ci));
+                        } else if (s == "c") {
+                            // make sure the types to c are correct
+                            AType * t1 = valueType(ci->getArgOperand(1));
+                            for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
+                                t1 = t1->merge(valueType(ci->getArgOperand(i)));
+                            if (t1->isScalar())
+                                // concatenation of scalars is a vector
+                                t1 = new AType(AType::Type::R, AType::Type::DV, ci);
+                            else
+                                // c(c(1,2), c(2,3) !
+                                t1->setValue(ci);
+                            setValueType(ci, t1);
+                        } else if (s == "genericEval") {
+                            setValueType(ci, new AType(AType::Type::R, ci));
+                        } else if (s == "envGet") {
+                            setValueType(ci, new AType(AType::Type::R, ci));
+                        } else if (s == "envSet") {
+                            setValueType(ci->getOperand(1), valueType(ci->getOperand(2)));
+                        }
+                    } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
+                        AType * first = valueType(phi->getOperand(0));
+                        AType * second = valueType(phi->getOperand(1));
+                        AType * result = first->merge(second)->setValue(phi);
+
+                        setValueType(phi, result);
                     }
-                } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
-                    types_[phi] = valueType(phi->getOperand(0))->merge(valueType(phi->getOperand(1)))->setValue(phi);
-                    cout << "xxx" << endl;
                 }
             }
-        }
+        } while (changed);
         f.dump();
         cout << *this << endl;
-        
         return false;
     }
 
