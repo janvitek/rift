@@ -147,6 +147,8 @@ namespace rift {
             if (targetType == nullptr and other.targetType == nullptr)
                 return value != nullptr and other.value == nullptr;
 
+            if (targetType == nullptr)
+                return false;
             if (targetType != nullptr and other.targetType == nullptr)
                 return true;
             else return *targetType < *other.targetType;
@@ -201,7 +203,7 @@ namespace rift {
                 types_[value] = type;
             } else {
                 AType * t = i->second;
-                if (*t < *type) {
+                if ((t != nullptr) and (*t < *type)) {
                     changed = true;
                     i->second = type;
                 }
