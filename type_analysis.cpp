@@ -153,11 +153,14 @@ namespace rift {
                 break;
             case AType::Type::R:
                 ss << " R ";
-                break;
+                break; 
             case AType::Type::T:
                 ss << " T ";
                 break;
-        }
+            case AType::Type::B:
+                ss << " B ";
+                break;
+       }
         ss.flush();
         if (t.targetType != nullptr)
             s << " -> " << *(t.targetType);
@@ -167,10 +170,8 @@ namespace rift {
 
     std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta) {
         s << "Type Analysis: " << "\n";
-        for (auto const & v : ta.types_) {
-            llvm::Value * vv = v.first;
+        for (auto const & v : ta.types_) 
             s << *v.second << endl;
-        }
         return s;
     }
 
