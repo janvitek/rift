@@ -81,7 +81,7 @@ public:
 
     TypeChecker() : llvm::FunctionPass(ID) {}
 
-    bool runOnFunction(llvm::Function & f);
+    bool runOnFunction(llvm::Function & f) override;
 
 private:
     MachineState state;
@@ -98,8 +98,6 @@ inline bool operator < (TypeChecker::Type t1, TypeChecker::Type t2) {
 
 
 } // namespace rift
-
-
 
 
 
