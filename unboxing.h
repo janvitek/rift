@@ -55,6 +55,7 @@ namespace rift {
         bool genericRelational(llvm::CmpInst::Predicate op, llvm::Function * fop);
 
         bool genericComparison(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop, llvm::Function * cop);
+
         bool genericEq();
 
         bool genericNeq();
@@ -66,9 +67,6 @@ namespace rift {
         bool genericC();
 
         bool genericEval();
-
-        void phi(AType * result, AType * first, AType * second);
-
 
         /** Rift module currently being optimized, obtained from the function.
         

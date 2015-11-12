@@ -318,28 +318,6 @@ namespace rift {
         }
     }
 
-    void Unboxing::phi(AType * result, AType * first, AType * second) {
-        auto ll = state().getLocation(first->payload);
-        auto rl = state().getLocation(second->payload);
-        if (not ll or not rl or result->payload == nullptr)
-            return;
-        PHINode * p;
-        if (first->isCharacter() and second->isCharacter()) {
-            p = PHINode::Create(type::ptrCharacterVector, 2, "cvPhi", ins);
-        } else if (first->isDouble() and second->isDouble()) {
-            if (*first == AType::Kind::R and *second == AType::Kind::R)
-                p = PHINode::Create(type::ptrDoubleVector, 2, "dvPhi", ins);
-            else if (*first == AType::Kind::DV and *second == AType::Kind::DV)
-                p = PHINode::Create(type::Double, 2, "dPhi", ins);
-            else
-                return;
-        }
-        p->addIncoming(ll, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(0));
-        p->addIncoming(rl, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(1));
-        state().initialize(p, result->payload);
-        phi(result->payload, first->payload, second->payload);
-    }
-
     bool Unboxing::runOnFunction(llvm::Function & f) {
         //std::cout << "running Unboxing optimization..." << std::endl;
         m = reinterpret_cast<RiftModule*>(f.getParent());
@@ -376,10 +354,6 @@ namespace rift {
                     } else if (s == "genericEval") {
                         erase = genericEval();
                     }
-                } else if (dyn_cast<PHINode>(ins)) {
-                    AType * first = state().get(ins->getOperand(0));
-                    AType * second = state().get(ins->getOperand(1));
-                    phi(state().get(ins), first, second);
                 }
                 if (erase) {
                     llvm::Instruction * v = i;
