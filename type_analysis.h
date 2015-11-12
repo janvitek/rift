@@ -4,139 +4,106 @@
 
 #include "llvm.h"
 
+/** Abstract interpretation-based analysis of Rift programs. The analysis
+    operates over the LLVM IR and the data types that appear at that
+    level. This means all types exposed in the implementation are visible,
+    including raw doubles and going all the way to RVals. The definitions in
+    this file add up to an intra-procedural, flow sensitive analysis of Rift
+    functions.  The abstract state consists of mapping from LLVM values
+    (which are registers and constants) to abstract types. There are also
+    some free floating abstract types that are not referenced by registers.
+ */
 namespace rift {
 
-    class AType {
-    public:
-        enum class Kind {
-	        B, // bottom 
-            D,
-            DV,
-            CV, 
-            F,
-            R,
-            T  // top
-        } kind;
+    class MachineState;
 
+
+/** An abstract type, or AType, represents a portion of the heap of a Rift
+    program. Each AType has a kind -- this describes the type of value we
+    are dealine with a kind can be either one of B(ottom), T(op), D(ouble),
+    D(ouble)V(ector), R(val) and others. ATypes that rerpresent boxes also
+    have a payload, another AType, that they refer to.
+  */
+    class AType {
+
+    public:
+        enum class Kind { B, D, DV, CV,  F, R, T } kind;
         AType * payload;
 
-        llvm::Value * loc;
+	/////// Constructors////////////////////////////
+        AType(Kind t, AType * payload) : kind(t), payload(payload) { }
 
-        AType(Kind t, AType * payload, llvm::Value * loc = nullptr) :
-            kind(t),
-            payload(payload),
-            loc(loc) {
-        }
+        AType(Kind t) : kind(t), payload(nullptr) { }
 
-        AType(Kind t, llvm::Value * loc = nullptr) :
-            kind(t),
-            payload(nullptr),
-            loc(loc) {
-        }
+        AType(Kind t, Kind t2) : kind(t), payload(new AType(t2)) { }
 
-        AType(Kind t, Kind t2, llvm::Value * loc = nullptr) :
-            kind(t),
-            payload(new AType(t2)),
-            loc(loc) {
-        }
-
-        AType(Kind t, Kind t2, Kind t3, llvm::Value * loc = nullptr) :
-            kind(t),
-            payload(new AType(t2, t3)),
-            loc(loc) {
-        }
+        AType(Kind t, Kind t2, Kind t3) : kind(t), payload(new AType(t2, t3)) {  }
 
         AType(AType const & other) = default;
 
-        AType * merge(AType * other) {
 
-            if (other == nullptr or other->isTop())
-                return new AType(AType::Kind::T);
-            if (kind == Kind::B)
-                return new AType(*other);
-            else if (other->kind == Kind::B)
-                return new AType(*this);
+	//////////////////// Abstract Operations //////////////////
+
+	/** Returns a new AType that is the least upper bound of the this
+	    and the argument.
+	 */
+        AType * merge(AType * a) {
+   	    assert(a != nullptr);
+            if (a->isTop())            return new AType(Kind::T);
+            if (kind == Kind::B)       return new AType(*a);
+            if (a->kind == Kind::B)    return new AType(*this);
             switch (kind) {
                 case Kind::D:
-                    if (*other != Kind::D)
-                        return new AType(AType::Kind::T);
-                    if (loc == other->loc)
-                        return new AType(*this);
-                    else
-                        return new AType(Kind::D);
+                    if (*a != Kind::D)  return new AType(Kind::T);
+                    else                return new AType(Kind::D);
                 case Kind::CV:
-                    if (*other != Kind::CV)
-                        return new AType(AType::Kind::T);
-                    if (loc == other->loc)
-                        return new AType(*this);
-                    else
-                        return new AType(Kind::CV);
+                    if (*a != Kind::CV) return new AType(Kind::T);
+                    else                return new AType(Kind::CV);
                 case Kind::F:
-                    if (*other != Kind::F)
-                        return new AType(AType::Kind::T);
-                    if (loc == other->loc)
-                        return new AType(*this);
-                    else
-                        return new AType(Kind::F);
-                case Kind::DV:
-                    if (*other != Kind::DV)
-                        return new AType(AType::Kind::T);
-                    if (loc == other->loc)
-                        return new AType(*this);
-                    else
-                        return new AType(Kind::DV, payload == nullptr ? nullptr : payload->merge(other->payload));
+                    if (*a != Kind::F)  return new AType(Kind::T);
+                    else                return new AType(Kind::F);
+                case Kind::DV: 
+                    if (*a != Kind::DV) return new AType(Kind::T);
+                    else                return new AType(Kind::DV, 
+							 payload == nullptr ? 
+                                                              nullptr : 
+							      payload->merge(a->payload));
                 case Kind::R:
-                    if (*other != Kind::R)
-                        return new AType(AType::Kind::T);
-                    if (loc == other->loc)
-                        return new AType(*this);
-                    else
-                        return new AType(Kind::R, payload == nullptr ? nullptr : payload->merge(other->payload));
-                default:
-                    return new AType(AType::Kind::T);
+                    if (*a != Kind::R) return new AType(Kind::T);
+                    else               return new AType(Kind::R, 
+                                                        payload == nullptr ? 
+                                                           nullptr : 
+                                                           payload->merge(a->payload));
+                default:              return new AType(Kind::T);
             }
         }
 
-        AType * setValue(llvm::Value * loc) {
-            this->loc = loc;
-            return this;
-        }
-
+	/** Is this the top element of the lattice. */
         bool isTop() const {
             return kind == Kind::T;
         }
 
+	/** Is this a scalar value? */
         bool isScalar() {
-            if (kind == Kind::D)
-                return true;
-            else 
-                return payload != nullptr and payload->isScalar();
+	  return (kind == Kind::D)  or (payload != nullptr and payload->isScalar());
         }
 
+	/** Is this a value that can be unboxed to a double? */
         bool isDouble() {
-            if (kind == Kind::D)
-                return true;
-            else if (kind == Kind::DV)
-                return true;
-            else 
-                return payload != nullptr and (payload->isDouble());
+	  return (kind == Kind::D) or (kind == Kind::DV) or (payload != nullptr and (payload->isDouble()));
         }
 
+	/** Is this a string? */
         bool isCharacter() {
-            if (kind == Kind::CV)
-                return true;
-            else
-                return payload != nullptr and (payload->isCharacter());
+	  return (kind == Kind::CV) or (payload != nullptr and (payload->isCharacter()));
         }
-
-        bool hasPayloadLocation() {
-            return payload != nullptr and payload->loc != nullptr;
-        }
-
+	
+	//TODO: IS this correct ??  Payload?
         bool operator == (AType::Kind other) const {
             return kind == other;
         }
 
+	//TODO: IS this correct ??  Payload?
         bool operator != (AType::Kind other) const {
             return kind != other;
         }
@@ -152,87 +119,90 @@ namespace rift {
 
         }
 
+	/** Order on ATypes.  This only implements the part of the relation
+	    that can happen and that we care about. (Lazy and risky coding)
+	    We are only interested in the R types as phi nodes are typed.
+            R(DV(D))< R(DV)<R<T, R(CV)<R<T, R(F)<R<T
+ 	 */
         bool operator < (AType const & other) const {
-            /** We are only interested in the R types as phi nodes are typed.
-            Having a loc is smaller than not having a loc
-
-            R(DV(D)) < R(DV) < R < T
-            R(CV) < R < T
-            R(F) < R < T
-            */
-            if (payload == nullptr and other.payload == nullptr)
-                return loc != nullptr and other.loc == nullptr;
-            if (payload == nullptr)
-                return false;
-            if (payload != nullptr and other.payload == nullptr)
-                return true;
-            else return *payload < *other.payload;
+            if( isTop() ) return false;
+            if( other.isTop() ) return true;
+	    if( kind == Kind::B) return other != Kind::B;
+     	    // This is a bit of a short cut, but it is fine for our use case
+            assert(kind == other.kind);
+            if (payload == nullptr) return false;
+            if (other.payload == nullptr) return true;
+            return *payload < *other.payload;
         }
+
+        void print(std::ostream & s, MachineState & m);
 
     };
 
-    std::ostream & operator << (std::ostream & s, AType const & t);
+    class MachineState {
+    public:
+        AType * get(llvm::Value * v) {
+            if (type.count(v)) {
+                return type.at(v);
+            }
+            auto n = new AType(AType::Kind::B);
+            type[v] = n;
+            location[n] = v;
+            return n;
+        }
 
+        llvm::Value * getLocation(AType * t) {
+            if (!location.count(t))
+                return nullptr;
+            return location[t];
+        }
 
-    /** Type and shape analysis. 
-     
-     Based on the calls to the runtime functions, the analysis tracks the following key attributes:
+        void set(llvm::Value * v, AType * t) {
+            assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
+            auto prev = get(v);
+            if (*prev < *t) {
+                type[v] = t;
+                location[t] = v;
+                changed = true;
+            }
+        }
 
-     - for each loc it remembers its shape. 
-     - if the value is boxed, and there exists an unboxed version of the same value, it pairs the two together. 
+        void iterationStart() {
+            changed = false;
+        }
 
-     The unboxing can have one pair (Value -> DoubleVector, Value->CharacterVector, Value->Function), or two pairs(Value->DoubleScalarVector->DoubleScalar).
-     */
+        bool hasReachedFixpoint() {
+            return !changed;
+        }
+
+        MachineState() : changed(false) {}
+
+        friend std::ostream & operator << (std::ostream & s, MachineState & m);
+
+    private:
+        bool changed;
+        std::map<llvm::Value*, AType*> type;
+        std::map<AType*, llvm::Value*> location;
+    };
+
+    /** Type and shape analysis.  */
     class TypeAnalysis : public llvm::FunctionPass {
     public:
 
         static char ID;
 
-        char const * getPassName() const override {
-            return "TypeAnalysis";
-        }
+        char const * getPassName() const override { return "TypeAnalysis"; }
 
         TypeAnalysis() : llvm::FunctionPass(ID) {}
 
         bool runOnFunction(llvm::Function & f) override;
 
-        /** For given llvm Value, returns its type. 
-        
-        If the value was not yet seen, assumes the bottom type. 
-
-        */
-        AType * valueType(llvm::Value * loc) {
-            auto i = types_.find(loc);
-            if (i == types_.end())
-                return new AType(AType::Kind::B);
-            else
-                return i->second;
-        }
-
-        void setValueType(llvm::Value * loc, AType * type) {
-            auto i = types_.find(loc);
-            if (i == types_.end()) {
-                changed = true;
-                types_[loc] = type;
-            } else {
-                AType * t = i->second;
-                if ((t != nullptr) and (*t < *type)) {
-                    changed = true;
-                    i->second = type;
-                }
-            }
-        }
-
     private:
+        MachineState state;
 
-        friend std::ostream & operator << (std::ostream & s, TypeAnalysis const & ta);
-
-        AType * genericArithmetic(llvm::CallInst * ci);
-        AType * genericRelational(llvm::CallInst * ci);
-        AType * genericGetElement(llvm::CallInst * ci);
-
-        /** For each value specifies its actual type. */
-        std::map<llvm::Value *, AType *> types_;
+        void genericArithmetic(llvm::CallInst * ci);
+        void genericRelational(llvm::CallInst * ci);
+        void genericGetElement(llvm::CallInst * ci);
 
         bool changed;
 
