@@ -164,6 +164,12 @@ namespace rift {
             return t;
         }
 
+        void erase(llvm::Value * v) {
+            if (type.count(v))
+                location.erase(type.at(v));
+            type.erase(v);
+        }
+
         AType * update(llvm::Value * v, AType * t) {
             assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
             auto prev = get(v);

@@ -358,14 +358,16 @@ namespace rift {
                 if (erase) {
                     llvm::Instruction * v = i;
                     ++i;
+                    state().erase(v);
                     v->eraseFromParent();
                 } else {
                     ++i;
                 }
             }
         }
-        //f.dump();
-        //cout << *ta << endl;
+        cout << "After unboxing optimization: " << endl;
+        f.dump();
+        cout << state() << endl;
         return false;
     }
 
