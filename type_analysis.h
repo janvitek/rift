@@ -148,6 +148,11 @@ namespace rift {
             return n;
         }
 
+        void clear() {
+            type.clear();
+            location.clear();
+        }
+
         llvm::Value * getLocation(AType * t) {
             if (!location.count(t))
                 return nullptr;
@@ -216,8 +221,7 @@ namespace rift {
         void genericRelational(llvm::CallInst * ci);
         void genericGetElement(llvm::CallInst * ci);
 
-        bool changed;
-
+        
     };
 
 } // namespace rift

@@ -56,6 +56,7 @@ namespace rift {
     }
 
     bool TypeAnalysis::runOnFunction(llvm::Function & f) {
+        state.clear();
         if (DEBUG) std::cout << "runnning TypeAnalysis..." << std::endl;
         // for all basic blocks, for all instructions
         do {
