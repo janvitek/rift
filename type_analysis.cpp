@@ -11,6 +11,10 @@ namespace rift {
 
     char TypeAnalysis::ID = 0;
 
+    AType * AType::top = createTop();
+
+
+
     void TypeAnalysis::genericArithmetic(CallInst * ci) {
         AType * lhs = state.get(ci->getOperand(0));
         AType * rhs = state.get(ci->getOperand(1));
