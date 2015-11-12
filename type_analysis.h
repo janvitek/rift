@@ -14,9 +14,8 @@
     some free floating abstract types that are not referenced by registers.
  */
 namespace rift {
-
+    // forward decl..
     class MachineState;
-
 
 /** An abstract type, or AType, represents a portion of the heap of a Rift
     program. Each AType has a kind -- this describes the type of value we
@@ -30,10 +29,13 @@ namespace rift {
         enum class Kind { B, D, DV, CV,  F, R, T } kind;
         AType * payload;
 
+
+	static AType * top;
+
 	/////// Constructors////////////////////////////
         AType(Kind t, AType * payload) : kind(t), payload(payload) { }
 
-        AType(Kind t) : kind(t), payload(nullptr) { }
+        AType(Kind t) : kind(t), payload(top) { }
 
         AType(Kind t, Kind t2) : kind(t), payload(new AType(t2)) { }
 
@@ -48,7 +50,6 @@ namespace rift {
 	    and the argument.
 	 */
         AType * merge(AType * a) {
-   	    assert(a != nullptr);
             if (a->isTop())            return new AType(Kind::T);
             if (kind == Kind::B)       return new AType(*a);
             if (a->kind == Kind::B)    return new AType(*this);
@@ -64,16 +65,10 @@ namespace rift {
                     else                return new AType(Kind::F);
                 case Kind::DV: 
                     if (*a != Kind::DV) return new AType(Kind::T);
-                    else                return new AType(Kind::DV, 
-							 payload == nullptr ? 
-                                                              nullptr : 
-							      payload->merge(a->payload));
+                    else                return new AType(Kind::DV, payload->merge(a->payload));
                 case Kind::R:
                     if (*a != Kind::R) return new AType(Kind::T);
-                    else               return new AType(Kind::R, 
-                                                        payload == nullptr ? 
-                                                           nullptr : 
-                                                           payload->merge(a->payload));
+                    else               return new AType(Kind::R, payload->merge(a->payload));
                 default:              return new AType(Kind::T);
             }
         }
@@ -85,17 +80,17 @@ namespace rift {
 
 	/** Is this a scalar value? */
         bool isScalar() {
-	  return (kind == Kind::D)  or (payload != nullptr and payload->isScalar());
+	  return kind == Kind::D or (!isTop() and payload->isScalar());
         }
 
 	/** Is this a value that can be unboxed to a double? */
         bool isDouble() {
-	  return (kind == Kind::D) or (kind == Kind::DV) or (payload != nullptr and (payload->isDouble()));
+	  return kind == Kind::D or kind == Kind::DV or (!isTop() and payload->isDouble());
         }
 
 	/** Is this a string? */
         bool isCharacter() {
-	  return (kind == Kind::CV) or (payload != nullptr and (payload->isCharacter()));
+	  return kind == Kind::CV or (!isTop() and payload->isCharacter());
         }
 	
 	//TODO: IS this correct ??  Payload?
@@ -113,8 +108,7 @@ namespace rift {
                 return false;
             // they are the same kind, the only way then can be different is if their kind is R and their payload is of different kind, otherwise we cannot be sure
             if (kind == Kind::R)
-                if (payload != nullptr and other->payload != nullptr)
-                    return payload->canBeSameTypeAs(other->payload);
+	      return payload->canBeSameTypeAs(other->payload);
             return true;
 
         }
@@ -130,13 +124,16 @@ namespace rift {
 	    if( kind == Kind::B) return other != Kind::B;
      	    // This is a bit of a short cut, but it is fine for our use case
             assert(kind == other.kind);
-            if (payload == nullptr) return false;
-            if (other.payload == nullptr) return true;
             return *payload < *other.payload;
         }
 
         void print(std::ostream & s, MachineState & m);
 
+	static AType * createTop() { 
+	  auto t = new AType(Kind::T, nullptr);
+	  t->payload = t;
+	  return t;
+	}
     };
 
     class MachineState {
@@ -165,7 +162,7 @@ namespace rift {
         }
 
         AType * update(llvm::Value * v, AType * t) {
-            assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
+	  //    assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
             auto prev = get(v);
             if (*prev < *t) {
                 type[v] = t;
