@@ -6,6 +6,9 @@
 
 namespace rift {
 
+    class MachineState;
+
+
     class AType {
     public:
         enum class Kind {
@@ -153,9 +156,8 @@ namespace rift {
             else return *payload < *other.payload;
         }
 
+        void print(std::ostream & s, MachineState & m);
     };
-
-    std::ostream & operator << (std::ostream & s, AType const & t);
 
     class MachineState {
     public:
@@ -176,6 +178,7 @@ namespace rift {
         }
 
         void set(llvm::Value * v, AType * t) {
+            assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
             auto prev = get(v);
             if (*prev < *t) {
                 type[v] = t;
@@ -194,7 +197,7 @@ namespace rift {
 
         MachineState() : changed(false) {}
 
-        friend std::ostream & operator << (std::ostream & s, MachineState const & m);
+        friend std::ostream & operator << (std::ostream & s, MachineState & m);
 
     private:
         bool changed;

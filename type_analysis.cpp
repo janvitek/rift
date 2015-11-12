@@ -64,8 +64,9 @@ namespace rift {
                             // when creating literal from a double, it is
                             // always double scalar
                             llvm::Value * op = ci->getOperand(0);
-                            state.set(op, new AType(AType::Kind::D));
-                            state.set(ci, new AType(AType::Kind::DV));
+                            AType * t = new AType(AType::Kind::D);
+                            state.set(op, t);
+                            state.set(ci, new AType(AType::Kind::DV, t));
                         } else if (s == "characterVectorLiteral") {
                             state.set(ci, new AType(AType::Kind::CV));
                         } else if (s == "fromDoubleVector") {
@@ -122,9 +123,6 @@ namespace rift {
                             state.set(ci, new AType(AType::Kind::R));
                         } else if (s == "envGet") {
                             state.set(ci, new AType(AType::Kind::R));
-                        } else if (s == "envSet") {
-                            state.set(ci->getOperand(1),
-                                    state.get(ci->getOperand(2)));
                         }
                     } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                         AType * first = state.get(phi->getOperand(0));
@@ -140,25 +138,22 @@ namespace rift {
         return false;
     }
 
-    std::ostream & operator << (std::ostream & s, MachineState const & m) {
+    std::ostream & operator << (std::ostream & s, MachineState & m) {
         s << "Abstract State: " << "\n";
         for (auto const & v : m.type) {
-            auto location = std::get<0>(v);
-            auto state = std::get<1>(v);
-            if (location) {
-                llvm::raw_os_ostream ss(s);
-                location->printAsOperand(ss, false);
-                ss.flush();
-                s << " ";
-            }
-            s << *state << endl;
+            auto st = std::get<1>(v);
+            st->print(s, m);
+            s << endl;
         }
         return s;
     }
 
-    std::ostream & operator << (std::ostream & s, AType const & t) {
+
+    void AType::print(std::ostream & s, MachineState & m) {
         llvm::raw_os_ostream ss(s);
-        switch (t.kind) {
+        if (auto loc = m.getLocation(this))
+            loc->printAsOperand(ss, false);
+        switch (kind) {
             case AType::Kind::D:
                 ss << " D ";
                 break;
@@ -181,10 +176,11 @@ namespace rift {
                 ss << " B ";
                 break;
        }
-        ss.flush();
-        if (t.payload != nullptr)
-            s << " -> " << *(t.payload);
-        return s;
+       ss.flush();
+       if (payload != nullptr) {
+           s << " -> ";
+           payload->print(s, m);
+       }
     }
 
 } // namespace rift
