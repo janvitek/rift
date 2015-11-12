@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <ciso646>
+#include <iostream>
 
 
 
@@ -9,6 +10,7 @@
 
 
 using namespace llvm;
+using namespace std;
 
 namespace rift {
     char BoxingRemoval::ID = 0;
@@ -47,7 +49,8 @@ namespace rift {
             if (not c)
                 break;
         }
-        //f.dump();
+        cout << "After boxing removal: ---------------------------------------" << endl;
+        f.dump();
         return changed;
     }
 

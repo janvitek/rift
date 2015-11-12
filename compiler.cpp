@@ -1,3 +1,6 @@
+#include <initializer_list>
+#include <iostream>
+
 #include "parser.h"
 #include "runtime.h"
 #include "specializedRuntime.h"
@@ -8,8 +11,9 @@
 #include "boxing_removal.h"
 #include "pool.h"
 
-#include <initializer_list>
 using namespace llvm;
+
+using namespace std;
 
 namespace rift {
 
@@ -238,7 +242,13 @@ public:
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
-            pm->run(f);
+            if (not f.empty()) {
+                cout << "After translation to bitcode: -------------------------------" << endl;
+                f.dump();
+                pm->run(f);
+                cout << "After LLVM's constant propagation: --------------------------" << endl;
+                f.dump();
+            }
         }
         delete pm;
     }

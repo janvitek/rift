@@ -181,7 +181,7 @@ namespace rift {
                 break;
        }
        ss.flush();
-       if (payload != nullptr) {
+       if (not payload->isTop()) {
            s << " -> ";
            payload->print(s, m);
        }

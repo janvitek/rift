@@ -365,7 +365,7 @@ namespace rift {
                 }
             }
         }
-        cout << "After unboxing optimization: " << endl;
+        cout << "After unboxing optimization: --------------------------------" << endl;
         f.dump();
         cout << state() << endl;
         return false;
