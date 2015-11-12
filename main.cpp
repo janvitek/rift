@@ -8,6 +8,7 @@
 #include "runtime.h"
 #include "compiler.h"
 #include "tests.h"
+#include "rift.h"
 
 using namespace std;
 using namespace llvm;
@@ -70,19 +71,28 @@ void runScript(char const * filename) {
 
 }
 
+bool DEBUG = false;
+
 int main(int argc, char * argv[]) {
     // initialize the JIT
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeAsmParser();
-    if (argc == 1) {
-        //tests();
+    int argPos = 1;
+    if (argc > argPos) {
+        if (0 == strncmp("-d", argv[argPos], 2)) {
+            DEBUG = true;
+            argPos++;
+        }
+    }
+    if (argc == argPos) {
+        tests();
         interactive();
     } else {
-        if (argc > 2)
+        if (argc > argPos+1)
             cerr << "Only one script can be loaded at a time" << endl;
         else
-            runScript(argv[1]);
+            runScript(argv[argPos]);
     }
 }
 
