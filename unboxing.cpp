@@ -1,4 +1,3 @@
-#ifdef HAHA
 
 #include <iostream>
 #include <ciso646>
@@ -14,268 +13,318 @@ namespace rift {
 
 
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ci)
+#define RUNTIME_CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 
-    llvm::Value * Unboxing::unbox(llvm::CallInst * ci, llvm::Value * v) {
-        llvm::Value * result = ta->unbox(v);
-        if (result == nullptr) {
-            Type t = ta->valueType(v);
-            if (t == Type::BoxedDoubleScalarVector) {
-                result = RUNTIME_CALL(m->doubleFromValue, v);
-                ta->setValueType(result, Type::DoubleScalarVector);
-            } if (t == Type::BoxedDoubleVector) {
-                result = RUNTIME_CALL(m->doubleFromValue, v);
-                ta->setValueType(result, Type::DoubleVector);
-            } else if (t == Type::DoubleScalarVector) {
-                result = RUNTIME_CALL(m->scalarFromVector, v);
-                ta->setValueType(result, Type::DoubleScalar);
-            } else if (t == Type::BoxedCharacterVector) {
-                result = RUNTIME_CALL(m->characterFromValue, v);
-                ta->setValueType(result, Type::CharacterVector);
-            } else if (t == Type::BoxedRFun) {
-                result = RUNTIME_CALL(m->functionFromValue, v);
-                ta->setValueType(result, Type::RFun);
+    AType * Unboxing::updateAnalysis(llvm::Value * value, AType * type) {
+        type->setValue(value);
+        ta->setValueType(value, type);
+        return type;
+    }
+
+    llvm::Value * Unboxing::box(AType * what) {
+        AType * t;
+        switch (what->kind) {
+            case AType::Kind::R:
+                return what->loc;
+            case AType::Kind::D:
+                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->doubleVectorLiteral, what->loc));
+                ta->setValueType(t->loc, t);
+                what = t;
+                // fallthrough
+            case AType::Kind::DV:
+                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->fromDoubleVector, what->loc));
+                ta->setValueType(t->loc, t);
+                return t->loc;
+            case AType::Kind::CV:
+                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->fromCharacterVector, what->loc));
+                ta->setValueType(t->loc, t);
+                return t->loc;
+            case AType::Kind::F:
+                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->fromFunction, what->loc));
+                ta->setValueType(t->loc, t);
+                return t->loc;
+            default:
+                assert(false and "Cannot unbox this type");
+                return nullptr;
+        }
+    }
+
+    llvm:: Value * Unboxing::unbox(AType * t) {
+        assert(t->payload != nullptr and "Unboxing requested, but no information is available");
+        assert(t->loc != nullptr and "Cannort unbox value with unknown location");
+        // payload's location is not known, we have to extract it from the boxed type
+        if (not t->hasPayloadLocation()) {
+            switch (t->kind) {
+                case AType::Kind::DV:
+                    t->payload->loc = RUNTIME_CALL(m->doubleGetSingleElement, t->loc, ConstantFP::get(getGlobalContext(), APFloat(0.0)));
+                    break;
+                case AType::Kind::R:
+                    switch (t->payload->kind) {
+                        case AType::Kind::DV:
+                            t->payload->loc = RUNTIME_CALL(m->doubleFromValue, t->loc);
+                            break;
+                        case AType::Kind::CV:
+                            t->payload->loc = RUNTIME_CALL(m->characterFromValue, t->loc);
+                            break;
+                        case AType::Kind::F:
+                            t->payload->loc = RUNTIME_CALL(m->functionFromValue, t->loc);
+                            break;
+                        default:
+                            assert(false and "Not possible");
+                    }
+                    ta->setValueType(t->payload->loc, t->payload);
+                    break;
+                default:
+                    assert(false and "Only double vector and RVals can be unboxed");
             }
-            if (result != nullptr)
-                ta->setAsBoxed(v, result);
         }
-        return result;
+        return t->payload->loc;
     }
 
-    llvm::Value * Unboxing::boxDoubleScalar(CallInst * ci, llvm::Value * scalar) {
-        llvm::Value * resultVector = RUNTIME_CALL(m->doubleVectorLiteral, scalar);
-        ta->setValueType(resultVector, Type::DoubleScalarVector);
-        ta->setAsBoxed(resultVector, scalar);
-        return boxDoubleVector(ci, resultVector);
+    llvm::Value * Unboxing::getScalarPayload(AType * t) {
+        assert (t->loc != nullptr and "This would mean we are calling runtime funtcion with a value that we have effectively lost");
+        switch (t->kind) {
+            case AType::Kind::D:
+                return t->loc;
+            case AType::Kind::DV:
+                assert(t->payload != nullptr and "Not a scalar");
+                return unbox(t);
+            case AType::Kind::R:
+                assert(t->payload != nullptr and "Not a scalar");
+                assert(t->payload->kind == AType::Kind::DV and "Not a scalar");
+                // first unboxing to double vector
+                unbox(t); 
+                // second unboxing to scalar
+                return unbox(t->payload);
+            default:
+                assert(t->payload != nullptr and "Not a scalar");
+                return nullptr;
+        }
     }
 
-    llvm::Value * Unboxing::boxDoubleVector(CallInst * ci, llvm::Value * vector) {
-        llvm::Value * boxed = RUNTIME_CALL(m->fromDoubleVector, vector);
-        ta->setValueType(boxed, ta->valueType(vector) == Type::DoubleScalarVector ? Type::BoxedDoubleScalarVector : Type::BoxedDoubleVector);
-        ta->setAsBoxed(boxed, vector);
-        return boxed;
+    /** This works for both cv's and dv's. 
+     */
+    llvm::Value * Unboxing::getVectorPayload(AType * t) {
+        assert(t->loc != nullptr and "This would mean we are calling runtime funtcion with a value that we have effectively lost");
+        switch (t->kind) {
+            case AType::Kind::DV:
+            case AType::Kind::CV:
+                return t->loc;
+            case AType::Kind::R:
+                assert(t->payload != nullptr and "Not a vector");
+                return unbox(t);
+            default:
+                assert(t->payload != nullptr and "Not a vector");
+                return nullptr;
+        }
     }
 
-    llvm::Value * Unboxing::boxCharacterVector(CallInst * ci, llvm::Value * vector) {
-        llvm::Value * boxed = RUNTIME_CALL(m->fromCharacterVector, vector);
-        ta->setValueType(boxed, Type::BoxedCharacterVector);
-        ta->setAsBoxed(boxed, vector);
-        return boxed;
-    }
-
-    bool Unboxing::doubleArithmetic(llvm::CallInst * ci, llvm::Instruction::BinaryOps op, llvm::Function * fop) {
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        Type tlhs = ta->valueType(lhs);
-        Type trhs = ta->valueType(rhs);
-        if (tlhs.isScalar() and trhs.isScalar()) {
-            lhs = unbox(ci, unbox(ci, lhs));
-            rhs = unbox(ci, unbox(ci, rhs));
-            llvm::Value * resultScalar = BinaryOperator::Create(op, lhs, rhs, "", ci);
-            ta->setValueType(resultScalar, Type::DoubleScalar);
-            ci->replaceAllUsesWith(boxDoubleScalar(ci, resultScalar));
-            return true;
-        } else if (tlhs.isDouble() and trhs.isDouble()) {
-            lhs = unbox(ci, lhs);
-            rhs = unbox(ci, rhs);
-            llvm::Value * resultVector = RUNTIME_CALL(fop, lhs, rhs);
-            ta->setValueType(resultVector, Type::DoubleVector);
-            ci->replaceAllUsesWith(boxDoubleVector(ci, resultVector));
-            return true;
+    void Unboxing::doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::BinaryOps op, llvm::Function * fop) {
+        assert(lhs->isDouble() and rhs->isDouble() and "Doubles expected");
+        AType * result_t;
+        if (lhs->isScalar() and rhs->isScalar()) {
+            result_t = updateAnalysis(BinaryOperator::Create(op, getScalarPayload(lhs), getScalarPayload(rhs), "", ins), new AType(AType::Kind::D));
         } else {
-            return false;
+            // it has to be vector - we have already checked it is a double
+            result_t = updateAnalysis(RUNTIME_CALL(fop, getVectorPayload(lhs), getVectorPayload(rhs)), new AType(AType::Kind::DV));
         }
+        ins->replaceAllUsesWith(box(result_t));
     }
 
-    bool Unboxing::doubleComparison(CallInst * ci, llvm::CmpInst::Predicate op, llvm::Function * fop) {
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        Type tlhs = ta->valueType(lhs);
-        Type trhs = ta->valueType(rhs);
-        if (tlhs.isScalar() and trhs.isScalar()) {
-            lhs = unbox(ci, unbox(ci, lhs));
-            rhs = unbox(ci, unbox(ci, rhs));
-            llvm::Value * x = new FCmpInst(ci, op, lhs, rhs);
-            llvm::Value * resultScalar = new UIToFPInst(x, type::Double, "", ci);
-            ta->setValueType(resultScalar, Type::DoubleScalar);
-            ci->replaceAllUsesWith(boxDoubleScalar(ci, resultScalar));
-            return true;
-        } else if (tlhs.isDouble() and trhs.isDouble()) {
-            lhs = unbox(ci, lhs);
-            rhs = unbox(ci, rhs);
-            llvm::Value * resultVector = RUNTIME_CALL(fop, lhs, rhs);
-            ta->setValueType(resultVector, Type::DoubleVector);
-            ci->replaceAllUsesWith(boxDoubleVector(ci, resultVector));
-            return true;
-        } else {
-            return false;
-        }
-
-    }
-
-    bool Unboxing::characterArithmetic(llvm::CallInst * ci, llvm::Function * fop) {
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        lhs = unbox(ci, lhs);
-        rhs = unbox(ci, rhs);
-        llvm::Value * resultVector = RUNTIME_CALL(fop, lhs, rhs);
-        ta->setValueType(resultVector, Type::CharacterVector);
-        ci->replaceAllUsesWith(boxCharacterVector(ci, resultVector));
-        return true;
-
-    }
-
-    bool Unboxing::characterComparison(llvm::CallInst * ci, llvm::Function * fop) {
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        lhs = unbox(ci, lhs);
-        rhs = unbox(ci, rhs);
-        llvm::Value * resultVector = RUNTIME_CALL(fop, lhs, rhs);
-        ta->setValueType(resultVector, Type::DoubleVector);
-        ci->replaceAllUsesWith(boxDoubleVector(ci, resultVector));
-        return true;
-
-    }
-
-
-    bool Unboxing::genericAdd(CallInst * ci) {
+    bool Unboxing::genericAdd() {
         // first check if we are dealing with character add
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        if (ta->valueType(lhs).isCharacter() and ta->valueType(rhs).isCharacter()) {
-            characterArithmetic(ci, m->characterAdd);
+        AType * lhs = ta->valueType(ins->getOperand(0));
+        AType * rhs = ta->valueType(ins->getOperand(1));
+        if (lhs->isDouble() and rhs->isDouble()) {
+            doubleArithmetic(lhs, rhs, Instruction::FAdd, m->doubleAdd);
             return true;
-        } else {
-            return doubleArithmetic(ci, Instruction::FAdd, m->doubleAdd);
-        }
-
-    }
-
-    bool Unboxing::genericEq(CallInst * ci) {
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        Type tl = ta->valueType(lhs);
-        Type tr = ta->valueType(rhs);
-        if (tl.isDouble() and tr.isDouble()) {
-            return doubleComparison(ci, FCmpInst::FCMP_OEQ, m->doubleEq);
-        } else if (tl.isCharacter() and tr.isCharacter()) {
-            characterComparison(ci, m->characterEq);
-            return true;
-        } else if (tl.isDifferentClassAs(tr)) {
-            llvm::Value * scalar = ConstantFP::get(getGlobalContext(), APFloat(0.0));
-            ta->setValueType(scalar, Type::DoubleScalar);
-            ci->replaceAllUsesWith(boxDoubleScalar(ci, scalar));
+        } else if (lhs->isCharacter() and rhs->isCharacter()) {
+            AType * result_t = updateAnalysis(RUNTIME_CALL(m->characterAdd, getVectorPayload(lhs), getVectorPayload(rhs)), new AType(AType::Kind::CV));
+            ins->replaceAllUsesWith(box(result_t));
             return true;
         } else {
             return false;
         }
     }
 
-    bool Unboxing::genericNeq(CallInst * ci) {
-        llvm::Value * lhs = ci->getOperand(0);
-        llvm::Value * rhs = ci->getOperand(1);
-        Type tl = ta->valueType(lhs);
-        Type tr = ta->valueType(rhs);
-        if (tl.isDouble() and tr.isDouble()) {
-            return doubleComparison(ci, FCmpInst::FCMP_ONE, m->doubleNeq);
-        } else if (tl.isCharacter() and tr.isCharacter()) {
-            characterComparison(ci, m->characterEq);
-            return true;
-        } else if (tl.isDifferentClassAs(tr)) {
-            llvm::Value * scalar = ConstantFP::get(getGlobalContext(), APFloat(1.0));
-            ta->setValueType(scalar, Type::DoubleScalar);
-            ci->replaceAllUsesWith(boxDoubleScalar(ci, scalar));
+    bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop) {
+        AType * lhs = ta->valueType(ins->getOperand(0));
+        AType * rhs = ta->valueType(ins->getOperand(1));
+        if (lhs->isDouble() and rhs->isDouble()) {
+            doubleArithmetic(lhs, rhs, op, fop);
             return true;
         } else {
             return false;
         }
     }
 
-    bool Unboxing::genericGetElement(CallInst * ci) {
-        llvm::Value * source = ci->getOperand(0);
-        llvm::Value * index = ci->getOperand(1);
-        Type ts = ta->valueType(source);
-        Type ti = ta->valueType(index);
-        if (ts.isDouble()) {
-            llvm::Value * result;
-            if (ti.isScalar()) {
-                result = RUNTIME_CALL(m->doubleGetSingleElement, unbox(ci, source), unbox(ci, unbox(ci, index)));
-                ta->setValueType(result, Type::DoubleScalar);
-                result = boxDoubleScalar(ci, result);
+    void Unboxing::doubleRelational(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop) {
+        assert(lhs->isDouble() and rhs->isDouble() and "Doubles expected");
+        AType * result_t;
+        if (lhs->isScalar() and rhs->isScalar()) {
+            llvm::Value * x = new FCmpInst(ins, op, getScalarPayload(lhs), getScalarPayload(rhs));
+            result_t = updateAnalysis(new UIToFPInst(x, type::Double, "", ins), new AType(AType::Kind::D));
+        } else {
+            // it has to be vector - we have already checked it is a double
+            result_t = updateAnalysis(RUNTIME_CALL(fop, getVectorPayload(lhs), getVectorPayload(rhs)), new AType(AType::Kind::DV));
+        }
+        ins->replaceAllUsesWith(box(result_t));
+
+    }
+
+    bool Unboxing::genericRelational(llvm::CmpInst::Predicate op, llvm::Function * fop) {
+        AType * lhs = ta->valueType(ins->getOperand(0));
+        AType * rhs = ta->valueType(ins->getOperand(1));
+        if (lhs->isDouble() and rhs->isDouble()) {
+            doubleRelational(lhs, rhs, op, fop);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool Unboxing::genericComparison(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * dop, llvm::Function * cop) {
+        if (lhs->isDouble() and rhs->isDouble()) {
+            doubleRelational(lhs, rhs, op, dop);
+            return true;
+        } else if (lhs->isCharacter() and rhs->isCharacter()) {
+            AType * result_t = updateAnalysis(RUNTIME_CALL(cop, getVectorPayload(lhs), getVectorPayload(rhs)), new AType(AType::Kind::DV));
+            ins->replaceAllUsesWith(box(result_t));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool Unboxing::genericEq() {
+        AType * lhs = ta->valueType(ins->getOperand(0));
+        AType * rhs = ta->valueType(ins->getOperand(1));
+        if (genericComparison(lhs, rhs, FCmpInst::FCMP_OEQ, m->doubleEq, m->characterEq)) {
+            return true;
+        } else if (not lhs->canBeSameTypeAs(rhs)) {
+            AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(0.0)), new AType(AType::Kind::D));
+            ins->replaceAllUsesWith(box(result_t));
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+    bool Unboxing::genericNeq() {
+        AType * lhs = ta->valueType(ins->getOperand(0));
+        AType * rhs = ta->valueType(ins->getOperand(1));
+        if (genericComparison(lhs, rhs, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq)) {
+            return true;
+        } else if (not lhs->canBeSameTypeAs(rhs)) {
+            AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(1.0)), new AType(AType::Kind::D));
+            ins->replaceAllUsesWith(box(result_t));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool Unboxing::genericGetElement() {
+        AType * source = ta->valueType(ins->getOperand(0));
+        AType * index = ta->valueType(ins->getOperand(1));
+        AType * result_t;
+        if (source->isDouble()) {
+            if (index->isScalar()) {
+                result_t = updateAnalysis(RUNTIME_CALL(m->doubleGetSingleElement, getVectorPayload(source), getScalarPayload(index)), new AType(AType::Kind::D));
+            } else if (index->isDouble()) {
+                result_t = updateAnalysis(RUNTIME_CALL(m->doubleGetElement, getVectorPayload(source), getVectorPayload(index)), new AType(AType::Kind::DV));
             } else {
-                result = RUNTIME_CALL(m->doubleGetElement, unbox(ci, source), unbox(ci, index));
-                ta->setValueType(result, Type::DoubleVector);
-                result = boxDoubleVector(ci, result);
+                return false;
             }
-            ci->replaceAllUsesWith(result);
+        } else if (source->isCharacter() and index->isDouble()) {
+            result_t = updateAnalysis(RUNTIME_CALL(m->characterGetElement, getVectorPayload(source), getVectorPayload(index)), new AType(AType::Kind::CV));
+        } else {
+            return false;
+        }
+        ins->replaceAllUsesWith(box(result_t));
+        return true;
+    }
+
+    bool Unboxing::genericSetElement() {
+        AType * target = ta->valueType(ins->getOperand(0));
+        AType * index = ta->valueType(ins->getOperand(1));
+        AType * value = ta->valueType(ins->getOperand(2));
+        if (target->isDouble()) {
+            if (index->isScalar() and value->isScalar())
+                RUNTIME_CALL(m->scalarSetElement, getVectorPayload(target), getScalarPayload(index), getScalarPayload(value));
+            else if (index->isDouble() and value->isDouble())
+                RUNTIME_CALL(m->doubleSetElement, getVectorPayload(target), getVectorPayload(index), getVectorPayload(value));
+            else 
+                return false;
             return true;
-        } else if (ts.isCharacter() and ti.isDouble()) {
-            llvm::Value * result = RUNTIME_CALL(m->characterGetElement, unbox(ci, source), unbox(ci, index));
-            ta->setValueType(result, Type::CharacterVector);
-            ci->replaceAllUsesWith(boxCharacterVector(ci, result));
+        } else if (target->isCharacter() and index->isDouble() and value->isCharacter()) {
+            RUNTIME_CALL(m->characterSetElement, getVectorPayload(target), getVectorPayload(index), getVectorPayload(value));
             return true;
         } else {
             return false;
         }
     }
 
-    bool Unboxing::genericSetElement(CallInst * ci) {
-        llvm::Value * target = ci->getOperand(0);
-        llvm::Value * index = ci->getOperand(1);
-        llvm::Value * value = ci->getOperand(2);
-        Type tt = ta->valueType(target);
-        Type ti = ta->valueType(index);
-        Type tv = ta->valueType(value);
-        if (ti.isScalar() and tv.isScalar()) {
-            RUNTIME_CALL(m->scalarSetElement, unbox(ci, target), unbox(ci, unbox(ci, index)), unbox(ci, unbox(ci, value)));
-            // no need to replace the value, it's void function
-            return true;
+    bool Unboxing::genericC() {
+        // if all are double, or all are character, we can do special versions
+        CallInst * ci = reinterpret_cast<CallInst*>(ins);
+        bool canBeDV = true;
+        bool canBeCV = true;
+        std::vector<AType *> args_t;
+        for (unsigned i = 1; i < ci->getNumArgOperands(); ++i) {
+            AType * t = ta->valueType(ci->getArgOperand(i));
+            canBeDV = canBeDV and t->isDouble();
+            canBeCV = canBeCV and t->isCharacter();
+            if (not canBeDV and not canBeCV)
+                return false;
+            args_t.push_back(t);
+        }
+        std::vector<llvm::Value *> args;
+        args.push_back(ci->getArgOperand(0)); // size
+        for (AType * t : args_t)
+            args.push_back(getVectorPayload(t));
+        AType * result_t;
+        if (canBeDV) {
+            result_t = updateAnalysis(CallInst::Create(m->doublec, args, "", ins), new AType(AType::Kind::DV));
+        } else {
+            assert (canBeCV);
+            result_t = updateAnalysis(CallInst::Create(m->characterc, args, "", ins), new AType(AType::Kind::CV));
+        }
+        ins->replaceAllUsesWith(box(result_t));
+        return true;
+    }
 
-        } else if (tt.isDouble()) {
-            RUNTIME_CALL(m->doubleSetElement, unbox(ci, target), unbox(ci, index), unbox(ci, value));
-            // no need to replace the value, it's void function
-            return true;
-        } else if (tt.isCharacter()) {
-            RUNTIME_CALL(m->characterSetElement, unbox(ci, target), unbox(ci, index), unbox(ci, value));
-            // no need to replace the value, it's void function
+    bool Unboxing::genericEval() {
+        AType * arg =ta->valueType(ins->getOperand(1));
+        if (arg->isCharacter()) {
+            AType * result_t = updateAnalysis(RUNTIME_CALL(m->characterEval, ins->getOperand(0), getVectorPayload(arg)), new AType(AType::Kind::R));
+            ins->replaceAllUsesWith(result_t->loc);
             return true;
         } else {
             return false;
         }
     }
 
-
-    bool Unboxing::genericC(CallInst * ci) {
-        Type t = ta->valueType(ci->getArgOperand(1));
-        if (t.isDouble()) {
-            for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
-                if (not ta->valueType(ci->getArgOperand(i)).isDouble())
-                    return false;
-            std::vector<llvm::Value *> args;
-            args.push_back(ci->getOperand(0));
-            for (unsigned i = 1; i < ci->getNumArgOperands(); ++i)
-                args.push_back(unbox(ci, ci->getArgOperand(i)));
-            llvm::Value * result = CallInst::Create(m->doublec, args, "", ci);
-            ta->setValueType(result, Type::DoubleVector);
-            ci->replaceAllUsesWith(boxDoubleVector(ci, result));
-            return true;
-        } else if (t.isCharacter()) {
-            for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
-                if (not ta->valueType(ci->getArgOperand(i)).isCharacter())
-                    return false;
-            std::vector<llvm::Value *> args;
-            args.push_back(ci->getArgOperand(0));
-            for (unsigned i = 1; i < ci->getNumArgOperands(); ++i)
-                args.push_back(unbox(ci, ci->getOperand(i)));
-            llvm::Value * result = CallInst::Create(m->characterc, args, "", ci);
-            ta->setValueType(result, Type::CharacterVector);
-            ci->replaceAllUsesWith(boxCharacterVector(ci, result));
-            return true;
-        } else {
-            return false;
+    void Unboxing::phi(AType * result, AType * first, AType * second) {
+        if (not first->hasPayloadLocation() or not second->hasPayloadLocation() or result->payload == nullptr)
+            return;
+        PHINode * p;
+        if (first->isCharacter() and second->isCharacter()) {
+            p = PHINode::Create(type::ptrCharacterVector, 2, "cvPhi", ins);
+        } else if (first->isDouble() and second->isDouble()) {
+            if (*first == AType::Kind::R and *second == AType::Kind::R)
+                p = PHINode::Create(type::ptrDoubleVector, 2, "dvPhi", ins);
+            else if (*first == AType::Kind::DV and *second == AType::Kind::DV)
+                p = PHINode::Create(type::Double, 2, "dPhi", ins);
+            else
+                return;
         }
+        p->addIncoming(first->payload->loc, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(0));
+        p->addIncoming(second->payload->loc, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(1));
+        result->payload->loc = p;
+        ta->setValueType(p, result->payload);
+        phi(result->payload, first->payload, second->payload);
     }
-
 
     bool Unboxing::runOnFunction(llvm::Function & f) {
         //std::cout << "running Unboxing optimization..." << std::endl;
@@ -284,35 +333,39 @@ namespace rift {
         for (auto & b : f) {
             auto i = b.begin();
             while (i != b.end()) {
+                ins = i;
                 bool erase = false;
-                if (CallInst * ci = dyn_cast<CallInst>(i)) {
+                if (CallInst * ci = dyn_cast<CallInst>(ins)) {
                     StringRef s = ci->getCalledFunction()->getName();
-                    if (s == "doubleVectorLiteral") {
-                    } else if (s == "genericAdd") {
-                        erase = genericAdd(ci);
+                    if (s == "genericAdd") {
+                        erase = genericAdd();
                     } else if (s == "genericSub") {
-                        erase = doubleArithmetic(ci, Instruction::FSub, m->doubleSub);
+                        erase = genericArithmetic(Instruction::FSub, m->doubleSub);
                     } else if (s == "genericMul") {
-                        erase = doubleArithmetic(ci, Instruction::FMul, m->doubleMul);
+                        erase = genericArithmetic(Instruction::FMul, m->doubleMul);
                     } else if (s == "genericDiv") {
-                        erase = doubleArithmetic(ci, Instruction::FDiv, m->doubleDiv);
+                        erase = genericArithmetic(Instruction::FDiv, m->doubleDiv);
                     } else if (s == "genericLt") {
-                        // types are already checked for us and only doubles can be here
-                        erase = doubleComparison(ci, FCmpInst::FCMP_OLT, m->doubleLt);
+                        erase = genericRelational(FCmpInst::FCMP_OLT, m->doubleLt);
                     } else if (s == "genericGt") {
-                        // types are already checked for us and only doubles can be here
-                        erase = doubleComparison(ci, FCmpInst::FCMP_OGT, m->doubleGt);
+                        erase = genericRelational(FCmpInst::FCMP_OGT, m->doubleGt);
                     } else if (s == "genericEq") {
-                        erase = genericEq(ci);
+                        erase = genericEq();
                     } else if (s == "genericNeq") {
-                        erase = genericNeq(ci);
+                        erase = genericNeq();
                     } else if (s == "genericGetElement") {
-                        erase = genericGetElement(ci);
+                        erase = genericGetElement();
                     } else if (s == "genericSetElement") {
-                        erase = genericSetElement(ci);
+                        erase = genericSetElement();
                     } else if (s == "c") {
-                        erase = genericC(ci);
+                        erase = genericC();
+                    } else if (s == "genericEval") {
+                        erase = genericEval();
                     }
+                } else if (dyn_cast<PHINode>(ins)) {
+                    AType * first = ta->valueType(ins->getOperand(0));
+                    AType * second = ta->valueType(ins->getOperand(1));
+                    phi(ta->valueType(ins), first, second);
                 }
                 if (erase) {
                     llvm::Instruction * v = i;
@@ -323,11 +376,11 @@ namespace rift {
                 }
             }
         }
-        //f.dump();
+        f.dump();
+        //cout << *ta << endl;
         return false;
     }
 
 
 } // namespace rift
 
-#endif

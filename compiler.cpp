@@ -4,6 +4,8 @@
 #include "compiler.h"
 #include "type_checker.h"
 #include "type_analysis.h"
+#include "unboxing.h"
+#include "boxing_removal.h"
 #include "pool.h"
 
 #include <initializer_list>
@@ -64,6 +66,7 @@ FunctionType * v_vvv = FUN_TYPE(ptrValue, ptrValue, ptrValue, ptrValue);
 FunctionType * v_vi = FUN_TYPE(ptrValue, ptrValue, Int);
 FunctionType * v_viv = FUN_TYPE(ptrValue, ptrValue, Int, ptrValue);
 FunctionType * v_ei = FUN_TYPE(ptrValue, ptrEnvironment, Int);
+FunctionType * v_ecv = FUN_TYPE(ptrValue, ptrEnvironment, ptrCharacterVector);
 FunctionType * void_eiv = FUN_TYPE(Void, ptrEnvironment, Int, ptrValue);
 FunctionType * dv_dvdv = FUN_TYPE(ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
 FunctionType * cv_cvcv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrCharacterVector);
@@ -230,6 +233,9 @@ public:
         m->setDataLayout(*ee->getDataLayout());
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
+        pm->add(new Unboxing());
+        pm->add(new BoxingRemoval());
+        pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
             pm->run(f);

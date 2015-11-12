@@ -1,4 +1,3 @@
-#ifdef HAHA
 
 #include <iostream>
 #include <ciso646>
@@ -15,7 +14,7 @@ namespace rift {
     char BoxingRemoval::ID = 0;
 
     bool BoxingRemoval::runOnFunction(llvm::Function & f) {
-        //std::cout << "running boxing removal optimization..." << std::endl;
+//        std::cout << "running boxing removal optimization..." << std::endl;
         bool changed = false;
         while (true) {
             bool c = false;
@@ -55,5 +54,3 @@ namespace rift {
 
 } // namespace rift
 
-
-#endif

@@ -1,4 +1,3 @@
-#define UNBOXING_H
 
 #pragma once
 #ifndef UNBOXING_H
@@ -35,86 +34,41 @@ namespace rift {
 
     protected:
 
-        /** Given a boxed value, returns a value that is one step unboxed. If such value does not exist, inserts a call to unboxing runtime function and associates the two values for future reference. 
-         */
-        llvm::Value * unbox(llvm::CallInst * ci, llvm::Value * v);
+        AType * updateAnalysis(llvm::Value * value, AType * type);
 
-        /** Given DoubleScalar value (represented as double in the ir), creates its boxed variants. 
-        
-        The method creates both the double vector containing the scalar and the value boxing the double vector with it. 
+        llvm::Value * box(AType * what);
 
-        These are necessary for correct function of the algorithm and if not used, they will be deleted by the boxing removal pass. 
-         */
-        llvm::Value * boxDoubleScalar(llvm::CallInst * ci, llvm::Value * scalar);
+        llvm::Value * unbox(AType * t);
 
-        /** Given DoubleVector value, creates its boxed variant. 
-        
-        The boxed value is necessary for correct function of the algorithm and if not used, they it will be deleted by the boxing removal pass.
-        */
-        llvm::Value * boxDoubleVector(llvm::CallInst * ci, llvm::Value * vector);
+        llvm::Value * getScalarPayload(AType * t);
 
-        /** Given CharacterVector value, creates its boxed variant.
+        llvm::Value * getVectorPayload(AType * t);
 
-        The boxed value is necessary for correct function of the algorithm and if not used, they it will be deleted by the boxing removal pass.
-        */
-        llvm::Value * boxCharacterVector(llvm::CallInst * ci, llvm::Value * vector);
+        void doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::BinaryOps op, llvm::Function * fop);
 
-        /** Arithmetic operator on double vectors. 
-        
-        Checks that the type & shape of the incomming vectors allows for optimization, and if so replaces the generic call with specified runtime function, or machine instruction for double scalars, creates its boxed variants and replaces all uses of the old result with the new one. 
-        */
-        bool doubleArithmetic(llvm::CallInst * ci, llvm::Instruction::BinaryOps op, llvm::Function * fop);
+        bool genericAdd();
 
-        /** Comparison on double vectors. 
+        bool genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop);
 
-        Checks that the type & shape of the incomming vectors allows for optimization, and if so replaces the generic call with specified runtime function, or machine instruction for double scalars, creates its boxed variants and replaces all uses of the old result with the new one.
-        */
-        bool doubleComparison(llvm::CallInst * ci, llvm::CmpInst::Predicate op, llvm::Function * fop);
+        void doubleRelational(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop);
 
-        /** Operator on two character vectors. 
-        
-        If the result is CharacterVector, it is also boxed into Value which replaces all usages of the previous result. 
+        bool genericRelational(llvm::CmpInst::Predicate op, llvm::Function * fop);
 
-        Currently we only use this for character addition.
-        */
-        bool characterArithmetic(llvm::CallInst * ci, llvm::Function * fop);
-        
-        /** Comparison of character vectors. 
+        bool genericComparison(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop, llvm::Function * cop);
+        bool genericEq();
 
-        The result of the comparison is always a double vector. 
-        */
-        bool characterComparison(llvm::CallInst * ci, llvm::Function * fop);
+        bool genericNeq();
 
-        /** Optimization of generic add intrinsic. 
-        
-        Based on the type & shape of the incomming values, leaves the generic call or optimizes it to a scalar operation, double vector, or double character call. 
-        */
-        bool genericAdd(llvm::CallInst * ci);
-        
-        /** Generic equality test optimization. 
-        
-        Based on incomming types & shapes, calls special intrinsics, or fills in the constant value when comparing two values of unrelated types.
+        bool genericGetElement();
 
-        */
-        bool genericEq(llvm::CallInst * ci);
-        
-        /** Generic inequality test optimization.
+        bool genericSetElement();
 
-        Based on incomming types & shapes, calls special intrinsics, or fills in the constant value when comparing two values of unrelated types.
+        bool genericC();
 
-        */
-        bool genericNeq(llvm::CallInst * ci);
+        bool genericEval();
 
-        /** Optimizes the getElement call based on incomming types and shapes so that double or character variants are called and in double's case, if the index vector is scalar, a double scalar is returned. */
-        bool genericGetElement(llvm::CallInst * ci);
+        void phi(AType * result, AType * first, AType * second);
 
-        /** Generic set element is optimized to double scalar, double and character possibilities. 
-         */
-        bool genericSetElement(llvm::CallInst * ci);
-
-        /** Concatenation is optimized to either character only, or double only variant, if possible. 
-         */
-        bool genericC(llvm::CallInst * ci);
 
         /** Rift module currently being optimized, obtained from the function.
         
@@ -124,6 +78,8 @@ namespace rift {
 
         /** Preexisting type analysis that is queried to obtain the type & shape information as well as the boxing chains. */
         TypeAnalysis * ta;
+
+        llvm::Instruction * ins;
 
     };
 

@@ -129,6 +129,10 @@ namespace rift {
                 return payload != nullptr and (payload->isCharacter());
         }
 
+        bool hasPayloadLocation() {
+            return payload != nullptr and payload->loc != nullptr;
+        }
+
         bool operator == (AType::Kind other) const {
             return kind == other;
         }
@@ -137,6 +141,16 @@ namespace rift {
             return kind != other;
         }
 
+        bool canBeSameTypeAs(AType * other) {
+            if (kind != other->kind)
+                return false;
+            // they are the same kind, the only way then can be different is if their kind is R and their payload is of different kind, otherwise we cannot be sure
+            if (kind == Kind::R)
+                if (payload != nullptr and other->payload != nullptr)
+                    return payload->canBeSameTypeAs(other->payload);
+            return true;
+
+        }
 
         bool operator < (AType const & other) const {
             /** We are only interested in the R types as phi nodes are typed.

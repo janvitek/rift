@@ -72,7 +72,7 @@ namespace rift {
 
         TEST("a = 1 a", 1);
         TEST("a = 1 a = a + 2 a", 3);
-//        TEST("a = 1 a = a - a a", 0);
+        TEST("a = 1 a = a - a a", 0);
         TEST("a = 2 a = a * 3 a", 6);
         TEST("a = 20 a / 4", 5);
         TEST("a = 1 b = 2 a < b", 1);

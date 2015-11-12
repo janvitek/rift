@@ -1,5 +1,3 @@
-#define BOXING_REMOVAL_H
-
 #pragma once
 #ifndef BOXING_REMOVAL_H
 #define BOXING_REMOVAL_H

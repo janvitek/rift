@@ -68,6 +68,7 @@ extern llvm::FunctionType * v_vvv;
 extern llvm::FunctionType * v_vi;
 extern llvm::FunctionType * v_viv;
 extern llvm::FunctionType * v_ei;
+extern llvm::FunctionType * v_ecv;
 extern llvm::FunctionType * void_eiv;
 extern llvm::FunctionType * dv_dvdv;
 extern llvm::FunctionType * cv_cvcv;
@@ -172,6 +173,7 @@ public:
     DEF_FUN(call, type::v_viVA);
     DEF_FUN_PURE(length, type::d_v);
     DEF_FUN_PURE(type, type::cv_v);
+    DEF_FUN(characterEval, type::v_ecv);
     DEF_FUN(genericEval, type::v_ev);
     DEF_FUN_PURE(doublec, type::dv_iVA);
     DEF_FUN_PURE(characterc, type::cv_iVA);
