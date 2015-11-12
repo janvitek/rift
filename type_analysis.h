@@ -27,16 +27,16 @@ namespace rift {
 
     public:
         enum class Kind { B, D, DV, CV,  F, R, T } kind;
-        AType * payload;
 
+        AType * payload;  // never-null
 
-	static AType * top;
+	static AType * top;  // singleton used to initialize payloads
 
 	/////// Constructors////////////////////////////
         AType(Kind t, AType * payload) : kind(t), payload(payload) { }
 
         AType(Kind t) : kind(t), payload(top) { }
-
+	
         AType(Kind t, Kind t2) : kind(t), payload(new AType(t2)) { }
 
         AType(Kind t, Kind t2, Kind t3) : kind(t), payload(new AType(t2, t3)) {  }
@@ -50,26 +50,26 @@ namespace rift {
 	    and the argument.
 	 */
         AType * merge(AType * a) {
-            if (a->isTop())            return new AType(Kind::T);
-            if (kind == Kind::B)       return new AType(*a);
-            if (a->kind == Kind::B)    return new AType(*this);
+            if (a->isTop())         return new AType(Kind::T);
+            if (kind == Kind::B)    return new AType(*a);
+            if (a->kind == Kind::B) return new AType(*this);
             switch (kind) {
                 case Kind::D:
-                    if (*a != Kind::D)  return new AType(Kind::T);
-                    else                return new AType(Kind::D);
+                    if (a->kind != Kind::D) return new AType(Kind::T);
+                    else                    return new AType(Kind::D);
                 case Kind::CV:
-                    if (*a != Kind::CV) return new AType(Kind::T);
-                    else                return new AType(Kind::CV);
+                    if (a->kind != Kind::CV) return new AType(Kind::T);
+                    else                     return new AType(Kind::CV);
                 case Kind::F:
-                    if (*a != Kind::F)  return new AType(Kind::T);
-                    else                return new AType(Kind::F);
+                    if (a->kind != Kind::F) return new AType(Kind::T);
+                    else                    return new AType(Kind::F);
                 case Kind::DV: 
-                    if (*a != Kind::DV) return new AType(Kind::T);
-                    else                return new AType(Kind::DV, payload->merge(a->payload));
+                    if (a->kind != Kind::DV) return new AType(Kind::T);
+                    else                     return new AType(Kind::DV, payload->merge(a->payload));
                 case Kind::R:
-                    if (*a != Kind::R) return new AType(Kind::T);
-                    else               return new AType(Kind::R, payload->merge(a->payload));
-                default:              return new AType(Kind::T);
+                    if (a->kind != Kind::R) return new AType(Kind::T);
+                    else                    return new AType(Kind::R, payload->merge(a->payload));
+                default:                    return new AType(Kind::T);
             }
         }
 
@@ -80,7 +80,7 @@ namespace rift {
 
 	/** Is this a scalar value? */
         bool isScalar() {
-	  return kind == Kind::D or (!isTop() and payload->isScalar());
+	  return kind == Kind::D or (!isTop() and payload->isScalar()); // !isTop bounds recursion
         }
 
 	/** Is this a value that can be unboxed to a double? */
@@ -92,25 +92,15 @@ namespace rift {
         bool isCharacter() {
 	  return kind == Kind::CV or (!isTop() and payload->isCharacter());
         }
-	
-	//TODO: IS this correct ??  Payload?
-        bool operator == (AType::Kind other) const {
-            return kind == other;
-        }
 
-	//TODO: IS this correct ??  Payload?
-        bool operator != (AType::Kind other) const {
-            return kind != other;
-        }
-
-        bool canBeSameTypeAs(AType * other) {
-            if (kind != other->kind)
-                return false;
-            // they are the same kind, the only way then can be different is if their kind is R and their payload is of different kind, otherwise we cannot be sure
-            if (kind == Kind::R)
-	      return payload->canBeSameTypeAs(other->payload);
-            return true;
-
+	/** Two ATypes are similar if they have the same kind, and if their
+	    payloads have the same kind recursively.  Note that R(DV(D) is
+	    not similar to R(DV(T) (even if they are both vectors of
+	    doubles, te first one has length one, the other may be longer).
+	 */
+        bool isSimilar(AType * other) {
+            if (kind != other->kind) return false;
+	    return kind != Kind::R  or payload->isSimilar(other->payload);
         }
 
 	/** Order on ATypes.  This only implements the part of the relation
@@ -121,7 +111,7 @@ namespace rift {
         bool operator < (AType const & other) const {
             if( isTop() ) return false;
             if( other.isTop() ) return true;
-	    if( kind == Kind::B) return other != Kind::B;
+	    if( kind == Kind::B) return other.kind != Kind::B;
      	    // This is a bit of a short cut, but it is fine for our use case
             assert(kind == other.kind);
             return *payload < *other.payload;
@@ -129,6 +119,7 @@ namespace rift {
 
         void print(std::ostream & s, MachineState & m);
 
+	/** Break the recursion on the payload field.  */
 	static AType * createTop() { 
 	  auto t = new AType(Kind::T, nullptr);
 	  t->payload = t;
@@ -136,12 +127,16 @@ namespace rift {
 	}
     };
 
+    /**
+       The MachineState represents the abstact state of the function being
+       analyzed modulo unnamed ATypes. It's role is to maintain a mapping
+       between LLVM values and the abstract information computed by the 
+       analysis.
+     */
     class MachineState {
     public:
         AType * get(llvm::Value * v) {
-            if (type.count(v)) {
-                return type.at(v);
-            }
+            if (type.count(v)) return type.at(v);
             auto n = new AType(AType::Kind::B);
             type[v] = n;
             location[n] = v;
@@ -162,7 +157,6 @@ namespace rift {
         }
 
         AType * update(llvm::Value * v, AType * t) {
-	  //    assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
             auto prev = get(v);
             if (*prev < *t) {
                 type[v] = t;
@@ -194,7 +188,6 @@ namespace rift {
     /** Type and shape analysis.  */
     class TypeAnalysis : public llvm::FunctionPass {
     public:
-
         static char ID;
 
         char const * getPassName() const override { return "TypeAnalysis"; }
@@ -209,9 +202,6 @@ namespace rift {
         void genericArithmetic(llvm::CallInst * ci);
         void genericRelational(llvm::CallInst * ci);
         void genericGetElement(llvm::CallInst * ci);
-
-        bool changed;
-
     };
 
 } // namespace rift

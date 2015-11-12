@@ -212,7 +212,7 @@ namespace rift {
         AType * rhs = state().get(ins->getOperand(1));
         if (genericComparison(lhs, rhs, FCmpInst::FCMP_OEQ, m->doubleEq, m->characterEq)) {
             return true;
-        } else if (not lhs->canBeSameTypeAs(rhs)) {
+        } else if (not lhs->isSimilar(rhs)) {
             AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(0.0)), new AType(AType::Kind::D));
             ins->replaceAllUsesWith(box(result_t));
             return true;
@@ -226,7 +226,7 @@ namespace rift {
         AType * rhs = state().get(ins->getOperand(1));
         if (genericComparison(lhs, rhs, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq)) {
             return true;
-        } else if (not lhs->canBeSameTypeAs(rhs)) {
+        } else if (not lhs->isSimilar(rhs)) {
             AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(1.0)), new AType(AType::Kind::D));
             ins->replaceAllUsesWith(box(result_t));
             return true;

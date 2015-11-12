@@ -26,7 +26,7 @@ namespace rift {
 
         TypeChecker() : llvm::FunctionPass(ID) {}
 
-        bool runOnFunction(llvm::Function & f);
+        bool runOnFunction(llvm::Function & f) override;
     private:
         enum class Type {
             D,
