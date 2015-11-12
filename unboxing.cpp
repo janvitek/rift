@@ -4,6 +4,7 @@
 
 #include "unboxing.h"
 #include "compiler.h"
+#include "rift.h"
 
 using namespace std;
 using namespace llvm;
@@ -364,9 +365,11 @@ namespace rift {
                 }
             }
         }
-        cout << "After unboxing optimization: --------------------------------" << endl;
-        f.dump();
-        cout << state() << endl;
+        if (DEBUG) {
+            cout << "After unboxing optimization: --------------------------------" << endl;
+            f.dump();
+            cout << state() << endl;
+        }
         return false;
     }
 

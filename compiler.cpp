@@ -10,6 +10,7 @@
 #include "unboxing.h"
 #include "boxing_removal.h"
 #include "pool.h"
+#include "rift.h"
 
 using namespace llvm;
 
@@ -243,11 +244,15 @@ public:
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
             if (not f.empty()) {
-                cout << "After translation to bitcode: -------------------------------" << endl;
-                f.dump();
+                if (DEBUG) {
+                    cout << "After translation to bitcode: -------------------------------" << endl;
+                    f.dump();
+                }
                 pm->run(f);
-                cout << "After LLVM's constant propagation: --------------------------" << endl;
-                f.dump();
+                if (DEBUG) {
+                    cout << "After LLVM's constant propagation: --------------------------" << endl;
+                    f.dump();
+                }
             }
         }
         delete pm;

@@ -7,6 +7,7 @@
 
 #include "boxing_removal.h"
 #include "compiler.h"
+#include "rift.h"
 
 
 using namespace llvm;
@@ -49,8 +50,10 @@ namespace rift {
             if (not c)
                 break;
         }
-        cout << "After boxing removal: ---------------------------------------" << endl;
-        f.dump();
+        if (DEBUG) {
+            cout << "After boxing removal: ---------------------------------------" << endl;
+            f.dump();
+        }
         return changed;
     }
 
