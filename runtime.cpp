@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
+#include <chrono>
 
 #include "runtime.h"
 #include "lexer.h"
@@ -13,6 +14,8 @@
 
 using namespace std;
 using namespace rift;
+
+double eval_time;
 
 
 extern "C" {
@@ -423,7 +426,10 @@ RVal * eval(Environment * env, char const * value) {
     if (x->body->body.empty())
         return new RVal({0.0});
     FunPtr f = compile(x);
+    auto start = chrono::high_resolution_clock::now();
     RVal * result = f(env);
+    auto t = chrono::high_resolution_clock::now() - start;
+    eval_time = static_cast<double>(t.count()) / chrono::high_resolution_clock::period::den;
     delete x;
     return result;
 }

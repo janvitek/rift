@@ -27,7 +27,7 @@ namespace rift {
             case AType::Kind::R:
                 return what->loc;
             case AType::Kind::D:
-                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->doubleVectorLiteral, what->loc));
+                t = new AType(AType::Kind::DV, what, RUNTIME_CALL(m->doubleVectorLiteral, what->loc));
                 ta->setValueType(t->loc, t);
                 what = t;
                 // fallthrough
@@ -305,27 +305,6 @@ namespace rift {
         }
     }
 
-    void Unboxing::phi(AType * result, AType * first, AType * second) {
-        if (not first->hasPayloadLocation() or not second->hasPayloadLocation() or result->payload == nullptr)
-            return;
-        PHINode * p;
-        if (first->isCharacter() and second->isCharacter()) {
-            p = PHINode::Create(type::ptrCharacterVector, 2, "cvPhi", ins);
-        } else if (first->isDouble() and second->isDouble()) {
-            if (*first == AType::Kind::R and *second == AType::Kind::R)
-                p = PHINode::Create(type::ptrDoubleVector, 2, "dvPhi", ins);
-            else if (*first == AType::Kind::DV and *second == AType::Kind::DV)
-                p = PHINode::Create(type::Double, 2, "dPhi", ins);
-            else
-                return;
-        }
-        p->addIncoming(first->payload->loc, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(0));
-        p->addIncoming(second->payload->loc, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(1));
-        result->payload->loc = p;
-        ta->setValueType(p, result->payload);
-        phi(result->payload, first->payload, second->payload);
-    }
-
     bool Unboxing::runOnFunction(llvm::Function & f) {
         //std::cout << "running Unboxing optimization..." << std::endl;
         m = reinterpret_cast<RiftModule*>(f.getParent());
@@ -362,10 +341,6 @@ namespace rift {
                     } else if (s == "genericEval") {
                         erase = genericEval();
                     }
-                } else if (dyn_cast<PHINode>(ins)) {
-                    AType * first = ta->valueType(ins->getOperand(0));
-                    AType * second = ta->valueType(ins->getOperand(1));
-                    phi(ta->valueType(ins), first, second);
                 }
                 if (erase) {
                     llvm::Instruction * v = i;
@@ -376,7 +351,7 @@ namespace rift {
                 }
             }
         }
-        f.dump();
+        //f.dump();
         //cout << *ta << endl;
         return false;
     }

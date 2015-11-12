@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 #include "llvm.h"
 #include "ast.h"
@@ -11,6 +12,8 @@
 using namespace std;
 using namespace llvm;
 using namespace rift;
+
+extern double eval_time;
 
 void interactive() {
     cout << "rift console - type exit to quit" << endl;
@@ -36,8 +39,14 @@ void interactive() {
             if (in.empty())
                 continue;
             in = in + "\n";
-            eval(env, in.c_str())->print(cout);
-            cout << endl;
+            auto start = chrono::high_resolution_clock::now();
+            RVal * x = eval(env, in.c_str());
+            auto t = chrono::high_resolution_clock::now() - start;
+            cout << *x << endl;
+            double total_t = static_cast<double>(t.count()) / chrono::high_resolution_clock::period::den;
+            cout << "Evaluation:               " << eval_time << "[s]" << endl;
+            cout << "Evaluation & compilation: " << total_t << endl;
+            cout << "Compilation:              " << (1 - eval_time/total_t)*100 << "[%]" << endl;
         } catch (char const * error) {
             std::cerr << error << std::endl;
             std::cout << std::endl;
@@ -67,7 +76,7 @@ int main(int argc, char * argv[]) {
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeAsmParser();
     if (argc == 1) {
-        //tests();
+        tests();
         interactive();
     } else {
         if (argc > 2)
