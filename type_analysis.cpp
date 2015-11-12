@@ -14,19 +14,19 @@ namespace rift {
     void TypeAnalysis::genericArithmetic(CallInst * ci) {
         AType * lhs = state.get(ci->getOperand(0));
         AType * rhs = state.get(ci->getOperand(1));
-        state.set(ci, lhs->merge(rhs));
+        state.update(ci, lhs->merge(rhs));
     }
 
     void TypeAnalysis::genericRelational(CallInst * ci) {
         AType * lhs = state.get(ci->getOperand(0));
         AType * rhs = state.get(ci->getOperand(1));
         if (lhs->isScalar() and rhs->isScalar()) {
-            state.set(ci,
+            state.update(ci,
                       new AType(AType::Kind::R,
                                 AType::Kind::DV,
                                 AType::Kind::D));
         } else {
-            state.set(ci, new AType(AType::Kind::R, AType::Kind::DV));
+            state.update(ci, new AType(AType::Kind::R, AType::Kind::DV));
         }
     }
 
@@ -36,17 +36,17 @@ namespace rift {
         AType * index = state.get(ci->getOperand(1));
         if (from->isDouble()) {
             if (index->isScalar()) {
-                state.set(ci,
+                state.update(ci,
                             new AType(AType::Kind::R,
                                       AType::Kind::DV,
                                       AType::Kind::D));
             } else {
-                state.set(ci, new AType(AType::Kind::R, AType::Kind::DV));
+                state.update(ci, new AType(AType::Kind::R, AType::Kind::DV));
             }
         } else if (from->isCharacter()) {
-            state.set(ci, new AType(AType::Kind::R, AType::Kind::CV));
+            state.update(ci, new AType(AType::Kind::R, AType::Kind::CV));
         } else {
-            state.set(ci, new AType(AType::Kind::T));
+            state.update(ci, new AType(AType::Kind::T));
         }
     }
 
@@ -65,20 +65,20 @@ namespace rift {
                             // always double scalar
                             llvm::Value * op = ci->getOperand(0);
                             AType * t = new AType(AType::Kind::D);
-                            state.set(op, t);
-                            state.set(ci, new AType(AType::Kind::DV, t));
+                            state.update(op, t);
+                            state.update(ci, new AType(AType::Kind::DV, t));
                         } else if (s == "characterVectorLiteral") {
-                            state.set(ci, new AType(AType::Kind::CV));
+                            state.update(ci, new AType(AType::Kind::CV));
                         } else if (s == "fromDoubleVector") {
-                            state.set(ci,
+                            state.update(ci,
                                     new AType(AType::Kind::R,
                                         state.get(ci->getOperand(0))));
                         } else if (s == "fromCharacterVector") {
-                            state.set(ci,
+                            state.update(ci,
                                     new AType(AType::Kind::R,
                                         state.get(ci->getOperand(0))));
                         } else if (s == "fromFunction") {
-                            state.set(ci,
+                            state.update(ci,
                                     new AType(AType::Kind::R,
                                         state.get(ci->getOperand(0))));
                         } else if (s == "genericGetElement") {
@@ -105,11 +105,11 @@ namespace rift {
                         } else if (s == "length") {
                             // result of length operation is always 
                             // double scalar
-                            state.set(ci, new AType(AType::Kind::D));
+                            state.update(ci, new AType(AType::Kind::D));
                         } else if (s == "type") {
                             // result of type operation is always 
                             // character vector
-                            state.set(ci, new AType(AType::Kind::CV));
+                            state.update(ci, new AType(AType::Kind::CV));
                         } else if (s == "c") {
                             // make sure the types to c are correct
                             AType * t1 = state.get(ci->getArgOperand(1));
@@ -118,17 +118,17 @@ namespace rift {
                             if (t1->isScalar())
                                 // concatenation of scalars is a vector
                                 t1 = new AType(AType::Kind::R, AType::Kind::DV);
-                            state.set(ci, t1);
+                            state.update(ci, t1);
                         } else if (s == "genericEval") {
-                            state.set(ci, new AType(AType::Kind::R));
+                            state.update(ci, new AType(AType::Kind::R));
                         } else if (s == "envGet") {
-                            state.set(ci, new AType(AType::Kind::R));
+                            state.update(ci, new AType(AType::Kind::R));
                         }
                     } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                         AType * first = state.get(phi->getOperand(0));
                         AType * second = state.get(phi->getOperand(1));
                         AType * result = first->merge(second);
-                        state.set(phi, result);
+                        state.update(phi, result);
                     }
                 }
             }

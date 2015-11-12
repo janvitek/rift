@@ -177,14 +177,23 @@ namespace rift {
             return location[t];
         }
 
-        void set(llvm::Value * v, AType * t) {
+        AType * initialize(llvm::Value * v, AType * t) {
+            assert(!getLocation(t));
+            type[v] = t;
+            location[t] = v;
+            return t;
+        }
+
+        AType * update(llvm::Value * v, AType * t) {
             assert(!(llvm::isa<llvm::Constant>(v) && t->payload != nullptr));
             auto prev = get(v);
             if (*prev < *t) {
                 type[v] = t;
                 location[t] = v;
                 changed = true;
+                return t;
             }
+            return prev;
         }
 
         void iterationStart() {
@@ -227,9 +236,9 @@ namespace rift {
 
         bool runOnFunction(llvm::Function & f) override;
 
-    private:
         MachineState state;
 
+    private:
         void genericArithmetic(llvm::CallInst * ci);
         void genericRelational(llvm::CallInst * ci);
         void genericGetElement(llvm::CallInst * ci);

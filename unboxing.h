@@ -78,6 +78,7 @@ namespace rift {
 
         /** Preexisting type analysis that is queried to obtain the type & shape information as well as the boxing chains. */
         TypeAnalysis * ta;
+        MachineState & state() { return ta->state; }
 
         llvm::Instruction * ins;
 

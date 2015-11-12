@@ -16,33 +16,30 @@ namespace rift {
 #define RUNTIME_CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 
     AType * Unboxing::updateAnalysis(llvm::Value * value, AType * type) {
-        type->setValue(value);
-        ta->setValueType(value, type);
-        return type;
+        return state().initialize(value, type);
     }
 
     llvm::Value * Unboxing::box(AType * what) {
-        AType * t;
+        llvm::Value * location = state().getLocation(what);
         switch (what->kind) {
             case AType::Kind::R:
-                return what->loc;
+                return location;
             case AType::Kind::D:
-                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->doubleVectorLiteral, what->loc));
-                ta->setValueType(t->loc, t);
-                what = t;
+                location = RUNTIME_CALL(m->doubleVectorLiteral, location);
+                what = state().initialize(location, new AType(AType::Kind::DV, what));
                 // fallthrough
             case AType::Kind::DV:
-                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->fromDoubleVector, what->loc));
-                ta->setValueType(t->loc, t);
-                return t->loc;
+                location = RUNTIME_CALL(m->fromDoubleVector, location);
+                state().initialize(location, new AType(AType::Kind::R, what));
+                return location;
             case AType::Kind::CV:
-                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->fromCharacterVector, what->loc));
-                ta->setValueType(t->loc, t);
-                return t->loc;
+                location = RUNTIME_CALL(m->fromCharacterVector, location);
+                state().initialize(location, new AType(AType::Kind::R, what));
+                return location;
             case AType::Kind::F:
-                t = new AType(AType::Kind::R, what, RUNTIME_CALL(m->fromFunction, what->loc));
-                ta->setValueType(t->loc, t);
-                return t->loc;
+                location = RUNTIME_CALL(m->fromFunction, location);
+                state().initialize(location, new AType(AType::Kind::R, what));
+                return location;
             default:
                 assert(false and "Cannot unbox this type");
                 return nullptr;
@@ -50,42 +47,47 @@ namespace rift {
     }
 
     llvm:: Value * Unboxing::unbox(AType * t) {
+        llvm::Value * location = state().getLocation(t);
         assert(t->payload != nullptr and "Unboxing requested, but no information is available");
-        assert(t->loc != nullptr and "Cannort unbox value with unknown location");
-        // payload's location is not known, we have to extract it from the boxed type
-        if (not t->hasPayloadLocation()) {
-            switch (t->kind) {
-                case AType::Kind::DV:
-                    t->payload->loc = RUNTIME_CALL(m->doubleGetSingleElement, t->loc, ConstantFP::get(getGlobalContext(), APFloat(0.0)));
-                    break;
-                case AType::Kind::R:
-                    switch (t->payload->kind) {
-                        case AType::Kind::DV:
-                            t->payload->loc = RUNTIME_CALL(m->doubleFromValue, t->loc);
-                            break;
-                        case AType::Kind::CV:
-                            t->payload->loc = RUNTIME_CALL(m->characterFromValue, t->loc);
-                            break;
-                        case AType::Kind::F:
-                            t->payload->loc = RUNTIME_CALL(m->functionFromValue, t->loc);
-                            break;
-                        default:
-                            assert(false and "Not possible");
-                    }
-                    ta->setValueType(t->payload->loc, t->payload);
-                    break;
-                default:
-                    assert(false and "Only double vector and RVals can be unboxed");
-            }
+        assert(location != nullptr and "Cannort unbox value with unknown location");
+        if (llvm::Value * payloadLocation = state().getLocation(t->payload)) {
+            return payloadLocation;
         }
-        return t->payload->loc;
+
+        // payload's location is not known, we have to extract it from the boxed type
+        switch (t->kind) {
+            case AType::Kind::DV:
+                location = RUNTIME_CALL(m->doubleGetSingleElement, location, ConstantFP::get(getGlobalContext(), APFloat(0.0)));
+                state().initialize(location, t->payload);
+                break;
+            case AType::Kind::R:
+                switch (t->payload->kind) {
+                    case AType::Kind::DV:
+                        location = RUNTIME_CALL(m->doubleFromValue, location);
+                        break;
+                    case AType::Kind::CV:
+                        location = RUNTIME_CALL(m->characterFromValue, location);
+                        break;
+                    case AType::Kind::F:
+                        location = RUNTIME_CALL(m->functionFromValue, location);
+                        break;
+                    default:
+                        assert(false and "Not possible");
+                }
+                state().initialize(location, t->payload);
+                break;
+            default:
+                assert(false and "Only double vector and RVals can be unboxed");
+        }
+        return location;
     }
 
     llvm::Value * Unboxing::getScalarPayload(AType * t) {
-        assert (t->loc != nullptr and "This would mean we are calling runtime funtcion with a value that we have effectively lost");
+        llvm::Value* location = state().getLocation(t);
+        assert (location != nullptr and "This would mean we are calling runtime funtcion with a value that we have effectively lost");
         switch (t->kind) {
             case AType::Kind::D:
-                return t->loc;
+                return location;
             case AType::Kind::DV:
                 assert(t->payload != nullptr and "Not a scalar");
                 return unbox(t);
@@ -105,11 +107,12 @@ namespace rift {
     /** This works for both cv's and dv's. 
      */
     llvm::Value * Unboxing::getVectorPayload(AType * t) {
-        assert(t->loc != nullptr and "This would mean we are calling runtime funtcion with a value that we have effectively lost");
+        llvm::Value * location = state().getLocation(t);
+        assert(location != nullptr and "This would mean we are calling runtime funtcion with a value that we have effectively lost");
         switch (t->kind) {
             case AType::Kind::DV:
             case AType::Kind::CV:
-                return t->loc;
+                return location;
             case AType::Kind::R:
                 assert(t->payload != nullptr and "Not a vector");
                 return unbox(t);
@@ -123,23 +126,31 @@ namespace rift {
         assert(lhs->isDouble() and rhs->isDouble() and "Doubles expected");
         AType * result_t;
         if (lhs->isScalar() and rhs->isScalar()) {
-            result_t = updateAnalysis(BinaryOperator::Create(op, getScalarPayload(lhs), getScalarPayload(rhs), "", ins), new AType(AType::Kind::D));
+            auto l = getScalarPayload(lhs);
+            auto r = getScalarPayload(rhs);
+            result_t = updateAnalysis(
+                    BinaryOperator::Create(op, l, r, "", ins),
+                    new AType(AType::Kind::D));
         } else {
             // it has to be vector - we have already checked it is a double
-            result_t = updateAnalysis(RUNTIME_CALL(fop, getVectorPayload(lhs), getVectorPayload(rhs)), new AType(AType::Kind::DV));
+            result_t = updateAnalysis(
+                    RUNTIME_CALL(fop, getVectorPayload(lhs), getVectorPayload(rhs)),
+                    new AType(AType::Kind::DV));
         }
         ins->replaceAllUsesWith(box(result_t));
     }
 
     bool Unboxing::genericAdd() {
         // first check if we are dealing with character add
-        AType * lhs = ta->valueType(ins->getOperand(0));
-        AType * rhs = ta->valueType(ins->getOperand(1));
+        AType * lhs = state().get(ins->getOperand(0));
+        AType * rhs = state().get(ins->getOperand(1));
         if (lhs->isDouble() and rhs->isDouble()) {
             doubleArithmetic(lhs, rhs, Instruction::FAdd, m->doubleAdd);
             return true;
         } else if (lhs->isCharacter() and rhs->isCharacter()) {
-            AType * result_t = updateAnalysis(RUNTIME_CALL(m->characterAdd, getVectorPayload(lhs), getVectorPayload(rhs)), new AType(AType::Kind::CV));
+            AType * result_t = updateAnalysis(
+                    RUNTIME_CALL(m->characterAdd, getVectorPayload(lhs), getVectorPayload(rhs)),
+                    new AType(AType::Kind::CV));
             ins->replaceAllUsesWith(box(result_t));
             return true;
         } else {
@@ -148,8 +159,8 @@ namespace rift {
     }
 
     bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop) {
-        AType * lhs = ta->valueType(ins->getOperand(0));
-        AType * rhs = ta->valueType(ins->getOperand(1));
+        AType * lhs = state().get(ins->getOperand(0));
+        AType * rhs = state().get(ins->getOperand(1));
         if (lhs->isDouble() and rhs->isDouble()) {
             doubleArithmetic(lhs, rhs, op, fop);
             return true;
@@ -173,8 +184,8 @@ namespace rift {
     }
 
     bool Unboxing::genericRelational(llvm::CmpInst::Predicate op, llvm::Function * fop) {
-        AType * lhs = ta->valueType(ins->getOperand(0));
-        AType * rhs = ta->valueType(ins->getOperand(1));
+        AType * lhs = state().get(ins->getOperand(0));
+        AType * rhs = state().get(ins->getOperand(1));
         if (lhs->isDouble() and rhs->isDouble()) {
             doubleRelational(lhs, rhs, op, fop);
             return true;
@@ -197,8 +208,8 @@ namespace rift {
     }
 
     bool Unboxing::genericEq() {
-        AType * lhs = ta->valueType(ins->getOperand(0));
-        AType * rhs = ta->valueType(ins->getOperand(1));
+        AType * lhs = state().get(ins->getOperand(0));
+        AType * rhs = state().get(ins->getOperand(1));
         if (genericComparison(lhs, rhs, FCmpInst::FCMP_OEQ, m->doubleEq, m->characterEq)) {
             return true;
         } else if (not lhs->canBeSameTypeAs(rhs)) {
@@ -211,8 +222,8 @@ namespace rift {
 
     }
     bool Unboxing::genericNeq() {
-        AType * lhs = ta->valueType(ins->getOperand(0));
-        AType * rhs = ta->valueType(ins->getOperand(1));
+        AType * lhs = state().get(ins->getOperand(0));
+        AType * rhs = state().get(ins->getOperand(1));
         if (genericComparison(lhs, rhs, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq)) {
             return true;
         } else if (not lhs->canBeSameTypeAs(rhs)) {
@@ -225,8 +236,8 @@ namespace rift {
     }
 
     bool Unboxing::genericGetElement() {
-        AType * source = ta->valueType(ins->getOperand(0));
-        AType * index = ta->valueType(ins->getOperand(1));
+        AType * source = state().get(ins->getOperand(0));
+        AType * index = state().get(ins->getOperand(1));
         AType * result_t;
         if (source->isDouble()) {
             if (index->isScalar()) {
@@ -246,9 +257,9 @@ namespace rift {
     }
 
     bool Unboxing::genericSetElement() {
-        AType * target = ta->valueType(ins->getOperand(0));
-        AType * index = ta->valueType(ins->getOperand(1));
-        AType * value = ta->valueType(ins->getOperand(2));
+        AType * target = state().get(ins->getOperand(0));
+        AType * index = state().get(ins->getOperand(1));
+        AType * value = state().get(ins->getOperand(2));
         if (target->isDouble()) {
             if (index->isScalar() and value->isScalar())
                 RUNTIME_CALL(m->scalarSetElement, getVectorPayload(target), getScalarPayload(index), getScalarPayload(value));
@@ -272,7 +283,7 @@ namespace rift {
         bool canBeCV = true;
         std::vector<AType *> args_t;
         for (unsigned i = 1; i < ci->getNumArgOperands(); ++i) {
-            AType * t = ta->valueType(ci->getArgOperand(i));
+            AType * t = state().get(ci->getArgOperand(i));
             canBeDV = canBeDV and t->isDouble();
             canBeCV = canBeCV and t->isCharacter();
             if (not canBeDV and not canBeCV)
@@ -295,10 +306,12 @@ namespace rift {
     }
 
     bool Unboxing::genericEval() {
-        AType * arg =ta->valueType(ins->getOperand(1));
+        AType * arg =state().get(ins->getOperand(1));
         if (arg->isCharacter()) {
-            AType * result_t = updateAnalysis(RUNTIME_CALL(m->characterEval, ins->getOperand(0), getVectorPayload(arg)), new AType(AType::Kind::R));
-            ins->replaceAllUsesWith(result_t->loc);
+            AType * result_t = updateAnalysis(
+                    RUNTIME_CALL(m->characterEval, ins->getOperand(0), getVectorPayload(arg)),
+                    new AType(AType::Kind::R));
+            ins->replaceAllUsesWith(state().getLocation(result_t));
             return true;
         } else {
             return false;
@@ -306,7 +319,9 @@ namespace rift {
     }
 
     void Unboxing::phi(AType * result, AType * first, AType * second) {
-        if (not first->hasPayloadLocation() or not second->hasPayloadLocation() or result->payload == nullptr)
+        auto ll = state().getLocation(first->payload);
+        auto rl = state().getLocation(second->payload);
+        if (not ll or not rl or result->payload == nullptr)
             return;
         PHINode * p;
         if (first->isCharacter() and second->isCharacter()) {
@@ -319,10 +334,9 @@ namespace rift {
             else
                 return;
         }
-        p->addIncoming(first->payload->loc, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(0));
-        p->addIncoming(second->payload->loc, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(1));
-        result->payload->loc = p;
-        ta->setValueType(p, result->payload);
+        p->addIncoming(ll, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(0));
+        p->addIncoming(rl, reinterpret_cast<PHINode*>(ins)->getIncomingBlock(1));
+        state().initialize(p, result->payload);
         phi(result->payload, first->payload, second->payload);
     }
 
@@ -363,9 +377,9 @@ namespace rift {
                         erase = genericEval();
                     }
                 } else if (dyn_cast<PHINode>(ins)) {
-                    AType * first = ta->valueType(ins->getOperand(0));
-                    AType * second = ta->valueType(ins->getOperand(1));
-                    phi(ta->valueType(ins), first, second);
+                    AType * first = state().get(ins->getOperand(0));
+                    AType * second = state().get(ins->getOperand(1));
+                    phi(state().get(ins), first, second);
                 }
                 if (erase) {
                     llvm::Instruction * v = i;
@@ -376,7 +390,7 @@ namespace rift {
                 }
             }
         }
-        f.dump();
+        //f.dump();
         //cout << *ta << endl;
         return false;
     }
