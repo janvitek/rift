@@ -50,9 +50,8 @@ namespace rift {
         llvm::Value * location = state().getLocation(t);
         assert(t->payload != nullptr and "Unboxing requested, but no information is available");
         assert(location != nullptr and "Cannort unbox value with unknown location");
-        if (llvm::Value * payloadLocation = state().getLocation(t->payload)) {
+        if (llvm::Value * payloadLocation = state().getLocation(t->payload))
             return payloadLocation;
-        }
 
         // payload's location is not known, we have to extract it from the boxed type
         switch (t->kind) {
@@ -89,17 +88,17 @@ namespace rift {
             case AType::Kind::D:
                 return location;
             case AType::Kind::DV:
-                assert(t->payload != nullptr and "Not a scalar");
+                assert(not t->payload->isTop() and "Not a scalar");
                 return unbox(t);
             case AType::Kind::R:
-                assert(t->payload != nullptr and "Not a scalar");
+                assert(not t->payload->isTop() and "Not a scalar");
                 assert(t->payload->kind == AType::Kind::DV and "Not a scalar");
                 // first unboxing to double vector
                 unbox(t); 
                 // second unboxing to scalar
                 return unbox(t->payload);
             default:
-                assert(t->payload != nullptr and "Not a scalar");
+                assert(not t->payload->isTop() and "Not a scalar");
                 return nullptr;
         }
     }
@@ -114,10 +113,10 @@ namespace rift {
             case AType::Kind::CV:
                 return location;
             case AType::Kind::R:
-                assert(t->payload != nullptr and "Not a vector");
+                assert(not t->payload->isTop() and "Not a vector");
                 return unbox(t);
             default:
-                assert(t->payload != nullptr and "Not a vector");
+                assert(not t->payload->isTop() and "Not a vector");
                 return nullptr;
         }
     }
@@ -126,8 +125,8 @@ namespace rift {
         assert(lhs->isDouble() and rhs->isDouble() and "Doubles expected");
         AType * result_t;
         if (lhs->isScalar() and rhs->isScalar()) {
-            auto l = getScalarPayload(lhs);
-            auto r = getScalarPayload(rhs);
+            llvm::Value * l = getScalarPayload(lhs);
+            llvm::Value * r = getScalarPayload(rhs);
             result_t = updateAnalysis(
                     BinaryOperator::Create(op, l, r, "", ins),
                     new AType(AType::Kind::D));
