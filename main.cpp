@@ -86,7 +86,7 @@ int main(int argc, char * argv[]) {
         }
     }
     if (argc == argPos) {
-        //tests();
+        tests();
         interactive();
     } else {
         if (argc > argPos+1)
