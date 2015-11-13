@@ -126,12 +126,14 @@ public:
     }
 
     void setMark(index_t idx) {
+        assert(idx < pageSize);
         assert(isAlloc[idx]);
         assert(!mark[idx]);
         mark[idx] = true;
     }
 
     bool isMarked(index_t idx) const {
+        assert(idx < pageSize);
         return mark[idx];
     }
 
