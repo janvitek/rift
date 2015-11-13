@@ -36,14 +36,6 @@ size_t GarbageCollector::size() const {
     return size;
 }
 
-size_t GarbageCollector::free() const {
-    size_t size = 0;
-#define O(T) size += arena<T>().free();
-    HEAP_OBJECTS(O);
-#undef O
-    return size;
-}
-
 void GarbageCollector::markMaybe(void * ptr) {
 #define O(T)                                                            \
     {                                                                   \
@@ -57,8 +49,8 @@ void GarbageCollector::markMaybe(void * ptr) {
 #undef O
 }
 
-void GarbageCollector::sweep() {
-#define O(T) arena<T>().sweep();
+void GarbageCollector::clearMark() {
+#define O(T) arena<T>().clearMark();
     HEAP_OBJECTS(O);
 #undef O
 }

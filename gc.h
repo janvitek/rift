@@ -73,56 +73,58 @@ public:
     }
 
     T* alloc() {
-        if (freelist.size()) {
-            auto idx = freelist.front();
-            freelist.pop_front();
-
-            assert(!isAlloc[idx] && !mark[idx]);
-            isAlloc[idx] = true;
-
-            return getAt(idx);
+        // Lazy sweep to find the next unmarked Node
+        sweep();
+        if (sweepIdx < pageSize) {
+            assert(!isAlloc[sweepIdx]);
+            isAlloc[sweepIdx] = true;
+            T* res = reinterpret_cast<T*>(&node[sweepIdx]);
+            sweepIdx++;
+            return res;
         }
         return nullptr;
     }
 
     Page() : first(reinterpret_cast<uintptr_t>(&node[0])),
-    last(reinterpret_cast<uintptr_t>(&node[pageSize - 1])) {
+    last(reinterpret_cast<uintptr_t>(&node[pageSize - 1])),
+    sweepIdx(0) {
         assert(getClosestIndex((uintptr_t)first + 1) == 0);
         assert(getClosestIndex((uintptr_t)last + 1) == pageSize - 1);
 
         mark.fill(false);
         isAlloc.fill(false);
-        for (index_t i = 0; i < pageSize; ++i)
-            freelist.push_back(i);
+    }
+
+    ~Page() {
+        for (index_t i = 0; i < pageSize; ++i) {
+            if (isAlloc[i])
+                freeNode(i);
+        }
     }
 
     void sweep() {
-        for (index_t i = 0; i < pageSize; ++i) {
-            if (!mark[i]) {
-                if (isAlloc[i]) {
-                    freeNode(i);
+        while (sweepIdx < pageSize) {
+            if (!mark[sweepIdx]) {
+                if (isAlloc[sweepIdx]) {
+                    freeNode(sweepIdx);
                 }
-            } else {
-                mark[i] = false;
+                return;
             }
+            mark[sweepIdx] = false;
+            sweepIdx++;
         }
     }
 
-    index_t free() const {
-        return freelist.size() * nodeSize;
+    void clearMark() {
+        if (sweepIdx < pageSize)
+            mark.fill(false);
+        sweepIdx = 0;
     }
 
     void verify() const {
-        for (auto i : freelist)
-            assert(!mark[i] && !isAlloc[i]);
-
         for (index_t i = 0; i < pageSize; ++i) {
             assert(isAlloc[i] || !mark[i]);
         }
-    }
-
-    bool empty() const {
-        return freelist.size() == pageSize;
     }
 
     void setMark(index_t idx) {
@@ -141,6 +143,8 @@ public:
     const uintptr_t first, last;
 
 private:
+    index_t sweepIdx;
+
     // Freeing a node will
     // 1. call the destructor of said object
     // 2. push the cell to the freelist
@@ -149,7 +153,6 @@ private:
 #ifdef GC_DEBUG
         memset(&node[idx], 0xd, nodeSize);
 #endif
-        freelist.push_back(idx);
         isAlloc[idx] = false;
     }
 
@@ -166,7 +169,6 @@ private:
     std::array<Node, pageSize> node;
     std::array<bool, pageSize> mark;
     std::array<bool, pageSize> isAlloc;
-    std::deque<index_t> freelist;
 };
 
 // Arena implements the arena interface plus the alloc()
@@ -209,25 +211,10 @@ public:
         return NodeIndex::nodeNotFound();
     }
 
-    void sweep() {
-        for (auto pi = page.begin(); pi != page.end(); ) {
-            auto p = *pi;
-            p->sweep();
-            // If a page is completely empty we release it
-            if (p->empty()) {
-                delete p;
-                pi = page.erase(pi);
-            } else {
-                pi++;
-            }
+    void clearMark() {
+        for (auto p: page) {
+            p->clearMark();
         }
-    }
-
-    size_t free() const {
-        size_t f = 0;
-        for (auto p : page)
-            f += p->free();
-        return f;
     }
 
     size_t size() const {
@@ -341,8 +328,6 @@ private:
 
     size_t size() const;
 
-    size_t free() const;
-
     void scanStack() {
         // Clobber all registers:
         // -> forces all variables currently hold in registers to be spilled
@@ -382,7 +367,14 @@ private:
     // The core mark & sweep algorithm
     void doGc() {
 #ifdef GC_DEBUG
-        unsigned memUsage = size() - free();
+        verify();
+#endif
+
+        // Since we sweep lazily we need to make sure to reset the mark bits of
+        // all the nodes we did not yet sweep.
+        clearMark();
+
+#ifdef GC_DEBUG
         verify();
 #endif
 
@@ -390,16 +382,8 @@ private:
 
 #ifdef GC_DEBUG
         verify();
-#endif
-
-        sweep();
-
-#ifdef GC_DEBUG
-        verify();
-        unsigned memUsage2 = size() - free();
-        assert(memUsage2 <= memUsage);
-        std::cout << "reclaiming " << memUsage - memUsage2
-        << "b, used " << memUsage2 << "b, total " << size() << "b\n";
+        std::cout << "gc: "
+        << "total " << size() << "b\n";
 #endif
     }
 
@@ -429,8 +413,7 @@ private:
         }
     }
 
-    // Delete everything which is not reachable anymore
-    void sweep();
+    void clearMark();
 
     void verify() const;
 
