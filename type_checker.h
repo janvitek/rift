@@ -39,7 +39,7 @@ public:
                 return Type::B;
         }
 
-        void upddate(llvm::Value * v, Type t) {
+        void update(llvm::Value * v, Type t) {
             Type prev = get(v);
             if (prev < t) {
                 type[v] = t;

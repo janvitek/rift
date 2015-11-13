@@ -236,7 +236,7 @@ public:
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
         m->setDataLayout(*ee->getDataLayout());
-        //pm->add(new TypeChecker());
+        pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
         pm->add(new BoxingRemoval());
