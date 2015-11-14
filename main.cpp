@@ -9,6 +9,7 @@
 #include "compiler.h"
 #include "tests.h"
 #include "rift.h"
+#include "gc.h"
 
 using namespace std;
 using namespace llvm;
@@ -53,7 +54,6 @@ void interactive() {
             std::cout << std::endl;
         }
     }
-    delete env;
 }
 
 void runScript(char const * filename) {
@@ -65,8 +65,6 @@ void runScript(char const * filename) {
         ast::Fun * x = new ast::Fun(p.parse(s));
         Environment * env = new Environment(nullptr);
         compile(x)(env)->print(cout);
-        delete x;
-        delete env;
     }
 
 }
@@ -78,6 +76,10 @@ int main(int argc, char * argv[]) {
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeAsmParser();
+
+    // force GC to be initialized:
+    new Environment(nullptr);
+
     int argPos = 1;
     if (argc > argPos) {
         if (0 == strncmp("-d", argv[argPos], 2)) {

@@ -14,7 +14,6 @@ namespace rift {
                 cout << "Actual: " << *actual << endl;
                 throw "Expected and actual results do not match";
             }
-            delete env;
         } catch (char const * e) {
             cout << "ERROR at line " << line << " : " << e << endl;
             cout << source << endl << endl;
@@ -23,7 +22,6 @@ namespace rift {
             cout << source << endl << endl;
 
         }
-        delete expected;
     }
 
 #define TEST(code, ...) test(__LINE__, code, new RVal({__VA_ARGS__}))

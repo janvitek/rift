@@ -12,6 +12,14 @@
 */
 struct RVal;
 
+
+#include "gc.h"
+
+#define HEAP_OBJECTS(O) \
+  O(RVal)               \
+  O(Environment)
+
+
 /** Character vector: strings of variable size. They are null
     terminated. Size excludes the trailing terminator.
 */
@@ -110,7 +118,7 @@ struct Binding {
 Environment represents function's local variables as well as a pointer to the parent environment, i.e. the environment in which the function was declared. 
 
 */
-struct Environment {
+struct Environment : public HeapObject<Environment> {
 
     /** Parent environment. 
 
@@ -228,7 +236,7 @@ struct RFun {
 /** A Rift Value. All values have a type tage and can point either of a
     vector of doubles or chararcters, or a function.
 */
-struct RVal {
+struct RVal : public HeapObject<RVal> {
     enum class Type {
         Double,
         Character,
