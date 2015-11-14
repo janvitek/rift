@@ -1,3 +1,6 @@
+#include <initializer_list>
+#include <iostream>
+
 #include "parser.h"
 #include "runtime.h"
 #include "specializedRuntime.h"
@@ -7,9 +10,11 @@
 #include "unboxing.h"
 #include "boxing_removal.h"
 #include "pool.h"
+#include "rift.h"
 
-#include <initializer_list>
 using namespace llvm;
+
+using namespace std;
 
 namespace rift {
 
@@ -231,14 +236,24 @@ public:
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
         m->setDataLayout(*ee->getDataLayout());
-        pm->add(new TypeChecker());
+        //pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
         pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
-            pm->run(f);
+            if (not f.empty()) {
+                if (DEBUG) {
+                    cout << "After translation to bitcode: -------------------------------" << endl;
+                    f.dump();
+                }
+                pm->run(f);
+                if (DEBUG) {
+                    cout << "After LLVM's constant propagation: --------------------------" << endl;
+                    f.dump();
+                }
+            }
         }
         delete pm;
     }
