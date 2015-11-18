@@ -14,22 +14,6 @@ namespace rift {
   There is some example code in the implementation of runOnFunction() method, we have prefilled the fromDoubleVector, doubleVectorLiteral and genericSub runtime calls. Your task is to extend this functionality further, including the implementation of phi nodes, where two values merge into one. For this, you will need to fill in proper ordering in the method lessThan.
 
 
-<<<<<<< HEAD
-        bool runOnFunction(llvm::Function & f) override;
-    private:
-        enum class Type {
-            D,
-            C,
-            F,
-            T
-        };
-
-        Type valueType(llvm::Value * v) {
-            auto i = types_.find(v);
-            if (i == types_.end())
-                return Type::T;
-            else return i->second;
-=======
 */
 
 
@@ -53,7 +37,6 @@ public:
                 return type.at(v);
             else
                 return Type::B;
->>>>>>> origin/master
         }
 
         void update(llvm::Value * v, Type t) {

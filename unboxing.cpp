@@ -220,31 +220,6 @@ bool Unboxing::genericEq() {
         return false;
     }
 
-<<<<<<< HEAD
-    bool Unboxing::genericEq() {
-        AType * lhs = state().get(ins->getOperand(0));
-        AType * rhs = state().get(ins->getOperand(1));
-        if (genericComparison(lhs, rhs, FCmpInst::FCMP_OEQ, m->doubleEq, m->characterEq)) {
-            return true;
-        } else if (not lhs->isSimilar(rhs)) {
-            AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(0.0)), new AType(AType::Kind::D));
-            ins->replaceAllUsesWith(box(result_t));
-            return true;
-        } else {
-            return false;
-        }
-
-    }
-    bool Unboxing::genericNeq() {
-        AType * lhs = state().get(ins->getOperand(0));
-        AType * rhs = state().get(ins->getOperand(1));
-        if (genericComparison(lhs, rhs, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq)) {
-            return true;
-        } else if (not lhs->isSimilar(rhs)) {
-            AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(1.0)), new AType(AType::Kind::D));
-            ins->replaceAllUsesWith(box(result_t));
-            return true;
-=======
 }
 bool Unboxing::genericNeq() {
     AType * lhs = state().get(ins->getOperand(0));
@@ -269,7 +244,6 @@ bool Unboxing::genericGetElement() {
             result_t = updateAnalysis(RUNTIME_CALL(m->doubleGetSingleElement, getVectorPayload(source), getScalarPayload(index)), new AType(AType::Kind::D));
         } else if (index->isDouble()) {
             result_t = updateAnalysis(RUNTIME_CALL(m->doubleGetElement, getVectorPayload(source), getVectorPayload(index)), new AType(AType::Kind::DV));
->>>>>>> origin/master
         } else {
             return false;
         }
