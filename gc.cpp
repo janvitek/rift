@@ -10,7 +10,7 @@ namespace gc {
 template<>
 void GarbageCollector::markImpl<RVal>(RVal * value) {
     if (value->type == RVal::Type::Function)
-        mark(value->f->env);
+        mark(value->f);
     // Otherwise leaf node, nothing to do
 };
 
@@ -22,6 +22,21 @@ void GarbageCollector::markImpl<Environment>(Environment * env) {
     if (env->parent)
         mark(env->parent);
 }
+
+template<>
+void GarbageCollector::markImpl(RFun * fun) {
+    mark(fun->env);
+};
+
+template<>
+void GarbageCollector::markImpl(DoubleVector * value) {
+    // Leaf node, nothing to do
+};
+
+template<>
+void GarbageCollector::markImpl(CharacterVector * value) {
+    // Leaf node, nothing to do
+};
 
 
 /*
