@@ -9,7 +9,9 @@ namespace gc {
 
 template<>
 void GarbageCollector::markImpl<RVal>(RVal * value) {
-    // Leaf node, nothing to do
+    if (value->type == RVal::Type::Function)
+        mark(value->f->env);
+    // Otherwise leaf node, nothing to do
 };
 
 template<>
