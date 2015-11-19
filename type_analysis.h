@@ -17,10 +17,24 @@ namespace rift {
 // forward decl..
 class MachineState;
 
-/** An abstract type, or AType, represents a portion of the heap of a Rift
-  program. Each AType has a kind -- this describes the type of value we
-  are dealine with a kind can be either one of B(ottom), T(op), D(ouble),
-  D(ouble)V(ector) and others.
+/** An abstract type, or AType, represents an object in the heap of a Rift
+  program. AType forms the following lattice, where D is a DoubleVector of
+  size 1, DV a DoubleVector, CV a CharacterVector, and F an RFun.
+
+                            T
+
+                        /   |    \
+                            |     \
+                    DV      |      \
+
+                    |       CV      F
+
+                    D       |     /
+                            |    /
+                       \    |   /
+
+                            B
+          
   */
 class AType {
 
