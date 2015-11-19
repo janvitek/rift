@@ -134,10 +134,7 @@ public:
     // All Rift runtime functions must be declared: with a symbol and type.
     DEF_FUN_PURE(doubleVectorLiteral, type::v_d);
     DEF_FUN_PURE(characterVectorLiteral, type::v_i);
-    DEF_FUN_PURE(doubleFromValue, type::dv_v);
     DEF_FUN_PURE(scalarFromVector, type::d_dv);
-    DEF_FUN_PURE(charactervFromValue, type::cv_v);
-    DEF_FUN_PURE(functionFromValue, type::f_v);
     DEF_FUN_PURE(doubleGetSingleElement, type::d_dvd);
     DEF_FUN_PURE(doubleGetElement, type::dv_dvdv);
     DEF_FUN_PURE(characterGetElement, type::cv_cvdv);

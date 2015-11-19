@@ -7,6 +7,7 @@
 #include "compiler.h"
 #include "pool.h"
 #include "rift.h"
+#include "type_analysis.h"
 
 using namespace llvm;
 
@@ -128,10 +129,7 @@ public:
         NAME_IS(envSet);
         NAME_IS(doubleVectorLiteral);
         NAME_IS(characterVectorLiteral);
-        NAME_IS(doubleFromValue);
         NAME_IS(scalarFromVector);
-        NAME_IS(characterFromValue);
-        NAME_IS(functionFromValue);
         NAME_IS(doubleGetSingleElement);
         NAME_IS(doubleGetElement);
         NAME_IS(characterGetElement);
@@ -231,6 +229,7 @@ public:
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
         m->setDataLayout(*ee->getDataLayout());
+        pm->add(new TypeAnalysis());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
