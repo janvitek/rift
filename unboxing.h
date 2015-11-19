@@ -34,35 +34,39 @@ public:
 
 protected:
 
-    AType * updateAnalysis(llvm::Value * value, AType * type);
+    void updateDoubleScalar(llvm::Value * newVal);
 
-    llvm::Value * box(AType * what);
+    void updateDoubleOp(llvm::Function * fun,
+                        llvm::Value * arg1, llvm::Value * arg2,
+                        AType * res);
 
-    llvm::Value * unbox(AType * t);
+    void updateCharOp(llvm::Function * fun,
+                      llvm::Value * arg1, llvm::Value * arg2,
+                      AType * res);
 
-    llvm::Value * getScalarPayload(AType * t);
-
-    llvm::Value * getVectorPayload(AType * t);
-
-    void doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::BinaryOps op, llvm::Function * fop);
+    bool doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
+                          AType * lhsType, AType * rhsType,
+                          llvm::Instruction::BinaryOps op, llvm::Function * fop);
 
     bool genericAdd();
 
     bool genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop);
 
-    void doubleRelational(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop);
+    bool doubleRelational(llvm::Value * lhs, llvm::Value * rhs,
+                          AType * lhsType, AType * rhsType,
+                          llvm::CmpInst::Predicate op, llvm::Function * fop);
 
     bool genericRelational(llvm::CmpInst::Predicate op, llvm::Function * fop);
 
-    bool genericComparison(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop, llvm::Function * cop);
+    bool genericComparison(llvm::Value * lhs, llvm::Value * rhs,
+                           AType * lhsType, AType * rhsType,
+                           llvm::CmpInst::Predicate op, llvm::Function * fop, llvm::Function * cop);
 
     bool genericEq();
 
     bool genericNeq();
 
     bool genericGetElement();
-
-    bool genericSetElement();
 
     bool genericC();
 

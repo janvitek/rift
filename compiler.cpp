@@ -7,7 +7,10 @@
 #include "compiler.h"
 #include "pool.h"
 #include "rift.h"
+#include "type_checker.h"
 #include "type_analysis.h"
+#include "unboxing.h"
+#include "boxing_removal.h"
 
 using namespace llvm;
 
@@ -229,7 +232,10 @@ public:
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
         m->setDataLayout(*ee->getDataLayout());
+        pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
+        pm->add(new Unboxing());
+        pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
