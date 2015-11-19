@@ -26,23 +26,12 @@ class MachineState;
 class AType {
 
 public:
-    enum class Kind { B, D, DV, CV,  F, R, T } kind;
-
-    AType * payload;  // never-null
-
-    static AType * top;  // singleton used to initialize payloads
-
-    /////// Constructors////////////////////////////
-    AType(Kind t, AType * payload) : kind(t), payload(payload) { }
-
-    AType(Kind t) : kind(t), payload(top) { }
-
-    AType(Kind t, Kind t2) : kind(t), payload(new AType(t2)) { }
-
-    AType(Kind t, Kind t2, Kind t3) : kind(t), payload(new AType(t2, t3)) {  }
-
-    AType(AType const & other) = default;
-
+    static AType * T;
+    static AType * B;
+    static AType * D;
+    static AType * DV;
+    static AType * CV;
+    static AType * F;
 
     //////////////////// Abstract Operations //////////////////
 
@@ -50,57 +39,52 @@ public:
       and the argument.
       */
     AType * merge(AType * a) {
-        if (a->isTop())         return new AType(Kind::T);
-        if (kind == Kind::B)    return new AType(*a);
-        if (a->kind == Kind::B) return new AType(*this);
-        switch (kind) {
-            case Kind::D:
-                if (a->kind != Kind::D) return new AType(Kind::T);
-                else                    return new AType(Kind::D);
-            case Kind::CV:
-                if (a->kind != Kind::CV) return new AType(Kind::T);
-                else                     return new AType(Kind::CV);
-            case Kind::F:
-                if (a->kind != Kind::F) return new AType(Kind::T);
-                else                    return new AType(Kind::F);
-            case Kind::DV: 
-                if (a->kind != Kind::DV) return new AType(Kind::T);
-                else                     return new AType(Kind::DV, payload->merge(a->payload));
-            case Kind::R:
-                if (a->kind != Kind::R) return new AType(Kind::T);
-                else                    return new AType(Kind::R, payload->merge(a->payload));
-            default:                    return new AType(Kind::T);
+        if (a == T)        return T;
+        if (this == B)     return a;
+        if (a == B)        return this;
+    
+        if (this == D) {
+            if (a == D)  return a;
+            if (a == DV) return a;
+            return T;
         }
+
+        if ((this == DV || this == CV || this == F) &&
+             this == a) {
+            return this;
+        }
+
+        return T;
     }
 
     /** Is this the top element of the lattice. */
     bool isTop() const {
-        return kind == Kind::T;
+        return this == T;
+    }
+
+    bool isBottom() const {
+        return this == B;
     }
 
     /** Is this a scalar value? */
-    bool isScalar() {
-        return kind == Kind::D or (!isTop() and payload->isScalar()); // !isTop bounds recursion
+    bool isDoubleScalar() const {
+        return this == D;
     }
 
     /** Is this a value that can be unboxed to a double? */
-    bool isDouble() {
-        return kind == Kind::D or kind == Kind::DV or (!isTop() and payload->isDouble());
+    bool isDouble() const {
+        return this == D || this == DV;
     }
 
     /** Is this a string? */
-    bool isCharacter() {
-        return kind == Kind::CV or (!isTop() and payload->isCharacter());
+    bool isCharacter() const {
+        return this == CV;
     }
 
-    /** Two ATypes are similar if they have the same kind, and if their
-      payloads have the same kind recursively.  Note that R(DV(D) is
-      not similar to R(DV(T) (even if they are both vectors of
-      doubles, te first one has length one, the other may be longer).
-      */
-    bool isSimilar(AType * other) {
-        if (kind != other->kind) return false;
-        return kind != Kind::R  or payload->isSimilar(other->payload);
+    /** Two ATypes are similar if they have the same kind */
+    bool isSimilar(AType * other) const {
+        return (isCharacter() && other->isCharacter()) ||
+               (isDouble() && other->isDouble());
     }
 
     /** Order on ATypes.  This only implements the part of the relation
@@ -109,22 +93,19 @@ public:
       R(DV(D))< R(DV)<R<T, R(CV)<R<T, R(F)<R<T
       */
     bool operator < (AType const & other) const {
-        if( isTop() ) return false;
-        if( other.isTop() ) return true;
-        if( kind == Kind::B) return other.kind != Kind::B;
-        // This is a bit of a short cut, but it is fine for our use case
-        assert(kind == other.kind);
-        return *payload < *other.payload;
+        if(isTop()) return false;
+        if(other.isTop()) return true;
+        if(isBottom()) return !other.isBottom();
+        
+        if (isDoubleScalar()) return !other.isDoubleScalar();
+        assert(this == &other);
+        return false;
     }
 
     void print(std::ostream & s, MachineState & m);
 
-    /** Break the recursion on the payload field.  */
-    static AType * createTop() { 
-        auto t = new AType(Kind::T, nullptr);
-        t->payload = t;
-        return t;
-    }
+private:
+    AType() {}
 };
 
 /**
@@ -137,30 +118,31 @@ class MachineState {
 public:
     AType * get(llvm::Value * v) {
         if (type.count(v)) return type.at(v);
-        auto n = new AType(AType::Kind::B);
+        auto n = AType::B;
         type[v] = n;
-        location[n] = v;
         return n;
     }
-
-    llvm::Value * getLocation(AType * t) {
-        if (!location.count(t))
-            return nullptr;
-        return location[t];
+    
+    llvm::Value * getScalarLocation(llvm::Value * v) {
+        if (!scalarLocation.count(v)) return nullptr;
+        return scalarLocation.at(v);
     }
 
     AType * initialize(llvm::Value * v, AType * t) {
-        assert(!getLocation(t));
         type[v] = t;
-        location[t] = v;
         return t;
+    }
+
+    AType * update(llvm::Value * v, AType * t, llvm::Value * sl) {
+        assert(scalarLocation.count(v) == 0 || scalarLocation.at(v) == sl);
+        scalarLocation[v] = sl;
+        return update(v, t);
     }
 
     AType * update(llvm::Value * v, AType * t) {
         auto prev = get(v);
         if (*prev < *t) {
             type[v] = t;
-            location[t] = v;
             changed = true;
             return t;
         }
@@ -169,12 +151,11 @@ public:
 
     void clear() {
         type.clear();
-        location.clear();
+        scalarLocation.clear();
     }
      
     void erase(llvm::Value * v) {
-        if (type.count(v))
-            location.erase(type.at(v));
+        scalarLocation.erase(v);
         type.erase(v);
     }
 
@@ -193,7 +174,7 @@ public:
 private:
     bool changed;
     std::map<llvm::Value*, AType*> type;
-    std::map<AType*, llvm::Value*> location;
+    std::map<llvm::Value*, llvm::Value*> scalarLocation;
 };
 
 /** Type and shape analysis.  */

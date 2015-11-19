@@ -10,11 +10,14 @@ using namespace llvm;
 
 namespace rift {
 
+AType * AType::T  = new AType();
+AType * AType::B  = new AType();
+AType * AType::D  = new AType();
+AType * AType::DV = new AType();
+AType * AType::CV = new AType();
+AType * AType::F  = new AType();
+
 char TypeAnalysis::ID = 0;
-
-AType * AType::top = createTop();
-
-
 
 void TypeAnalysis::genericArithmetic(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
@@ -25,13 +28,10 @@ void TypeAnalysis::genericArithmetic(CallInst * ci) {
 void TypeAnalysis::genericRelational(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
     AType * rhs = state.get(ci->getOperand(1));
-    if (lhs->isScalar() and rhs->isScalar()) {
-        state.update(ci,
-                new AType(AType::Kind::R,
-                    AType::Kind::DV,
-                    AType::Kind::D));
+    if (lhs->isDoubleScalar() and rhs->isDoubleScalar()) {
+        state.update(ci, AType::D);
     } else {
-        state.update(ci, new AType(AType::Kind::R, AType::Kind::DV));
+        state.update(ci, AType::DV);
     }
 }
 
@@ -40,18 +40,15 @@ void TypeAnalysis::genericGetElement(CallInst * ci) {
     AType * from = state.get(ci->getOperand(0));
     AType * index = state.get(ci->getOperand(1));
     if (from->isDouble()) {
-        if (index->isScalar()) {
-            state.update(ci,
-                    new AType(AType::Kind::R,
-                        AType::Kind::DV,
-                        AType::Kind::D));
+        if (index->isDoubleScalar()) {
+            state.update(ci, AType::D);
         } else {
-            state.update(ci, new AType(AType::Kind::R, AType::Kind::DV));
+            state.update(ci, AType::DV);
         }
     } else if (from->isCharacter()) {
-        state.update(ci, new AType(AType::Kind::R, AType::Kind::CV));
+        state.update(ci, AType::CV);
     } else {
-        state.update(ci, new AType(AType::Kind::T));
+        state.update(ci, AType::T);
     }
 }
 
@@ -70,23 +67,9 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                         // when creating literal from a double, it is
                         // always double scalar
                         llvm::Value * op = ci->getOperand(0);
-                        AType * t = new AType(AType::Kind::D);
-                        state.update(op, t);
-                        state.update(ci, new AType(AType::Kind::DV, t));
+                        state.update(ci, AType::D, op);
                     } else if (s == "characterVectorLiteral") {
-                        state.update(ci, new AType(AType::Kind::CV));
-                    } else if (s == "fromDoubleVector") {
-                        state.update(ci,
-                                new AType(AType::Kind::R,
-                                    state.get(ci->getOperand(0))));
-                    } else if (s == "fromCharacterVector") {
-                        state.update(ci,
-                                new AType(AType::Kind::R,
-                                    state.get(ci->getOperand(0))));
-                    } else if (s == "fromFunction") {
-                        state.update(ci,
-                                new AType(AType::Kind::R,
-                                    state.get(ci->getOperand(0))));
+                        state.update(ci, AType::CV);
                     } else if (s == "genericGetElement") {
                         genericGetElement(ci);
                     } else if (s == "genericSetElement") {
@@ -111,24 +94,24 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     } else if (s == "length") {
                         // result of length operation is always 
                         // double scalar
-                        state.update(ci, new AType(AType::Kind::D));
+                        state.update(ci, AType::D);
                     } else if (s == "type") {
                         // result of type operation is always 
                         // character vector
-                        state.update(ci, new AType(AType::Kind::CV));
+                        state.update(ci, AType::CV);
                     } else if (s == "c") {
                         // make sure the types to c are correct
                         AType * t1 = state.get(ci->getArgOperand(1));
                         for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
                             t1 = t1->merge(state.get(ci->getArgOperand(i)));
-                        if (t1->isScalar())
+                        if (t1->isDoubleScalar())
                             // concatenation of scalars is a vector
-                            t1 = new AType(AType::Kind::R, AType::Kind::DV);
+                            t1 = AType::DV;
                         state.update(ci, t1);
                     } else if (s == "genericEval") {
-                        state.update(ci, new AType(AType::Kind::R));
+                        state.update(ci, AType::T);
                     } else if (s == "envGet") {
-                        state.update(ci, new AType(AType::Kind::R));
+                        state.update(ci, AType::T);
                     }
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                     AType * first = state.get(phi->getOperand(0));
@@ -149,7 +132,16 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
 std::ostream & operator << (std::ostream & s, MachineState & m) {
     s << "Abstract State: " << "\n";
     for (auto const & v : m.type) {
-        auto st = std::get<1>(v);
+        auto st  = std::get<1>(v);
+        auto pos = std::get<0>(v);
+
+        llvm::raw_os_ostream ss(s);
+        pos->printAsOperand(ss, false);
+        ss << ": ";
+        if (auto loc = m.getScalarLocation(pos))
+            loc->printAsOperand(ss, false);
+        ss.flush();
+
         st->print(s, m);
         s << endl;
     }
@@ -159,36 +151,22 @@ std::ostream & operator << (std::ostream & s, MachineState & m) {
 
 void AType::print(std::ostream & s, MachineState & m) {
     llvm::raw_os_ostream ss(s);
-    if (auto loc = m.getLocation(this))
-        loc->printAsOperand(ss, false);
-    switch (kind) {
-        case AType::Kind::D:
-            ss << " D ";
-            break;
-        case AType::Kind::DV:
-            ss << " DV ";
-            break;
-        case AType::Kind::CV:
-            ss << " CV ";
-            break;
-        case AType::Kind::F:
-            ss << " F ";
-            break;
-        case AType::Kind::R:
-            ss << " R ";
-            break; 
-        case AType::Kind::T:
-            ss << " T ";
-            break;
-        case AType::Kind::B:
-            ss << " B ";
-            break;
-    }
+    if (this == D)
+        ss << " D ";
+    else if (this == DV)
+        ss << " DV ";
+    else if (this == CV)
+        ss << " CV ";
+    else if (this == F)
+        ss << " F ";
+    else if (this == T)
+        ss << " T ";
+    else if (this == B)
+        ss << " ?? ";
+    else
+        assert(false);
+
     ss.flush();
-    if (not payload->isTop()) {
-        s << " -> ";
-        payload->print(s, m);
-    }
 }
 
 } // namespace rift
