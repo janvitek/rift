@@ -14,18 +14,21 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
-if(${CMAKE_CXX_COMPILER_ID} EQUAL "MSVC")
-    add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-else()
-    add_definitions(-Wall -std=c++11 -Wno-unknown-pragmas)
-endif()
 
 # TODO for now, make all builds debug
 set(CMAKE_BUILD_TYPE Debug)
 
-
 # build the shared library for the JIT
-file(GLOB SRC "*.cpp" "*.h" "tests/*.ri")
+if(${CMAKE_CXX_COMPILER_ID} EQUAL "MSVC")
+    enable_language(ASM_MASM)
+    add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+    file(GLOB SRC "*.cpp" "*.h" "*.asm" "tests/*.ri")
+else()
+    add_definitions(-Wall -std=c++11 -Wno-unknown-pragmas)
+    file(GLOB SRC "*.cpp" "*.h" "tests/*.ri")
+endif()
+
+
 add_executable(${PROJECT_NAME} ${SRC})
 
 # Find the libraries that correspond to the LLVM components
