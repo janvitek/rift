@@ -64,7 +64,7 @@ void runScript(char const * filename) {
         Parser p;
         ast::Fun * x = new ast::Fun(p.parse(s));
         Environment * env = new Environment(nullptr);
-        compile(x)(env)->print(cout);
+        cout << compile(x)(env);
     }
 
 }

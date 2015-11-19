@@ -5,10 +5,6 @@
 #include "runtime.h"
 #include "specializedRuntime.h"
 #include "compiler.h"
-#include "type_checker.h"
-#include "type_analysis.h"
-#include "unboxing.h"
-#include "boxing_removal.h"
 #include "pool.h"
 #include "rift.h"
 
@@ -130,9 +126,6 @@ public:
         NAME_IS(envSet);
         NAME_IS(doubleVectorLiteral);
         NAME_IS(characterVectorLiteral);
-        NAME_IS(fromDoubleVector);
-        NAME_IS(fromCharacterVector);
-        NAME_IS(fromFunction);
         NAME_IS(doubleFromValue);
         NAME_IS(scalarFromVector);
         NAME_IS(characterFromValue);
@@ -236,10 +229,6 @@ public:
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
         m->setDataLayout(*ee->getDataLayout());
-        pm->add(new TypeChecker());
-        pm->add(new TypeAnalysis());
-        pm->add(new Unboxing());
-        pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
@@ -283,7 +272,6 @@ public:
 
         if (node->body->body.empty()) {
             result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
-            result = RUNTIME_CALL(fromDoubleVector, result);
         } else {
             // Compile body 
             node->body->accept(this);
@@ -321,14 +309,12 @@ public:
       */
     void visit(ast::Num * node) override {
         result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(node->value));
-        result = RUNTIME_CALL(fromDoubleVector, result);
     }
 
     /** Similarly string is loaded as character vector and then boxed into value.
     */
     void visit(ast::Str * node) override {
         result = RUNTIME_CALL(characterVectorLiteral, fromInt(node->index));
-        result = RUNTIME_CALL(fromCharacterVector, result);
     }
 
     /** Variable translates into reading from environment.
@@ -351,7 +337,6 @@ public:
     void visit(ast::Fun * node) override {
         int fi = compileFunction(node);
         result = RUNTIME_CALL(createFunction, fromInt(fi), env);
-        result = RUNTIME_CALL(fromFunction, result);
     }
 
     /** Binary expression. First compile arguments and then call respective
@@ -413,14 +398,12 @@ public:
         node->args[0]->accept(this);
         result = RUNTIME_CALL(length, result);
         result = RUNTIME_CALL(doubleVectorLiteral, result);
-        result = RUNTIME_CALL(fromDoubleVector, result);
     }
 
     /** Call type runtime and then boxing of the character vector. */
     void visit(ast::TypeCall * node)  override {
         node->args[0]->accept(this);
         result = RUNTIME_CALL(type, result);
-        result = RUNTIME_CALL(fromCharacterVector, result);
     }
 
     /** Eval.  */
@@ -514,7 +497,6 @@ public:
         // we need a default value for the loop to evaluate to
         BasicBlock * entry = b;
         auto zero = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
-        zero = RUNTIME_CALL(fromDoubleVector, zero);
 
         // jump to start 
         BranchInst::Create(guard, b);
