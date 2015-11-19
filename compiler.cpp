@@ -74,6 +74,7 @@ FunctionType * v_ei = FUN_TYPE(ptrValue, ptrEnvironment, Int);
 FunctionType * v_ecv = FUN_TYPE(ptrValue, ptrEnvironment, ptrCharacterVector);
 FunctionType * void_eiv = FUN_TYPE(Void, ptrEnvironment, Int, ptrValue);
 FunctionType * dv_dvdv = FUN_TYPE(ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
+FunctionType * d_dvdv = FUN_TYPE(Double, ptrDoubleVector, ptrDoubleVector);
 FunctionType * cv_cvcv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrCharacterVector);
 FunctionType * dv_cvcv = FUN_TYPE(ptrDoubleVector, ptrCharacterVector, ptrCharacterVector);
 FunctionType * d_dvd = FUN_TYPE(Double, ptrDoubleVector, Double);
@@ -175,6 +176,8 @@ public:
         NAME_IS(doublec);
         NAME_IS(characterc);
         NAME_IS(c);
+        NAME_IS(doubleDot);
+        NAME_IS(genericDot);
         report_fatal_error("Extern function '" + Name + "' couldn't be resolved!");
     }
 };
@@ -386,6 +389,9 @@ public:
                 return;
             case ast::BinExp::Type::gt:
                 result = RUNTIME_CALL(genericGt, lhs, rhs);
+                return;
+            case ast::BinExp::Type::dot:
+                result = RUNTIME_CALL(genericDot, lhs, rhs);
                 return;
             default: // can't happen
                 return;

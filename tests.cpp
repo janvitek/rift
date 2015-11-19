@@ -5,6 +5,8 @@ using namespace std;
 using namespace rift;
 namespace rift {
 
+#define TEST(code, ...) test(__LINE__, code, new RVal({__VA_ARGS__}))
+
     void test(int line, char const * source, RVal * expected) {
         try {
             Environment * env = new Environment(nullptr);
@@ -24,7 +26,38 @@ namespace rift {
         }
     }
 
-#define TEST(code, ...) test(__LINE__, code, new RVal({__VA_ARGS__}))
+    typedef bool (*FunChecker)(llvm::Function *, char const *);
+
+    bool containsRuntimeCall(llvm::Function * f, char const * name) {
+        for (auto & b : f) {
+            for (auto & i : b) {
+                if (CallInst * ci = dyn_cast<CallInst>(&i)) {
+                    StringRef s = ci->getCalledFunction()->getName();
+                    if (s == name)
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    void testFunctionContains(int line, char const * source, char const *( )) {
+        try {
+            Environment * env = new Environment(nullptr);
+            RVal * actual = eval(env, source);
+            actual->f->bitcode;
+        } catch (char const * e) {
+            cout << "ERROR at line " << line << " : " << e << endl;
+            cout << source << endl << endl;
+        } catch (...) {
+            cout << "ERROR at line " << line << " : " << endl;
+            cout << source << endl << endl;
+        }
+    }
+
+
+    }
+
 
 
     void tests() {

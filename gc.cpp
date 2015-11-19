@@ -1,29 +1,7 @@
 #include "gc.h"
 #include "runtime.h"
 
-// The stack scan traverses the memory of the C stack and looks at every
-// possible stack slot. If we find a valid heap pointer we mark the
-// object as well as all objects reachable through it as live.
-#ifdef __GNUG__
-void __attribute__((noinline)) _scanStack() {
-    void ** p = (void**)__builtin_frame_address(0);
-#else
-__declspec(noinline) void _scanStack() {
-    void ** p = (void**)_AddressOfReturnAddress();
-#endif
-    gc::GarbageCollector & inst = gc::GarbageCollector::inst();
-
-    while (p < inst.BOTTOM_OF_STACK) {
-        if (inst.maybePointer(*p))
-            inst.markMaybe(*p);
-        p++;
-    }
-}
-
-
 namespace gc {
-
-
 
 /*
  * Type specific parts
@@ -31,9 +9,7 @@ namespace gc {
 
 template<>
 void GarbageCollector::markImpl<RVal>(RVal * value) {
-    if (value->type == RVal::Type::Function)
-        mark(value->f);
-    // Otherwise leaf node, nothing to do
+    // Leaf node, nothing to do
 };
 
 template<>
@@ -44,21 +20,6 @@ void GarbageCollector::markImpl<Environment>(Environment * env) {
     if (env->parent)
         mark(env->parent);
 }
-
-template<>
-void GarbageCollector::markImpl(RFun * fun) {
-    mark(fun->env);
-};
-
-template<>
-void GarbageCollector::markImpl(DoubleVector * value) {
-    // Leaf node, nothing to do
-};
-
-template<>
-void GarbageCollector::markImpl(CharacterVector * value) {
-    // Leaf node, nothing to do
-};
 
 
 /*

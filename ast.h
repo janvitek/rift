@@ -77,7 +77,7 @@ namespace ast {
     /** Binary expression. */
     class BinExp : public Exp {
     public:
-        enum class Type { add, sub, mul, div, eq, neq, lt, gt };
+        enum class Type { add, sub, mul, div, eq, neq, lt, gt, dot };
 
         BinExp(Exp * lhs, Exp * rhs, Type t): lhs(lhs), rhs(rhs), type(t) { }
         ~BinExp() {   delete lhs; delete rhs; }

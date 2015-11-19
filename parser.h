@@ -194,8 +194,17 @@ namespace rift {
             }
         }
 
-        ast::Exp * parseE2() {
+        ast::Exp * parseDot() {
             std::unique_ptr<ast::Exp> x(parseE3());
+            while (condPop(Token::Type::dot)) {
+                ast::BinExp::Type t = ast::BinExp::Type::dot;
+                x.reset(new ast::BinExp(x.release(), parseE3(), t));
+            }
+            return x.release();
+        }
+
+        ast::Exp * parseE2() {
+            std::unique_ptr<ast::Exp> x(parseDot());
             while (true) {
                 switch (top().type) {
                 case Token::Type::mul:
@@ -211,7 +220,7 @@ namespace rift {
                     default:
                         assert(false and "unreachable");
                     }
-                    x.reset(new ast::BinExp(x.release(), parseE3(), t));
+                    x.reset(new ast::BinExp(x.release(), parseDot(), t));
                     break;
                 }
                 default:

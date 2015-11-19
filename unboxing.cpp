@@ -140,6 +140,27 @@ void Unboxing::doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::Bin
     ins->replaceAllUsesWith(box(result_t));
 }
 
+bool Unboxing::genericDot() {
+    AType * lhs = state().get(ins->getOperand(0));
+    AType * rhs = state().get(ins->getOperand(1));
+    AType * result_t;
+    if (lhs->isScalar() and rhs->isScalar()) {
+        llvm::Value * l = getScalarPayload(lhs);
+        llvm::Value * r = getScalarPayload(rhs);
+        result_t = updateAnalysis(
+                BinaryOperator::Create(Instruction::FMul, l, r, "", ins),
+                new AType(AType::Kind::D));
+    } else if (lhs->isDouble() and rhs->isDouble()) {
+        result_t = updateAnalysis(
+                RUNTIME_CALL(m->doubleDot, getVectorPayload(lhs), getVectorPayload(rhs)),
+                new AType(AType::Kind::D));
+    } else {
+        return false;
+    }
+    ins->replaceAllUsesWith(box(result_t));
+    return true;
+}
+
 bool Unboxing::genericAdd() {
     // first check if we are dealing with character add
     AType * lhs = state().get(ins->getOperand(0));
@@ -212,7 +233,7 @@ bool Unboxing::genericEq() {
     AType * rhs = state().get(ins->getOperand(1));
     if (genericComparison(lhs, rhs, FCmpInst::FCMP_OEQ, m->doubleEq, m->characterEq)) {
         return true;
-    } else if (not lhs->isSimilar(rhs)) {
+    } else if (not lhs->canBeSameTypeAs(rhs)) {
         AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(0.0)), new AType(AType::Kind::D));
         ins->replaceAllUsesWith(box(result_t));
         return true;
@@ -226,7 +247,7 @@ bool Unboxing::genericNeq() {
     AType * rhs = state().get(ins->getOperand(1));
     if (genericComparison(lhs, rhs, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq)) {
         return true;
-    } else if (not lhs->isSimilar(rhs)) {
+    } else if (not lhs->canBeSameTypeAs(rhs)) {
         AType * result_t = updateAnalysis(ConstantFP::get(getGlobalContext(), APFloat(1.0)), new AType(AType::Kind::D));
         ins->replaceAllUsesWith(box(result_t));
         return true;
@@ -353,6 +374,8 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
                     erase = genericC();
                 } else if (s == "genericEval") {
                     erase = genericEval();
+                } else if (s == "genericDot") {
+                    erase = genericDot();
                 }
             }
             if (erase) {

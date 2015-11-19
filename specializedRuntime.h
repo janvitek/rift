@@ -103,6 +103,11 @@ extern "C" {
     */
     CharacterVector * characterc(int size, ...);
 
+    /** Inner product for double vectors.
+    */
+    double doubleDot(DoubleVector * lhs, DoubleVector * rhs);
+
+
 } // extern "C"
 
 #endif // SPECIALIZED_RUNTIME_H

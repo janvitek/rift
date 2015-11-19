@@ -17,16 +17,13 @@ struct RVal;
 
 #define HEAP_OBJECTS(O) \
   O(RVal)               \
-  O(DoubleVector)       \
-  O(CharacterVector)    \
-  O(RFun)               \
   O(Environment)
 
 
 /** Character vector: strings of variable size. They are null
     terminated. Size excludes the trailing terminator.
 */
-struct CharacterVector : HeapObject<CharacterVector> {
+struct CharacterVector {
     char * data;
 
     unsigned size;
@@ -62,7 +59,7 @@ struct CharacterVector : HeapObject<CharacterVector> {
 
 /** A Double vector consists of an array of doubles and a size.
 */
-struct DoubleVector : HeapObject<DoubleVector> {
+struct DoubleVector {
     
     double * data;
 
@@ -188,7 +185,7 @@ typedef RVal * (*FunPtr)(Environment *);
     bitcode, an argument list, and an arity.  The bitcode and argument names
     are there for debugging purposes.
  */
-struct RFun : HeapObject<RFun> {
+struct RFun {
 
     Environment * env;
 
@@ -282,6 +279,21 @@ struct RVal : public HeapObject<RVal> {
     RVal(RFun * f):
         type(Type::Function),
         f(f) {
+    }
+
+    /** Deletes the boxed value.  */
+    ~RVal() {
+        switch (type) {
+        case Type::Double:
+            delete d;
+            break;
+        case Type::Character:
+            delete c;
+            break;
+        case Type::Function:
+            delete f;
+            break;
+        }
     }
 
     /** Prints to given stream.  */
@@ -436,5 +448,10 @@ RVal * genericEval(Environment * env, RVal * value);
     if there is a function among them.
  */
 RVal * c(int size, ...);
+
+/** Inner product of two vectors.
+ */
+RVal * genericDot(RVal * lhs, RVal * rhs);
+
 }
 #endif // RUNTIME_H

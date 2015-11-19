@@ -20,6 +20,7 @@ struct Token {
         neq,
         lt,
         gt,
+        dot,
         assign,
         opar,
         cpar,
@@ -62,6 +63,8 @@ struct Token {
             return "<";
         case Type::gt:
             return ">";
+        case Type::dot:
+            return "%*%";
         case Type::assign:
             return "<-";
         case Type::opar:
@@ -232,6 +235,11 @@ private:
             if (input.get() != '=')
                 throw "Expected != but only ! found";
             return Token(Token::Type::neq);
+        case '%':
+            if (input.get() == '*')
+                if (input.get() == '%')
+                    return Token(Token::Type::dot);
+            throw "Expected %*% operator";
         case '0':
         case '1':
         case '2':

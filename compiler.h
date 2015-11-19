@@ -71,6 +71,7 @@ extern llvm::FunctionType * v_ei;
 extern llvm::FunctionType * v_ecv;
 extern llvm::FunctionType * void_eiv;
 extern llvm::FunctionType * dv_dvdv;
+extern llvm::FunctionType * d_dvdv;
 extern llvm::FunctionType * cv_cvcv;
 extern llvm::FunctionType * dv_cvcv;
 extern llvm::FunctionType * d_dvd;
@@ -178,6 +179,8 @@ public:
     DEF_FUN_PURE(doublec, type::dv_iVA);
     DEF_FUN_PURE(characterc, type::cv_iVA);
     DEF_FUN_PURE(c, type::v_iVA);
+    DEF_FUN_PURE(doubleDot, type::d_dvdv);
+    DEF_FUN_PURE(genericDot, type::v_vv);
 
 };
 

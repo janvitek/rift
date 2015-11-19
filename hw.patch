@@ -1,0 +1,260 @@
+diff --git a/ast.h b/ast.h
+index 3c31d87..7dbeb97 100644
+--- a/ast.h
++++ b/ast.h
+@@ -77,7 +77,7 @@ namespace ast {
+     /** Binary expression. */
+     class BinExp : public Exp {
+     public:
+-        enum class Type { add, sub, mul, div, eq, neq, lt, gt };
++        enum class Type { add, sub, mul, div, eq, neq, lt, gt, dot };
+ 
+         BinExp(Exp * lhs, Exp * rhs, Type t): lhs(lhs), rhs(rhs), type(t) { }
+         ~BinExp() {   delete lhs; delete rhs; }
+diff --git a/compiler.cpp b/compiler.cpp
+index a28c84c..bcc27b2 100644
+--- a/compiler.cpp
++++ b/compiler.cpp
+@@ -74,6 +74,7 @@ FunctionType * v_ei = FUN_TYPE(ptrValue, ptrEnvironment, Int);
+ FunctionType * v_ecv = FUN_TYPE(ptrValue, ptrEnvironment, ptrCharacterVector);
+ FunctionType * void_eiv = FUN_TYPE(Void, ptrEnvironment, Int, ptrValue);
+ FunctionType * dv_dvdv = FUN_TYPE(ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
++FunctionType * d_dvdv = FUN_TYPE(Double, ptrDoubleVector, ptrDoubleVector);
+ FunctionType * cv_cvcv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrCharacterVector);
+ FunctionType * dv_cvcv = FUN_TYPE(ptrDoubleVector, ptrCharacterVector, ptrCharacterVector);
+ FunctionType * d_dvd = FUN_TYPE(Double, ptrDoubleVector, Double);
+@@ -175,6 +176,8 @@ public:
+         NAME_IS(doublec);
+         NAME_IS(characterc);
+         NAME_IS(c);
++        NAME_IS(doubleDot);
++        NAME_IS(genericDot);
+         report_fatal_error("Extern function '" + Name + "' couldn't be resolved!");
+     }
+ };
+@@ -387,6 +390,9 @@ public:
+             case ast::BinExp::Type::gt:
+                 result = RUNTIME_CALL(genericGt, lhs, rhs);
+                 return;
++            case ast::BinExp::Type::dot:
++                result = RUNTIME_CALL(genericDot, lhs, rhs);
++                return;
+             default: // can't happen
+                 return;
+         }
+diff --git a/compiler.h b/compiler.h
+index 48b46c4..1eb6057 100644
+--- a/compiler.h
++++ b/compiler.h
+@@ -71,6 +71,7 @@ extern llvm::FunctionType * v_ei;
+ extern llvm::FunctionType * v_ecv;
+ extern llvm::FunctionType * void_eiv;
+ extern llvm::FunctionType * dv_dvdv;
++extern llvm::FunctionType * d_dvdv;
+ extern llvm::FunctionType * cv_cvcv;
+ extern llvm::FunctionType * dv_cvcv;
+ extern llvm::FunctionType * d_dvd;
+@@ -178,6 +179,8 @@ public:
+     DEF_FUN_PURE(doublec, type::dv_iVA);
+     DEF_FUN_PURE(characterc, type::cv_iVA);
+     DEF_FUN_PURE(c, type::v_iVA);
++    DEF_FUN_PURE(doubleDot, type::d_dvdv);
++    DEF_FUN_PURE(genericDot, type::v_vv);
+ 
+ };
+ 
+diff --git a/lexer.h b/lexer.h
+index 0c79b05..52cf805 100644
+--- a/lexer.h
++++ b/lexer.h
+@@ -20,6 +20,7 @@ struct Token {
+         neq,
+         lt,
+         gt,
++        dot,
+         assign,
+         opar,
+         cpar,
+@@ -62,6 +63,8 @@ struct Token {
+             return "<";
+         case Type::gt:
+             return ">";
++        case Type::dot:
++            return "%*%";
+         case Type::assign:
+             return "<-";
+         case Type::opar:
+@@ -232,6 +235,11 @@ private:
+             if (input.get() != '=')
+                 throw "Expected != but only ! found";
+             return Token(Token::Type::neq);
++        case '%':
++            if (input.get() == '*')
++                if (input.get() == '%')
++                    return Token(Token::Type::dot);
++            throw "Expected %*% operator";
+         case '0':
+         case '1':
+         case '2':
+diff --git a/parser.h b/parser.h
+index f692529..0dbcaf3 100644
+--- a/parser.h
++++ b/parser.h
+@@ -194,8 +194,17 @@ namespace rift {
+             }
+         }
+ 
+-        ast::Exp * parseE2() {
++        ast::Exp * parseDot() {
+             std::unique_ptr<ast::Exp> x(parseE3());
++            while (condPop(Token::Type::dot)) {
++                ast::BinExp::Type t = ast::BinExp::Type::dot;
++                x.reset(new ast::BinExp(x.release(), parseE3(), t));
++            }
++            return x.release();
++        }
++
++        ast::Exp * parseE2() {
++            std::unique_ptr<ast::Exp> x(parseDot());
+             while (true) {
+                 switch (top().type) {
+                 case Token::Type::mul:
+@@ -211,7 +220,7 @@ namespace rift {
+                     default:
+                         assert(false and "unreachable");
+                     }
+-                    x.reset(new ast::BinExp(x.release(), parseE3(), t));
++                    x.reset(new ast::BinExp(x.release(), parseDot(), t));
+                     break;
+                 }
+                 default:
+diff --git a/runtime.cpp b/runtime.cpp
+index 0c49969..f808aca 100644
+--- a/runtime.cpp
++++ b/runtime.cpp
+@@ -525,6 +525,26 @@ RVal * c(int size, ...) {
+     }
+ }
+ 
++double doubleDot(DoubleVector * lhs, DoubleVector * rhs) {
++    double result = 0;
++    int resultSize = max(lhs->size, rhs->size);
++    for (int i = 0; i < resultSize; ++i)
++        result += lhs->data[i % lhs->size] * rhs->data[i % rhs->size];
++    return result;
++}
++
++RVal * genericDot(RVal * lhs, RVal * rhs) {
++    if (lhs->type != rhs->type)
++        throw "Incompatible types for binary operator";
++    switch (lhs->type) {
++    case RVal::Type::Double:
++        return new RVal(new DoubleVector(doubleDot(lhs->d, rhs->d)));
++    default:
++        throw "Invalid types for inner product";
++    }
++}
++
++
+ 
+ 
+ 
+diff --git a/runtime.h b/runtime.h
+index b448f61..d52c080 100644
+--- a/runtime.h
++++ b/runtime.h
+@@ -448,5 +448,10 @@ RVal * genericEval(Environment * env, RVal * value);
+     if there is a function among them.
+  */
+ RVal * c(int size, ...);
++
++/** Inner product of two vectors.
++ */
++RVal * genericDot(RVal * lhs, RVal * rhs);
++
+ }
+ #endif // RUNTIME_H
+diff --git a/specializedRuntime.h b/specializedRuntime.h
+index e509c91..ef230c4 100644
+--- a/specializedRuntime.h
++++ b/specializedRuntime.h
+@@ -103,6 +103,11 @@ extern "C" {
+     */
+     CharacterVector * characterc(int size, ...);
+ 
++    /** Inner product for double vectors.
++    */
++    double doubleDot(DoubleVector * lhs, DoubleVector * rhs);
++
++
+ } // extern "C"
+ 
+ #endif // SPECIALIZED_RUNTIME_H
+diff --git a/type_analysis.cpp b/type_analysis.cpp
+index 136e3f7..9048a03 100644
+--- a/type_analysis.cpp
++++ b/type_analysis.cpp
+@@ -129,6 +129,9 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
+                         state.update(ci, new AType(AType::Kind::R));
+                     } else if (s == "envGet") {
+                         state.update(ci, new AType(AType::Kind::R));
++                    } else if (s == "genericDot") {
++                        // a result of generic dot function is always a double scalar
++                        state.update(ci, new AType(AType::Kind::R, AType::Kind::DV, AType::Kind::D));
+                     }
+                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
+                     AType * first = state.get(phi->getOperand(0));
+diff --git a/unboxing.cpp b/unboxing.cpp
+index 2b11f32..3118f37 100644
+--- a/unboxing.cpp
++++ b/unboxing.cpp
+@@ -140,6 +140,27 @@ void Unboxing::doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::Bin
+     ins->replaceAllUsesWith(box(result_t));
+ }
+ 
++bool Unboxing::genericDot() {
++    AType * lhs = state().get(ins->getOperand(0));
++    AType * rhs = state().get(ins->getOperand(1));
++    AType * result_t;
++    if (lhs->isScalar() and rhs->isScalar()) {
++        llvm::Value * l = getScalarPayload(lhs);
++        llvm::Value * r = getScalarPayload(rhs);
++        result_t = updateAnalysis(
++                BinaryOperator::Create(Instruction::FMul, l, r, "", ins),
++                new AType(AType::Kind::D));
++    } else if (lhs->isDouble() and rhs->isDouble()) {
++        result_t = updateAnalysis(
++                RUNTIME_CALL(m->doubleDot, getVectorPayload(lhs), getVectorPayload(rhs)),
++                new AType(AType::Kind::D));
++    } else {
++        return false;
++    }
++    ins->replaceAllUsesWith(box(result_t));
++    return true;
++}
++
+ bool Unboxing::genericAdd() {
+     // first check if we are dealing with character add
+     AType * lhs = state().get(ins->getOperand(0));
+@@ -353,6 +374,8 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
+                     erase = genericC();
+                 } else if (s == "genericEval") {
+                     erase = genericEval();
++                } else if (s == "genericDot") {
++                    erase = genericDot();
+                 }
+             }
+             if (erase) {
+diff --git a/unboxing.h b/unboxing.h
+index bb134c1..e673d38 100644
+--- a/unboxing.h
++++ b/unboxing.h
+@@ -46,6 +46,8 @@ protected:
+ 
+     void doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::BinaryOps op, llvm::Function * fop);
+ 
++    bool genericDot();
++
+     bool genericAdd();
+ 
+     bool genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop);
