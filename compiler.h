@@ -60,7 +60,9 @@ extern llvm::PointerType * ptrFunction;
   */
 extern llvm::FunctionType * dv_d;
 extern llvm::FunctionType * cv_i;
+extern llvm::FunctionType * v_i;
 extern llvm::FunctionType * v_dv;
+extern llvm::FunctionType * v_d;
 extern llvm::FunctionType * v_cv;
 extern llvm::FunctionType * v_ev;
 extern llvm::FunctionType * v_vv;
@@ -76,7 +78,7 @@ extern llvm::FunctionType * dv_cvcv;
 extern llvm::FunctionType * d_dvd;
 extern llvm::FunctionType * cv_cvdv;
 extern llvm::FunctionType * v_f;
-extern llvm::FunctionType * f_ie;
+extern llvm::FunctionType * v_ie;
 extern llvm::FunctionType * b_v;
 extern llvm::FunctionType * v_viVA;
 extern llvm::FunctionType * void_vvv;
@@ -130,11 +132,11 @@ public:
                                 #name, \
                                 this)
     // All Rift runtime functions must be declared: with a symbol and type.
-    DEF_FUN_PURE(doubleVectorLiteral, type::dv_d);
-    DEF_FUN_PURE(characterVectorLiteral, type::cv_i);
+    DEF_FUN_PURE(doubleVectorLiteral, type::v_d);
+    DEF_FUN_PURE(characterVectorLiteral, type::v_i);
     DEF_FUN_PURE(doubleFromValue, type::dv_v);
     DEF_FUN_PURE(scalarFromVector, type::d_dv);
-    DEF_FUN_PURE(characterFromValue, type::cv_v);
+    DEF_FUN_PURE(charactervFromValue, type::cv_v);
     DEF_FUN_PURE(functionFromValue, type::f_v);
     DEF_FUN_PURE(doubleGetSingleElement, type::d_dvd);
     DEF_FUN_PURE(doubleGetElement, type::dv_dvdv);
@@ -165,7 +167,7 @@ public:
     DEF_FUN_PURE(genericLt, type::v_vv);
     DEF_FUN_PURE(doubleGt, type::dv_dvdv);
     DEF_FUN_PURE(genericGt, type::v_vv);
-    DEF_FUN_PURE(createFunction, type::f_ie);
+    DEF_FUN_PURE(createFunction, type::v_ie);
     DEF_FUN_PURE(toBoolean, type::b_v);
     DEF_FUN(call, type::v_viVA);
     DEF_FUN_PURE(length, type::d_v);

@@ -59,7 +59,9 @@ PointerType * ptrFunction = PointerType::get(Function, 0);
 
 FunctionType * dv_d = FUN_TYPE(ptrDoubleVector, Double);
 FunctionType * cv_i = FUN_TYPE(ptrCharacterVector, Int);
+FunctionType * v_i = FUN_TYPE(ptrValue, Int);
 FunctionType * v_dv = FUN_TYPE(ptrValue, ptrDoubleVector);
+FunctionType * v_d = FUN_TYPE(ptrValue, Double);
 FunctionType * v_cv = FUN_TYPE(ptrValue, ptrCharacterVector);
 FunctionType * v_ev = FUN_TYPE(ptrValue, ptrEnvironment, ptrValue);
 FunctionType * v_vv = FUN_TYPE(ptrValue, ptrValue, ptrValue);
@@ -76,7 +78,7 @@ FunctionType * d_dvd = FUN_TYPE(Double, ptrDoubleVector, Double);
 FunctionType * cv_cvdv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrDoubleVector);
 
 FunctionType * v_f = FUN_TYPE(ptrValue, ptrFunction);
-FunctionType * f_ie = FUN_TYPE(ptrFunction, Int, ptrEnvironment);
+FunctionType * v_ie = FUN_TYPE(ptrValue, Int, ptrEnvironment);
 
 FunctionType * b_v = FUN_TYPE(Bool, ptrValue);
 

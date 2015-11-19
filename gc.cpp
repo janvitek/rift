@@ -47,19 +47,20 @@ void GarbageCollector::markImpl(CharacterVector *) {
 template<>
 void GarbageCollector::markImpl<Environment>(Environment * env) {
     for (int i = 0; i < env->size; ++i) {
-        mark(env->bindings[i].value);
+        auto v = env->bindings[i].value;
+        if (auto f = cast<RFun>(v)) {
+            mark(f);
+        } else if (auto d = cast<DoubleVector>(v)) {
+            mark(d);
+        } else if (auto c = cast<CharacterVector>(v)) {
+            mark(c);
+        } else {
+            assert(false);
+        }
     }
     if (env->parent)
         mark(env->parent);
 }
-
-template<>
-void GarbageCollector::markImpl<RVal>(RVal * val) {
-    if (auto fun = cast<RFun>(val))
-        markImpl(fun);
-    // Leaf node, nothing to do
-}
-
 
 /*
  * Generic GC implementation. Most things are here since they depend on the

@@ -32,13 +32,13 @@ void envSet(Environment * env, int symbol, RVal * RVal) {
     env->set(symbol, RVal);
 }
 
-DoubleVector * doubleVectorLiteral(double RVal) {
-    return new DoubleVector(RVal);
+RVal * doubleVectorLiteral(double RVal) {
+    return * new DoubleVector(RVal);
 }
 
-CharacterVector * characterVectorLiteral(int cpIndex) {
+RVal * characterVectorLiteral(int cpIndex) {
     std::string const & original = Pool::getPoolObject(cpIndex);
-    return new CharacterVector(original.c_str());
+    return * new CharacterVector(original.c_str());
 
 }
 
@@ -318,8 +318,8 @@ RVal * genericGt(RVal * lhs, RVal * rhs) {
     return *doubleGt(l, r);
 }
 
-RFun * createFunction(int index, Environment * env) {
-    return new RFun(Pool::getFunction(index), env);
+RVal * createFunction(int index, Environment * env) {
+    return * new RFun(Pool::getFunction(index), env);
 }
 
 bool toBoolean(RVal * v) {

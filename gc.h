@@ -282,6 +282,8 @@ private:
     uintptr_t minAddr, maxAddr;
 };
 
+template <typename OBJECT>
+struct HeapObject;
 
 class GarbageCollector {
 public:

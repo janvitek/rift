@@ -109,6 +109,8 @@ struct DoubleVector : HeapObject<DoubleVector> {
             data[i++] = dd;
     }
 
+    DoubleVector(DoubleVector const&) = delete;
+
     /** Deletes data. 
      */
     ~DoubleVector() {
@@ -347,10 +349,10 @@ RVal * envGet(Environment * env, int symbol);
 void envSet(Environment * env, int symbol, RVal * value);
 
 /** Creates a double vector from the literal. */
-DoubleVector * doubleVectorLiteral(double value);
+RVal * doubleVectorLiteral(double value);
 
 /** Creates a CV from the literal at cpIndex in the constant pool */
-CharacterVector * characterVectorLiteral(int cpIndex);
+RVal * characterVectorLiteral(int cpIndex);
 
 /** Returns the value at index.  */
 RVal * genericGetElement(RVal * from, RVal * index);
@@ -385,7 +387,7 @@ RVal * genericGt(RVal * lhs, RVal * rhs);
 /** Creates a function and binds it to env. Functions are identified by an
     index assigned at compile time.
  */
-RFun * createFunction(int index, Environment * env);
+RVal * createFunction(int index, Environment * env);
 
 /** Given a value, converts it to a boolean. Used in branches. */
 bool toBoolean(RVal * value);
