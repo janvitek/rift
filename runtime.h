@@ -10,23 +10,30 @@
 
 /** Value: forward declaration 
 */
-struct RVal;
+union RVal;
 
 
 #include "gc.h"
 
 #define HEAP_OBJECTS(O) \
-  O(RVal)               \
   O(DoubleVector)       \
   O(CharacterVector)    \
   O(RFun)               \
   O(Environment)
+
+enum class Type {
+    Double,
+    Character,
+    Function,
+};
 
 
 /** Character vector: strings of variable size. They are null
     terminated. Size excludes the trailing terminator.
 */
 struct CharacterVector : HeapObject<CharacterVector> {
+    Type type;
+
     char * data;
 
     unsigned size;
@@ -34,6 +41,7 @@ struct CharacterVector : HeapObject<CharacterVector> {
     /** Creates a CV from given data and size. Takes ownership of the data.
     */
     CharacterVector(int size):
+        type(Type::Character),
         data(new char[size + 1]),
         size(size) {
         data[size] = 0;
@@ -42,7 +50,8 @@ struct CharacterVector : HeapObject<CharacterVector> {
     /** Creates the character vector from existing null terminated string. 
         Creates a copy of the string internally. 
     */
-    CharacterVector(char const * from) {
+    CharacterVector(char const * from):
+        type(Type::Character) {
         size = strlen(from);
         data = new char[size + 1];
         memcpy(data, from, size + 1);
@@ -51,6 +60,10 @@ struct CharacterVector : HeapObject<CharacterVector> {
     /** Deletes data. */
     ~CharacterVector() {
         delete [] data;
+    }
+
+    operator RVal* () {
+        return reinterpret_cast<RVal*>(this);
     }
 
     /** Prints to given stream. */
@@ -63,6 +76,7 @@ struct CharacterVector : HeapObject<CharacterVector> {
 /** A Double vector consists of an array of doubles and a size.
 */
 struct DoubleVector : HeapObject<DoubleVector> {
+    Type type;
     
     double * data;
 
@@ -71,6 +85,7 @@ struct DoubleVector : HeapObject<DoubleVector> {
     /** Creates vector of length one.
      */
     DoubleVector(double value):
+        type(Type::Double),
         data(new double[1]),
         size(1) {
         data[0] = value;
@@ -79,13 +94,14 @@ struct DoubleVector : HeapObject<DoubleVector> {
     /** Creates vector from array. The array is owned by the vector.
     */
     DoubleVector(double * data, unsigned size):
+        type(Type::Double),
         data(data),
         size(size) {
     }
 
     /** Creates vector from doubles.
      */
-    DoubleVector(std::initializer_list<double> d) {
+    DoubleVector(std::initializer_list<double> d) : type(Type::Double) {
         size = d.size();
         data = new double[size];
         unsigned i = 0;
@@ -97,6 +113,10 @@ struct DoubleVector : HeapObject<DoubleVector> {
      */
     ~DoubleVector() {
         delete [] data;
+    }
+
+    operator RVal* () {
+        return reinterpret_cast<RVal*>(this);
     }
 
     /** Prints to given stream. 
@@ -122,7 +142,6 @@ Environment represents function's local variables as well as a pointer to the pa
 
 */
 struct Environment : public HeapObject<Environment> {
-
     /** Parent environment. 
 
     Nullptr if top environment. 
@@ -189,6 +208,7 @@ typedef RVal * (*FunPtr)(Environment *);
     are there for debugging purposes.
  */
 struct RFun : HeapObject<RFun> {
+    Type type;
 
     Environment * env;
 
@@ -204,6 +224,7 @@ struct RFun : HeapObject<RFun> {
 	else is shared.
     */
     RFun(rift::ast::Fun * fun, llvm::Function * bitcode):
+        type(Type::Function),
         env(nullptr),
         code(nullptr),
         bitcode(bitcode),
@@ -218,6 +239,7 @@ struct RFun : HeapObject<RFun> {
 	e. Arguments are shared.
      */
     RFun(RFun * f, Environment * e):
+        type(Type::Function),
         env(e),
         code(f->code),
         bitcode(f->bitcode),
@@ -228,6 +250,10 @@ struct RFun : HeapObject<RFun> {
   /* Args and env are shared, they are not deleted. */
     ~RFun() { }
 
+    operator RVal* () {
+        return reinterpret_cast<RVal*>(this);
+    }
+
     /** Prints bitcode to given stream.  */
     void print(std::ostream & s) {
         llvm::raw_os_ostream ss(s);
@@ -236,108 +262,69 @@ struct RFun : HeapObject<RFun> {
 
 };
 
+struct Any {
+    Type type;
+};
+
 /** A Rift Value. All values have a type tage and can point either of a
     vector of doubles or chararcters, or a function.
 */
-struct RVal : public HeapObject<RVal> {
-    enum class Type {
-        Double,
-        Character,
-        Function,
-    };
+union RVal {
+private:
+    Any a;
+    DoubleVector d;
+    CharacterVector c;
+    RFun f;
 
-    Type type;
-
-    union {
-        DoubleVector * d;
-        CharacterVector * c;
-        RFun * f;
-    };
-
-    /** Creates a boxed double vector from given numbers.   */
-    RVal(std::initializer_list<double> d) :
-        type(Type::Double),
-        d(new DoubleVector(d)) {
-    }
-
-    /** Creates a boxed character vector from given string.    */
-    RVal(char const * c) :
-        type(Type::Character),
-        c(new CharacterVector(c)) {
-    }
-
-    /** Boxes given DoubleVector. Takes ownership of the vector. */
-    RVal(DoubleVector * d):
-        type(Type::Double),
-        d(d) {
-    }
-
-    /** Boxes given CharacterVector. Takes ownership of the vector.  */
-    RVal(CharacterVector * c):
-        type(Type::Character),
-        c(c) {
-    }
-
-    /** Boxes given Function. Takes ownership of the vector. */
-    RVal(RFun * f):
-        type(Type::Function),
-        f(f) {
+public:
+    Type type() const {
+        return a.type;
     }
 
     /** Prints to given stream.  */
-    void print(std::ostream & s) const {
-        switch (type) {
-        case Type::Double:    d->print(s); break;
-        case Type::Character: c->print(s); break;
-        case Type::Function:  f->print(s); break;
-        }
+    inline void print(std::ostream & s);
+
+    explicit operator DoubleVector*() {
+        assert(type() == Type::Double);
+        return reinterpret_cast<DoubleVector*>(this);
     }
 
-    /** Compares values for equality. Only use in tests.  */
-    bool operator == (RVal const & other) {
-        if (type != other.type)  return false;
-        switch (type) {
-            case Type::Double: {
-                if (d->size != other.d->size) return false;
-                for (unsigned i = 0; i < d->size; ++i)
-                    if (d->data[i] != other.d->data[i]) return false;
-                return true;
-            }
-            case Type::Character: {
-                if (c->size != other.c->size) return false;
-                for (unsigned i = 0; i < c->size; ++i)
-                    if (c->data[i] != other.c->data[i]) return false;
-                return true;
-            }
-            default: // For functions...
-	      return f == other.f;
-        }
+    explicit operator CharacterVector*() {
+        assert(type() == Type::Character);
+        return reinterpret_cast<CharacterVector*>(this);
     }
 
-    /** Compares values for inequality. Only used in tests.    */
-    bool operator != (RVal const & other) {
-        if (type != other.type)   return true;
-        switch (type) {
-            case Type::Double: {
-                if (d->size != other.d->size) return true;
-                for (unsigned i = 0; i < d->size; ++i)
-                    if (d->data[i] != other.d->data[i]) return true;
-                return false;
-            }
-            case Type::Character: {
-                if (c->size != other.c->size) return true;
-                for (unsigned i = 0; i < c->size; ++i)
-                    if (c->data[i] != other.c->data[i]) return true;
-                return false;
-            }
-            default: // Functions
-                return f != other.f;
-        }
+    explicit operator RFun*() {
+        assert(type() == Type::Function);
+        return reinterpret_cast<RFun*>(this);
     }
 };
 
+template <typename T>
+static inline T* cast(RVal * r) {
+    static_assert(std::is_same<T, RFun>::value ||
+                  std::is_same<T, CharacterVector>::value ||
+                  std::is_same<T, DoubleVector>::value,
+                  "Invalid RVal cast");
+
+    if ((typeid(T) == typeid(RFun)            && r->type() == Type::Function)  ||
+        (typeid(T) == typeid(CharacterVector) && r->type() == Type::Character) ||
+        (typeid(T) == typeid(DoubleVector)    && r->type() == Type::Double)) {
+        return static_cast<T*>(*r);
+    }
+    return nullptr;
+}
+
+/** Prints to given stream.  */
+void RVal::print(std::ostream & s) {
+         if (auto d = cast<DoubleVector>(this))    d->print(s);
+    else if (auto c = cast<CharacterVector>(this)) c->print(s);
+    else if (auto f = cast<RFun>(this))            f->print(s);
+    else assert(false);
+}
+
 /** Standard C++ printing support. */
-inline std::ostream & operator << (std::ostream & s, RVal const & value) {
+inline std::ostream & operator << (std::ostream & s, RVal & value) {
     value.print(s);
     return s;
 }
@@ -364,15 +351,6 @@ DoubleVector * doubleVectorLiteral(double value);
 
 /** Creates a CV from the literal at cpIndex in the constant pool */
 CharacterVector * characterVectorLiteral(int cpIndex);
-
-/** Boxes double vector. */
-RVal * fromDoubleVector(DoubleVector * from);
-
-/** Boxes character vector. */
-RVal * fromCharacterVector(CharacterVector * from);
-
-/** Boxes function. */
-RVal * fromFunction(RFun * from);
 
 /** Returns the value at index.  */
 RVal * genericGetElement(RVal * from, RVal * index);
@@ -437,4 +415,5 @@ RVal * genericEval(Environment * env, RVal * value);
  */
 RVal * c(int size, ...);
 }
+
 #endif // RUNTIME_H
