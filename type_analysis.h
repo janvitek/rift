@@ -20,18 +20,18 @@ class MachineState;
 /** An abstract type, or AType, represents a portion of the heap of a Rift
   program. Each AType has a kind -- this describes the type of value we
   are dealine with a kind can be either one of B(ottom), T(op), D(ouble),
-  D(ouble)V(ector), R(val) and others. ATypes that rerpresent boxes also
-  have a payload, another AType, that they refer to.
+  D(ouble)V(ector) and others.
   */
 class AType {
 
 public:
-    static AType * T;
-    static AType * B;
-    static AType * D;
-    static AType * DV;
-    static AType * CV;
-    static AType * F;
+    //Singleton Type instances
+    static AType * T;  // Top
+    static AType * B;  // Bottom
+    static AType * D;  // Double Vector of length 1
+    static AType * DV; // Double Vector
+    static AType * CV; // Character Vector
+    static AType * F;  // Function
 
     //////////////////// Abstract Operations //////////////////
 
@@ -87,10 +87,7 @@ public:
                (isDouble() && other->isDouble());
     }
 
-    /** Order on ATypes.  This only implements the part of the relation
-      that can happen and that we care about. (Lazy and risky coding)
-      We are only interested in the R types as phi nodes are typed.
-      R(DV(D))< R(DV)<R<T, R(CV)<R<T, R(F)<R<T
+    /** Order on ATypes. 
       */
     bool operator < (AType const & other) const {
         if(isTop()) return false;
@@ -133,8 +130,11 @@ public:
         return t;
     }
 
+    // If we know where the scalar value comes from we store it for later
+    // unboxing by the optimization pass.
     AType * update(llvm::Value * v, AType * t, llvm::Value * sl) {
         assert(scalarLocation.count(v) == 0 || scalarLocation.at(v) == sl);
+        assert(t->isDoubleScalar());
         scalarLocation[v] = sl;
         return update(v, t);
     }
