@@ -526,22 +526,11 @@ RVal * c(int size, ...) {
 }
 
 double doubleDot(DoubleVector * lhs, DoubleVector * rhs) {
-    double result = 0;
-    int resultSize = max(lhs->size, rhs->size);
-    for (int i = 0; i < resultSize; ++i)
-        result += lhs->data[i % lhs->size] * rhs->data[i % rhs->size];
-    return result;
+    assert(false and "Fill me in");
 }
 
 RVal * genericDot(RVal * lhs, RVal * rhs) {
-    if (lhs->type != rhs->type)
-        throw "Incompatible types for binary operator";
-    switch (lhs->type) {
-    case RVal::Type::Double:
-        return new RVal(new DoubleVector(doubleDot(lhs->d, rhs->d)));
-    default:
-        throw "Invalid types for inner product";
-    }
+    assert(false and "Fill me in");
 }
 
 

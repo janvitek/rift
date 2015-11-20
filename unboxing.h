@@ -46,8 +46,6 @@ protected:
 
     void doubleArithmetic(AType * lhs, AType * rhs, llvm::Instruction::BinaryOps op, llvm::Function * fop);
 
-    bool genericDot();
-
     bool genericAdd();
 
     bool genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop);
