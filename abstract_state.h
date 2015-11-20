@@ -10,9 +10,11 @@
 namespace rift {
 /**
   The AbstractState represents the abstact state of the function being
-  analyzed modulo unnamed ATypes. It's role is to maintain a mapping
-  between LLVM values and the abstract information computed by the 
-  analysis.
+  analyzed. It's role is to maintain a mapping between LLVM values and the
+  abstract information computed by the analysis.
+  Analysis can attach metadata to LLVM values for later use. The metadata
+  is not part of the abstract state, but merely associated information for
+  later use, e.g. for the optimization.
   */
 template <typename AType, typename Metadata = void *>
 class AbstractState {

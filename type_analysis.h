@@ -6,19 +6,17 @@
 #include "abstract_state.h"
 
 /** Abstract interpretation-based analysis of Rift programs. The analysis
-  operates over the LLVM IR and the data types that appear at that
-  level. This means all types exposed in the implementation are visible,
-  including raw doubles and going all the way to RVals. The definitions in
-  this file add up to an intra-procedural, flow sensitive analysis of Rift
-  functions.  The abstract state consists of mapping from LLVM values
-  (which are registers and constants) to abstract types. There are also
-  some free floating abstract types that are not referenced by registers.
+  operates over the LLVM IR and the rift value types
+  The definitions in this file add up to an intra-procedural, flow sensitive
+  analysis of Rift functions.  The abstract state consists of mapping from LLVM
+  values (which are registers containing RVals) to abstract types.
   */
 namespace rift {
 
 /** An abstract type, or AType, represents an object in the heap of a Rift
   program. AType forms the following lattice, where D1 is a DoubleVector of
-  size 1, DV a DoubleVector, CV a CharacterVector, and F an RFun.
+  size 1, DV a DoubleVector, CV a CharacterVector, F an RFun, and T any kind
+  of RVal.
 
                             T
 
@@ -109,7 +107,7 @@ public:
         
         if (isDoubleScalar()) return !other.isDoubleScalar();
         
-        // The only options left
+        // The only valid options left
         assert((this == DV && &other == D1) || this == &other);
 
         return false;
@@ -122,7 +120,7 @@ private:
     const std::string name;
 };
 
-/** Type and shape analysis.  */
+/** Type analysis.  */
 class TypeAnalysis : public llvm::FunctionPass {
 public:
     typedef AbstractState<AType*, llvm::Value*> State;
