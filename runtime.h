@@ -72,10 +72,6 @@ struct CharacterVector : HeapObject<CharacterVector>, RVal {
         delete [] data;
     }
 
-    operator RVal* () {
-        return reinterpret_cast<RVal*>(this);
-    }
-
     /** Prints to given stream. */
     void print(std::ostream & s) {
         s << data;
@@ -122,10 +118,6 @@ struct DoubleVector : HeapObject<DoubleVector>, RVal {
      */
     ~DoubleVector() {
         delete [] data;
-    }
-
-    operator RVal* () {
-        return reinterpret_cast<RVal*>(this);
     }
 
     /** Prints to given stream. 
@@ -259,10 +251,6 @@ struct RFun : HeapObject<RFun>, RVal {
   
   /* Args and env are shared, they are not deleted. */
     ~RFun() { }
-
-    operator RVal* () {
-        return reinterpret_cast<RVal*>(this);
-    }
 
     /** Prints bitcode to given stream.  */
     void print(std::ostream & s) {
