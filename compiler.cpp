@@ -390,6 +390,9 @@ public:
             case ast::BinExp::Type::gt:
                 result = RUNTIME_CALL(genericGt, lhs, rhs);
                 return;
+            case ast::BinExp::Type::dot:
+                result = RUNTIME_CALL(genericDot, lhs, rhs);
+                return;
             default: // can't happen
                 return;
         }
