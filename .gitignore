@@ -55,3 +55,10 @@ CMakeFiles
 *.marks
 
 Makefile
+
+.clang_complete
+.ninja_deps
+.ninja_log
+*.swp
+massif.out*
+perf.data
