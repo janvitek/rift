@@ -79,13 +79,8 @@ protected:
 
 };
 
-
-
 } // namespace rift
 
-
-
-
-#endif // UNBOXING_H
+#endif // SPECIALIZE_H
 
 
