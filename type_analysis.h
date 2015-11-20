@@ -3,6 +3,7 @@
 #define TYPE_ANALYSIS_H
 
 #include "llvm.h"
+#include "abstract_state.h"
 
 /** Abstract interpretation-based analysis of Rift programs. The analysis
   operates over the LLVM IR and the data types that appear at that
@@ -14,11 +15,9 @@
   some free floating abstract types that are not referenced by registers.
   */
 namespace rift {
-// forward decl..
-class AbstractState;
 
 /** An abstract type, or AType, represents an object in the heap of a Rift
-  program. AType forms the following lattice, where D is a DoubleVector of
+  program. AType forms the following lattice, where D1 is a DoubleVector of
   size 1, DV a DoubleVector, CV a CharacterVector, and F an RFun.
 
                             T
@@ -29,7 +28,7 @@ class AbstractState;
 
                     |       CV      F
 
-                    D       |     /
+                    D1      |     /
                             |    /
                        \    |   /
 
@@ -40,9 +39,9 @@ class AType {
 
 public:
     //Singleton Type instances
-    static AType * T;  // Top
+    static AType * T;  // Top (Rval)
     static AType * B;  // Bottom
-    static AType * D;  // Double Vector of length 1
+    static AType * D1; // Double Vector of length 1
     static AType * DV; // Double Vector
     static AType * CV; // Character Vector
     static AType * F;  // Function
@@ -57,8 +56,8 @@ public:
         if (this == B)     return a;
         if (a == B)        return this;
     
-        if (this == D) {
-            if (a == D)  return a;
+        if (this == D1) {
+            if (a == D1)  return a;
             if (a == DV) return a;
             return T;
         }
@@ -82,12 +81,12 @@ public:
 
     /** Is this a scalar value? */
     bool isDoubleScalar() const {
-        return this == D;
+        return this == D1;
     }
 
     /** Is this a value that can be unboxed to a double? */
     bool isDouble() const {
-        return this == D || this == DV;
+        return this == D1 || this == DV;
     }
 
     /** Is this a string? */
@@ -111,92 +110,22 @@ public:
         if (isDoubleScalar()) return !other.isDoubleScalar();
         
         // The only options left
-        assert((this == DV && &other == D) || this == &other);
+        assert((this == DV && &other == D1) || this == &other);
 
         return false;
     }
 
-    void print(std::ostream & s, AbstractState & m);
-
 private:
-    AType() {}
-};
+    friend std::ostream & operator << (std::ostream & s, AType & m);
 
-/**
-  The AbstractState represents the abstact state of the function being
-  analyzed modulo unnamed ATypes. It's role is to maintain a mapping
-  between LLVM values and the abstract information computed by the 
-  analysis.
-  */
-class AbstractState {
-public:
-    AType * get(llvm::Value * v) {
-        if (type.count(v)) return type.at(v);
-        auto n = AType::B;
-        type[v] = n;
-        return n;
-    }
-    
-    llvm::Value * getScalarLocation(llvm::Value * v) {
-        if (!scalarLocation.count(v)) return nullptr;
-        return scalarLocation.at(v);
-    }
-
-    AType * initialize(llvm::Value * v, AType * t) {
-        type[v] = t;
-        return t;
-    }
-
-    // If we know where the scalar value comes from we store it for later
-    // unboxing by the optimization pass.
-    AType * update(llvm::Value * v, AType * t, llvm::Value * sl) {
-        assert(scalarLocation.count(v) == 0 || scalarLocation.at(v) == sl);
-        assert(t->isDoubleScalar());
-        scalarLocation[v] = sl;
-        return update(v, t);
-    }
-
-    AType * update(llvm::Value * v, AType * t) {
-        auto prev = get(v);
-        if (*prev < *t) {
-            type[v] = t;
-            changed = true;
-            return t;
-        }
-        return prev;
-    }
-
-    void clear() {
-        type.clear();
-        scalarLocation.clear();
-    }
-     
-    void erase(llvm::Value * v) {
-        scalarLocation.erase(v);
-        type.erase(v);
-    }
-
-    void iterationStart() {
-        changed = false;
-    }
-
-    bool hasReachedFixpoint() {
-        return !changed;
-    }
-
-    AbstractState() : changed(false) {}
-
-    friend std::ostream & operator << (std::ostream & s, AbstractState & m);
-
-private:
-    bool changed;
-    std::map<llvm::Value*, AType*> type;
-    std::map<llvm::Value*, llvm::Value*> scalarLocation;
+    AType(const std::string name) : name(name) {}
+    const std::string name;
 };
 
 /** Type and shape analysis.  */
 class TypeAnalysis : public llvm::FunctionPass {
 public:
+    typedef AbstractState<AType*, llvm::Value*> State;
     static char ID;
 
     char const * getPassName() const override { return "TypeAnalysis"; }
@@ -205,7 +134,7 @@ public:
 
     bool runOnFunction(llvm::Function & f) override;
 
-    AbstractState state;
+    State state;
 
 private:
     void genericArithmetic(llvm::CallInst * ci);

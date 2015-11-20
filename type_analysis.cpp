@@ -1,6 +1,5 @@
 #include <iostream>
 #include <ciso646>
-#include <set>
 
 #include "type_analysis.h"
 #include "compiler.h"
@@ -11,12 +10,12 @@ using namespace llvm;
 
 namespace rift {
 
-AType * AType::T  = new AType();
-AType * AType::B  = new AType();
-AType * AType::D  = new AType();
-AType * AType::DV = new AType();
-AType * AType::CV = new AType();
-AType * AType::F  = new AType();
+AType * AType::T  = new AType("R");
+AType * AType::B  = new AType("??");
+AType * AType::D1 = new AType("D1");
+AType * AType::DV = new AType("DV");
+AType * AType::CV = new AType("CV");
+AType * AType::F  = new AType("F");
 
 char TypeAnalysis::ID = 0;
 
@@ -30,7 +29,7 @@ void TypeAnalysis::genericRelational(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
     AType * rhs = state.get(ci->getOperand(1));
     if (lhs->isDoubleScalar() and rhs->isDoubleScalar()) {
-        state.update(ci, AType::D);
+        state.update(ci, AType::D1);
     } else {
         state.update(ci, AType::DV);
     }
@@ -42,7 +41,7 @@ void TypeAnalysis::genericGetElement(CallInst * ci) {
     AType * index = state.get(ci->getOperand(1));
     if (from->isDouble()) {
         if (index->isDoubleScalar()) {
-            state.update(ci, AType::D);
+            state.update(ci, AType::D1);
         } else {
             state.update(ci, AType::DV);
         }
@@ -68,7 +67,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                         // when creating literal from a double, it is
                         // always double scalar
                         llvm::Value * op = ci->getOperand(0);
-                        state.update(ci, AType::D, op);
+                        state.update(ci, AType::D1, op);
                     } else if (s == "characterVectorLiteral") {
                         state.update(ci, AType::CV);
                     } else if (s == "genericGetElement") {
@@ -95,7 +94,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     } else if (s == "length") {
                         // result of length operation is always 
                         // double scalar
-                        state.update(ci, AType::D);
+                        state.update(ci, AType::D1);
                     } else if (s == "type") {
                         // result of type operation is always 
                         // character vector
@@ -125,77 +124,14 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     } while (!state.hasReachedFixpoint());
     if (DEBUG) {
         f.dump();
-        cout << state << endl;
+        state.print(cout);
     }
     return false;
 }
 
-std::ostream & operator << (std::ostream & s, AbstractState & m) {
-    s << "Abstract State: " << "\n";
-
-    struct cmpByName {
-        bool operator()(const llvm::Value * a, const llvm::Value * b) const {
-            int aName, bName;
-
-            std::stringstream s;
-            llvm::raw_os_ostream ss(s);
-            a->printAsOperand(ss, false);
-            ss.flush();
-            s.seekg(1);
-            s >> aName;
-
-            std::stringstream s2;
-            llvm::raw_os_ostream ss2(s2);
-            b->printAsOperand(ss2, false);
-            ss2.flush();
-            s2.seekg(1);
-            s2 >> bName;
-
-            return aName < bName;
-        }
-    };
-
-    std::set<llvm::Value*, cmpByName> sorted;
-    for (auto const & v : m.type) {
-        auto pos = std::get<0>(v);
-        sorted.insert(pos);
-    }
-
-    for (auto pos : sorted) {
-        auto st = m.type.at(pos);
-
-        llvm::raw_os_ostream ss(s);
-        pos->printAsOperand(ss, false);
-        ss << ": ";
-        if (auto loc = m.getScalarLocation(pos))
-            loc->printAsOperand(ss, false);
-        ss.flush();
-
-        st->print(s, m);
-        s << endl;
-    }
+std::ostream & operator << (std::ostream & s, AType & t) {
+    s << t.name;
     return s;
-}
-
-
-void AType::print(std::ostream & s, AbstractState & m) {
-    llvm::raw_os_ostream ss(s);
-    if (this == D)
-        ss << " D ";
-    else if (this == DV)
-        ss << " DV ";
-    else if (this == CV)
-        ss << " CV ";
-    else if (this == F)
-        ss << " F ";
-    else if (this == T)
-        ss << " T ";
-    else if (this == B)
-        ss << " ?? ";
-    else
-        assert(false);
-
-    ss.flush();
 }
 
 } // namespace rift

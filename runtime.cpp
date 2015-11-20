@@ -477,7 +477,7 @@ RVal * c(int size, ...) {
             memcpy(result->data + offset, c->data, c->size * sizeof(char));
             offset += c->size;
         }
-        return * result;
+        return result;
     }
 }
 

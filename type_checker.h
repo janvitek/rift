@@ -3,6 +3,7 @@
 #define TYPE_CHECKER_H
 
 #include "llvm.h"
+#include "abstract_state.h"
 
 namespace rift {
 
@@ -28,50 +29,7 @@ public:
         T,
     };
 
-
-
-    class MachineState {
-    public:
-        Type get(llvm::Value * v) {
-            if (type.count(v))
-                return type.at(v);
-            else
-                return Type::B;
-        }
-
-        void update(llvm::Value * v, Type t) {
-            Type prev = get(v);
-            if (prev < t) {
-                type[v] = t;
-                changed = true;
-            }
-        }
-
-        void clear() {
-            type.clear();
-        }
-
-        void iterationStart() {
-            changed = false;
-        }
-
-        bool hasReachedFixpoint() {
-            return !changed;
-        }
-
-        MachineState() : changed(false) {}
-
-        friend std::ostream & operator << (std::ostream & s, MachineState & m);
-
-    private:
-
-        bool changed;
-
-        std::map<llvm::Value *, Type> type;
-
-    };
-
-
+    typedef AbstractState<Type> State;
 
     static char ID;
 
@@ -84,16 +42,20 @@ public:
     bool runOnFunction(llvm::Function & f) override;
 
 private:
-    MachineState state;
-
+    State state;
 };
 
 
-
-
 inline bool operator < (TypeChecker::Type t1, TypeChecker::Type t2) {
-    // fill me in
-    return false;
+    if (t1 == TypeChecker::Type::T) return false;
+    if (t1 == TypeChecker::Type::B) return !t2 == TypeChecker::Type::B;
+
+    if (t2 == TypeChecker::Type::B) return false;
+    if (t2 == TypeChecker::Type::T) return true;
+
+    if (t1 == t2) return false;
+
+    assert(false);
 }
 
 

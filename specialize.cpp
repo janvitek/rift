@@ -17,7 +17,7 @@ char Specialize::ID = 0;
 
 void Specialize::updateDoubleScalar(llvm::Value * newVal) {
     llvm::Value * box = RUNTIME_CALL(m->doubleVectorLiteral, newVal);
-    state().update(box, AType::D, newVal);
+    state().update(box, AType::D1, newVal);
     ins->replaceAllUsesWith(box);
 }
 
@@ -246,7 +246,7 @@ bool Specialize::runOnFunction(llvm::Function & f) {
     if (DEBUG) {
         cout << "After unboxing optimization: --------------------------------" << endl;
         f.dump();
-        cout << state() << endl;
+        state().print(cout);
     }
     return false;
 }

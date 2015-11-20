@@ -16,7 +16,7 @@ char Unboxing::ID = 0;
 
 void Unboxing::updateDoubleScalar(llvm::Value * newVal) {
     llvm::Value * box = RUNTIME_CALL(m->doubleVectorLiteral, newVal);
-    state().update(box, AType::D, newVal);
+    state().update(box, AType::D1, newVal);
     ins->replaceAllUsesWith(box);
 }
 
@@ -25,8 +25,8 @@ bool Unboxing::doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
                                 llvm::Instruction::BinaryOps op) {
     assert(lhsType->isDouble() and rhsType->isDouble() and "Doubles expected");
     if (lhsType->isDoubleScalar() and rhsType->isDoubleScalar()) {
-        llvm::Value * l = state().getScalarLocation(lhs);
-        llvm::Value * r = state().getScalarLocation(rhs);
+        llvm::Value * l = state().getMetadata(lhs);
+        llvm::Value * r = state().getMetadata(rhs);
         if (l && r) {
             llvm::Value * res = BinaryOperator::Create(op, l, r, "", ins);
             updateDoubleScalar(res);
@@ -54,8 +54,8 @@ bool Unboxing::doubleRelational(llvm::Value* lhs, llvm::Value * rhs,
     assert(lhsType->isDouble() and rhsType->isDouble() and "Doubles expected");
 
     if (lhsType->isDoubleScalar() and rhsType->isDoubleScalar()) {
-        llvm::Value * l = state().getScalarLocation(lhs);
-        llvm::Value * r = state().getScalarLocation(rhs);
+        llvm::Value * l = state().getMetadata(lhs);
+        llvm::Value * r = state().getMetadata(rhs);
         if (l && r) {
             llvm::Value * x = new FCmpInst(ins, op, l, r);
             llvm::Value * res = new UIToFPInst(x, type::Double, "", ins);
@@ -88,7 +88,7 @@ bool Unboxing::genericGetElement() {
     if (srcType->isDouble()) {
         src = CastInst::CreatePointerCast(src, type::ptrDoubleVector, "", ins); 
         if (idxType->isDoubleScalar()) {
-            llvm::Value * i = state().getScalarLocation(idx);
+            llvm::Value * i = state().getMetadata(idx);
             if (i) {
                 llvm::Value * res = RUNTIME_CALL(m->doubleGetSingleElement, src, i);
                 updateDoubleScalar(res);
@@ -143,7 +143,7 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
     if (DEBUG) {
         cout << "After unboxing optimization: --------------------------------" << endl;
         f.dump();
-        cout << state() << endl;
+        state().print(cout);
     }
     return false;
 }
