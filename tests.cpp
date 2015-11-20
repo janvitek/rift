@@ -226,7 +226,7 @@ namespace rift {
         project3();
         project4();
         project5();
-        // project6();
+        project6();
     }
 
 } // namespace rift

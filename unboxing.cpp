@@ -144,7 +144,13 @@ bool Unboxing::genericDot() {
     AType * lhs = state().get(ins->getOperand(0));
     AType * rhs = state().get(ins->getOperand(1));
     AType * result_t;
-    if (lhs->isDouble() and rhs->isDouble()) {
+    if (lhs->isScalar() and rhs->isScalar()) {
+        llvm::Value * l = getScalarPayload(lhs);
+        llvm::Value * r = getScalarPayload(rhs);
+        result_t = updateAnalysis(
+                BinaryOperator::Create(Instruction::FMul, l, r, "", ins),
+                new AType(AType::Kind::D));
+    } else if (lhs->isDouble() and rhs->isDouble()) {
         result_t = updateAnalysis(
                 RUNTIME_CALL(m->doubleDot, getVectorPayload(lhs), getVectorPayload(rhs)),
                 new AType(AType::Kind::D));
