@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ciso646>
+#include <set>
 
 #include "type_analysis.h"
 #include "compiler.h"
@@ -129,11 +130,39 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     return false;
 }
 
-std::ostream & operator << (std::ostream & s, MachineState & m) {
+std::ostream & operator << (std::ostream & s, AbstractState & m) {
     s << "Abstract State: " << "\n";
+
+    struct cmpByName {
+        bool operator()(const llvm::Value * a, const llvm::Value * b) const {
+            int aName, bName;
+
+            std::stringstream s;
+            llvm::raw_os_ostream ss(s);
+            a->printAsOperand(ss, false);
+            ss.flush();
+            s.seekg(1);
+            s >> aName;
+
+            std::stringstream s2;
+            llvm::raw_os_ostream ss2(s2);
+            b->printAsOperand(ss2, false);
+            ss2.flush();
+            s2.seekg(1);
+            s2 >> bName;
+
+            return aName < bName;
+        }
+    };
+
+    std::set<llvm::Value*, cmpByName> sorted;
     for (auto const & v : m.type) {
-        auto st  = std::get<1>(v);
         auto pos = std::get<0>(v);
+        sorted.insert(pos);
+    }
+
+    for (auto pos : sorted) {
+        auto st = m.type.at(pos);
 
         llvm::raw_os_ostream ss(s);
         pos->printAsOperand(ss, false);
@@ -149,7 +178,7 @@ std::ostream & operator << (std::ostream & s, MachineState & m) {
 }
 
 
-void AType::print(std::ostream & s, MachineState & m) {
+void AType::print(std::ostream & s, AbstractState & m) {
     llvm::raw_os_ostream ss(s);
     if (this == D)
         ss << " D ";

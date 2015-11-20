@@ -152,7 +152,7 @@ bool Unboxing::genericNeq() {
         return true;
     }
 
-    return genericComparison(lhs, rhs, lhsType, lhsType, FCmpInst::FCMP_ONE, m->doubleEq, m->characterEq);
+    return genericComparison(lhs, rhs, lhsType, lhsType, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq);
 }
 
 
