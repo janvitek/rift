@@ -129,6 +129,9 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                         state.update(ci, new AType(AType::Kind::R));
                     } else if (s == "envGet") {
                         state.update(ci, new AType(AType::Kind::R));
+                    } else if (s == "genericDot") {
+                        // a result of generic dot function is always a double scalar
+                        state.update(ci, new AType(AType::Kind::R, AType::Kind::DV, AType::Kind::D));
                     }
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                     AType * first = state.get(phi->getOperand(0));
