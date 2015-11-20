@@ -73,7 +73,7 @@ protected:
 
     /** Preexisting type analysis that is queried to obtain the type & shape information as well as the boxing chains. */
     TypeAnalysis * ta;
-    AbstractState & state() { return ta->state; }
+    TypeAnalysis::State & state() { return ta->state; }
 
     llvm::Instruction * ins;
 
