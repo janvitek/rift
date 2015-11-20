@@ -4,6 +4,7 @@
 
 #include "llvm.h"
 #include "unboxing.h"
+#include "specialize.h"
 
 
 namespace rift {
@@ -16,10 +17,6 @@ public:
 
     char const * getPassName() const override {
         return "BoxingRemoval";
-    }
-
-    void getAnalysisUsage(llvm::AnalysisUsage & AU) const override {
-        AU.addRequired<Unboxing>();
     }
 
     bool runOnFunction(llvm::Function & f) override;

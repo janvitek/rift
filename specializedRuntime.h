@@ -6,22 +6,9 @@
 
 extern "C" {
 
-    /** Unboxes value to the double vector it contains.
-    */
-    DoubleVector * doubleFromValue(RVal * v);
-
     /** Unboxes double vector to the scalar double it contains.
     */
     double scalarFromVector(DoubleVector * v);
-
-    /** Unboxes value to the character vector it contains.
-    */
-    CharacterVector * characterFromValue(RVal *v);
-
-    /** Unboxes value to the function object it contains.
-    */
-    RFun * functionFromValue(RVal *v);
-
 
     /** Returns a scalar double element from given double vector.
     */
@@ -29,11 +16,11 @@ extern "C" {
 
     /** Returns a subset of double vector.
     */
-    DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index);
+    RVal * doubleGetElement(DoubleVector * from, DoubleVector * index);
 
     /** Returns a subset of character vector.
     */
-    CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index);
+    RVal * characterGetElement(CharacterVector * from, DoubleVector * index);
 
     /** Sets the index-th element of given double vector.
     */
@@ -49,47 +36,47 @@ extern "C" {
 
     /** Adds two double vectors.
     */
-    DoubleVector * doubleAdd(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleAdd(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Concatenates two character vectors.
     */
-    CharacterVector * characterAdd(CharacterVector * lhs, CharacterVector * rhs);
+    RVal * characterAdd(CharacterVector * lhs, CharacterVector * rhs);
 
     /** Subtracts two double vectors.
     */
-    DoubleVector * doubleSub(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleSub(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Multiplies two double vectors.
     */
-    DoubleVector * doubleMul(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleMul(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Divides two double vectors.
     */
-    DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleDiv(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Compares the equality of two double vectors.
     */
-    DoubleVector * doubleEq(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleEq(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Compares the equality of two character vectors.
     */
-    DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs);
+    RVal * characterEq(CharacterVector * lhs, CharacterVector * rhs);
 
     /** Compaes the inequality of two double vectors.
     */
-    DoubleVector * doubleNeq(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleNeq(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Compares the inequality of two character vectors.
     */
-    DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs);
+    RVal * characterNeq(CharacterVector * lhs, CharacterVector * rhs);
 
     /** Compares two double vectors.
     */
-    DoubleVector * doubleLt(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleLt(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Compares two double vectors.
     */
-    DoubleVector * doubleGt(DoubleVector * lhs, DoubleVector * rhs);
+    RVal * doubleGt(DoubleVector * lhs, DoubleVector * rhs);
 
     /** Evaluates given character vector in the specified environment and returns its result.
     */
@@ -97,11 +84,11 @@ extern "C" {
 
     /** Joins N double vectors together.
     */
-    DoubleVector * doublec(int size, ...);
+    RVal * doublec(int size, ...);
 
     /** Joins N character vectors together.
     */
-    CharacterVector * characterc(int size, ...);
+    RVal * characterc(int size, ...);
 
 } // extern "C"
 

@@ -10,6 +10,7 @@
 #include "type_checker.h"
 #include "type_analysis.h"
 #include "unboxing.h"
+#include "specialize.h"
 #include "boxing_removal.h"
 
 using namespace llvm;
@@ -61,25 +62,22 @@ FunctionType * NativeCode = FUN_TYPE(ptrValue, ptrEnvironment);
 StructType * Function = STRUCT("Function", ptrEnvironment, NativeCode, ptrInt, Int);
 PointerType * ptrFunction = PointerType::get(Function, 0);
 
-FunctionType * dv_d = FUN_TYPE(ptrDoubleVector, Double);
-FunctionType * cv_i = FUN_TYPE(ptrCharacterVector, Int);
 FunctionType * v_i = FUN_TYPE(ptrValue, Int);
 FunctionType * v_dv = FUN_TYPE(ptrValue, ptrDoubleVector);
 FunctionType * v_d = FUN_TYPE(ptrValue, Double);
 FunctionType * v_cv = FUN_TYPE(ptrValue, ptrCharacterVector);
 FunctionType * v_ev = FUN_TYPE(ptrValue, ptrEnvironment, ptrValue);
+FunctionType * v_v = FUN_TYPE(ptrValue, ptrValue);
 FunctionType * v_vv = FUN_TYPE(ptrValue, ptrValue, ptrValue);
 FunctionType * v_vvv = FUN_TYPE(ptrValue, ptrValue, ptrValue, ptrValue);
 FunctionType * v_vi = FUN_TYPE(ptrValue, ptrValue, Int);
 FunctionType * v_viv = FUN_TYPE(ptrValue, ptrValue, Int, ptrValue);
 FunctionType * v_ei = FUN_TYPE(ptrValue, ptrEnvironment, Int);
 FunctionType * v_ecv = FUN_TYPE(ptrValue, ptrEnvironment, ptrCharacterVector);
+FunctionType * v_cvcv = FUN_TYPE(ptrValue, ptrCharacterVector, ptrCharacterVector);
+FunctionType * v_dvdv = FUN_TYPE(ptrValue, ptrDoubleVector, ptrDoubleVector);
 FunctionType * void_eiv = FUN_TYPE(Void, ptrEnvironment, Int, ptrValue);
-FunctionType * dv_dvdv = FUN_TYPE(ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
-FunctionType * cv_cvcv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrCharacterVector);
-FunctionType * dv_cvcv = FUN_TYPE(ptrDoubleVector, ptrCharacterVector, ptrCharacterVector);
 FunctionType * d_dvd = FUN_TYPE(Double, ptrDoubleVector, Double);
-FunctionType * cv_cvdv = FUN_TYPE(ptrCharacterVector, ptrCharacterVector, ptrDoubleVector);
 
 FunctionType * v_f = FUN_TYPE(ptrValue, ptrFunction);
 FunctionType * v_ie = FUN_TYPE(ptrValue, Int, ptrEnvironment);
@@ -88,18 +86,16 @@ FunctionType * b_v = FUN_TYPE(Bool, ptrValue);
 
 FunctionType * v_viVA = FUN_TYPE_VARARG(ptrValue, ptrValue, Int);
 
+FunctionType * v_cvdv = FUN_TYPE(ptrValue, ptrCharacterVector, ptrDoubleVector);
+
 FunctionType * void_vvv = FUN_TYPE(Void, ptrValue, ptrValue, ptrValue);
 FunctionType * void_dvdvdv = FUN_TYPE(Void, ptrDoubleVector, ptrDoubleVector, ptrDoubleVector);
 FunctionType * void_cvdvcv = FUN_TYPE(Void, ptrCharacterVector, ptrDoubleVector, ptrCharacterVector);
 FunctionType * void_dvdd = FUN_TYPE(Void, ptrDoubleVector, Double, Double);
 
 FunctionType * d_v = FUN_TYPE(Double, ptrValue);
-FunctionType * cv_v = FUN_TYPE(ptrCharacterVector, ptrValue);
 FunctionType * v_iVA = FUN_TYPE_VARARG(ptrValue, Int);
-FunctionType * dv_iVA = FUN_TYPE_VARARG(ptrDoubleVector, Int);
-FunctionType * cv_iVA = FUN_TYPE_VARARG(ptrCharacterVector, Int);
 
-FunctionType * dv_v = FUN_TYPE(ptrDoubleVector, ptrValue);
 FunctionType * d_dv = FUN_TYPE(Double, ptrDoubleVector);
 FunctionType * f_v = FUN_TYPE(ptrFunction, ptrValue);
 
@@ -235,6 +231,7 @@ public:
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
+        pm->add(new Specialize());
         pm->add(new BoxingRemoval());
         pm->add(createConstantPropagationPass());
         // Optimize each function of this module
