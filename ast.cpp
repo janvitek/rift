@@ -58,6 +58,7 @@ public:
         case ast::BinExp::Type::neq:   s << "!="; break;
         case ast::BinExp::Type::lt:    s << "<"; break;
         case ast::BinExp::Type::gt:    s << ">";  break;
+        case ast::BinExp::Type::dot:   s << "%*%";  break;
         default:                       s << "?";
         }
         s << " ";
