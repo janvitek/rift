@@ -8,11 +8,6 @@
 
 #pragma warning(disable : 4267 4297 4018)
 
-/** Value: forward declaration 
-*/
-union RVal;
-
-
 #include "gc.h"
 
 #define HEAP_OBJECTS(O) \
@@ -27,31 +22,46 @@ enum class Type {
     Function,
 };
 
+/** A Rift Value. All values have a type tage and can point either of a
+    vector of doubles or chararcters, or a function.
+*/
+struct RVal {
+private:
+    Type t;
+
+protected:
+    RVal(Type t) : t(t) {}
+
+public:
+    Type type() const {
+        return t;
+    }
+
+    /** Prints to given stream.  */
+    inline void print(std::ostream & s);
+};
+
 
 /** Character vector: strings of variable size. They are null
     terminated. Size excludes the trailing terminator.
 */
-struct CharacterVector : HeapObject<CharacterVector> {
-    Type type;
-
+struct CharacterVector : HeapObject<CharacterVector>, RVal {
     char * data;
 
     unsigned size;
 
     /** Creates a CV from given data and size. Takes ownership of the data.
     */
-    CharacterVector(int size):
-        type(Type::Character),
-        data(new char[size + 1]),
-        size(size) {
+    CharacterVector(int size) : RVal(Type::Character),
+                                data(new char[size + 1]),
+                                size(size) {
         data[size] = 0;
     }
 
     /** Creates the character vector from existing null terminated string. 
         Creates a copy of the string internally. 
     */
-    CharacterVector(char const * from):
-        type(Type::Character) {
+    CharacterVector(char const * from) : RVal(Type::Character) {
         size = strlen(from);
         data = new char[size + 1];
         memcpy(data, from, size + 1);
@@ -75,7 +85,7 @@ struct CharacterVector : HeapObject<CharacterVector> {
 
 /** A Double vector consists of an array of doubles and a size.
 */
-struct DoubleVector : HeapObject<DoubleVector> {
+struct DoubleVector : HeapObject<DoubleVector>, RVal {
     Type type;
     
     double * data;
@@ -84,24 +94,21 @@ struct DoubleVector : HeapObject<DoubleVector> {
     
     /** Creates vector of length one.
      */
-    DoubleVector(double value):
-        type(Type::Double),
-        data(new double[1]),
-        size(1) {
+    DoubleVector(double value) : RVal(Type::Double),
+                                 data(new double[1]),
+                                 size(1) {
         data[0] = value;
     }
 
     /** Creates vector from array. The array is owned by the vector.
     */
-    DoubleVector(double * data, unsigned size):
-        type(Type::Double),
-        data(data),
-        size(size) {
-    }
+    DoubleVector(double * data, unsigned size) : RVal(Type::Double),
+                                                 data(data),
+                                                 size(size) {}
 
     /** Creates vector from doubles.
      */
-    DoubleVector(std::initializer_list<double> d) : type(Type::Double) {
+    DoubleVector(std::initializer_list<double> d) : RVal(Type::Double) {
         size = d.size();
         data = new double[size];
         unsigned i = 0;
@@ -182,7 +189,8 @@ struct Environment : public HeapObject<Environment> {
 
     /** Assigns given value to symbol. 
     
-    If the symbol already exists it the environment, updates its value, otherwise creates new binding for the symbol and attaches it to the value. 
+    If the symbol already exists it the environment, updates its value,
+    otherwise creates new binding for the symbol and attaches it to the value. 
      */
     void set(rift::Symbol symbol, RVal * value) {
         for (int i = 0; i < size; ++i)
@@ -209,7 +217,7 @@ typedef RVal * (*FunPtr)(Environment *);
     bitcode, an argument list, and an arity.  The bitcode and argument names
     are there for debugging purposes.
  */
-struct RFun : HeapObject<RFun> {
+struct RFun : HeapObject<RFun>, RVal {
     Type type;
 
     Environment * env;
@@ -225,8 +233,8 @@ struct RFun : HeapObject<RFun> {
     /** Create a Rift function. A new argument list is needed, everything
 	else is shared.
     */
-    RFun(rift::ast::Fun * fun, llvm::Function * bitcode):
-        type(Type::Function),
+    RFun(rift::ast::Fun * fun, llvm::Function * bitcode) :
+        RVal(Type::Function),
         env(nullptr),
         code(nullptr),
         bitcode(bitcode),
@@ -240,8 +248,8 @@ struct RFun : HeapObject<RFun> {
     /** Create a closure by copying function f and binding it to environment
 	e. Arguments are shared.
      */
-    RFun(RFun * f, Environment * e):
-        type(Type::Function),
+    RFun(RFun * f, Environment * e) :
+        RVal(Type::Function),
         env(e),
         code(f->code),
         bitcode(f->bitcode),
@@ -264,44 +272,6 @@ struct RFun : HeapObject<RFun> {
 
 };
 
-struct Any {
-    Type type;
-};
-
-/** A Rift Value. All values have a type tage and can point either of a
-    vector of doubles or chararcters, or a function.
-*/
-union RVal {
-private:
-    Any a;
-    DoubleVector d;
-    CharacterVector c;
-    RFun f;
-
-public:
-    Type type() const {
-        return a.type;
-    }
-
-    /** Prints to given stream.  */
-    inline void print(std::ostream & s);
-
-    explicit operator DoubleVector*() {
-        assert(type() == Type::Double);
-        return reinterpret_cast<DoubleVector*>(this);
-    }
-
-    explicit operator CharacterVector*() {
-        assert(type() == Type::Character);
-        return reinterpret_cast<CharacterVector*>(this);
-    }
-
-    explicit operator RFun*() {
-        assert(type() == Type::Function);
-        return reinterpret_cast<RFun*>(this);
-    }
-};
-
 template <typename T>
 static inline T* cast(RVal * r) {
     static_assert(std::is_same<T, RFun>::value ||
@@ -312,7 +282,7 @@ static inline T* cast(RVal * r) {
     if ((typeid(T) == typeid(RFun)            && r->type() == Type::Function)  ||
         (typeid(T) == typeid(CharacterVector) && r->type() == Type::Character) ||
         (typeid(T) == typeid(DoubleVector)    && r->type() == Type::Double)) {
-        return static_cast<T*>(*r);
+        return static_cast<T*>(r);
     }
     return nullptr;
 }

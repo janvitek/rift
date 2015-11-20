@@ -15,7 +15,7 @@
   */
 namespace rift {
 // forward decl..
-class MachineState;
+class AbstractState;
 
 /** An abstract type, or AType, represents an object in the heap of a Rift
   program. AType forms the following lattice, where D is a DoubleVector of
@@ -109,23 +109,26 @@ public:
         if(isBottom()) return !other.isBottom();
         
         if (isDoubleScalar()) return !other.isDoubleScalar();
-        assert(this == &other);
+        
+        // The only options left
+        assert((this == DV && &other == D) || this == &other);
+
         return false;
     }
 
-    void print(std::ostream & s, MachineState & m);
+    void print(std::ostream & s, AbstractState & m);
 
 private:
     AType() {}
 };
 
 /**
-  The MachineState represents the abstact state of the function being
+  The AbstractState represents the abstact state of the function being
   analyzed modulo unnamed ATypes. It's role is to maintain a mapping
   between LLVM values and the abstract information computed by the 
   analysis.
   */
-class MachineState {
+class AbstractState {
 public:
     AType * get(llvm::Value * v) {
         if (type.count(v)) return type.at(v);
@@ -181,9 +184,9 @@ public:
         return !changed;
     }
 
-    MachineState() : changed(false) {}
+    AbstractState() : changed(false) {}
 
-    friend std::ostream & operator << (std::ostream & s, MachineState & m);
+    friend std::ostream & operator << (std::ostream & s, AbstractState & m);
 
 private:
     bool changed;
@@ -202,7 +205,7 @@ public:
 
     bool runOnFunction(llvm::Function & f) override;
 
-    MachineState state;
+    AbstractState state;
 
 private:
     void genericArithmetic(llvm::CallInst * ci);

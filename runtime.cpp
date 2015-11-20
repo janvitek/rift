@@ -33,17 +33,17 @@ void envSet(Environment * env, int symbol, RVal * RVal) {
 }
 
 RVal * doubleVectorLiteral(double RVal) {
-    return * new DoubleVector(RVal);
+    return new DoubleVector(RVal);
 }
 
 RVal * characterVectorLiteral(int cpIndex) {
     std::string const & original = Pool::getPoolObject(cpIndex);
-    return * new CharacterVector(original.c_str());
+    return new CharacterVector(original.c_str());
 
 }
 
 DoubleVector * doubleFromValue(RVal * v) {
-    return static_cast<DoubleVector*>(*v);
+    return static_cast<DoubleVector*>(v);
 }
 
 double scalarFromVector(DoubleVector * v) {
@@ -53,11 +53,11 @@ double scalarFromVector(DoubleVector * v) {
 }
 
 CharacterVector * characterFromValue(RVal *v) {
-    return static_cast<CharacterVector*>(*v);
+    return static_cast<CharacterVector*>(v);
 }
 
 RFun * functionFromValue(RVal *v) {
-    return static_cast<RFun*>(*v);
+    return static_cast<RFun*>(v);
 }
 
 
@@ -96,9 +96,9 @@ RVal * genericGetElement(RVal * from, RVal * index) {
     auto i = cast<DoubleVector>(index);
     if (!i) throw "Index vector must be double";
     if (auto fr = cast<DoubleVector>(from))
-        return *doubleGetElement(fr, i);
+        return doubleGetElement(fr, i);
     if (auto fr = cast<CharacterVector>(from)) {
-        return *characterGetElement(fr, i);
+        return characterGetElement(fr, i);
     }
     throw "Cannot index a function";
 }
@@ -135,9 +135,9 @@ void genericSetElement(RVal * target, RVal * index, RVal * value) {
     if (target->type() != value->type())
         throw "Vector and element must be of same type";
     if (auto t = cast<DoubleVector>(target)) {
-        doubleSetElement(t, i, static_cast<DoubleVector*>(*value));
+        doubleSetElement(t, i, static_cast<DoubleVector*>(value));
     } else if (auto t = cast<CharacterVector>(target)) {
-        characterSetElement(t, i, static_cast<CharacterVector*>(*value));
+        characterSetElement(t, i, static_cast<CharacterVector*>(value));
     } else {
         throw "Cannot index a function";
     }
@@ -164,9 +164,9 @@ RVal * genericAdd(RVal * lhs, RVal * rhs) {
     if (lhs->type() != rhs->type())
         throw "Incompatible types for binary operator";
     if (auto l = cast<DoubleVector>(lhs)) {
-        return *doubleAdd(l, static_cast<DoubleVector*>(*rhs));
+        return doubleAdd(l, static_cast<DoubleVector*>(rhs));
     } else if (auto l = cast<CharacterVector>(lhs)) {
-        return *characterAdd(l, static_cast<CharacterVector*>(*rhs));
+        return characterAdd(l, static_cast<CharacterVector*>(rhs));
     } else {
         throw "Invalid types for binary add";
     }
@@ -187,7 +187,7 @@ RVal * genericSub(RVal * lhs, RVal * rhs) {
     auto r = cast<DoubleVector>(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
-    return *doubleSub(l, r);
+    return doubleSub(l, r);
 }
 
 DoubleVector * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
@@ -203,7 +203,7 @@ RVal * genericMul(RVal * lhs, RVal * rhs) {
     auto r = cast<DoubleVector>(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
-    return *doubleMul(l, r);
+    return doubleMul(l, r);
 }
 
 DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
@@ -219,7 +219,7 @@ RVal * genericDiv(RVal * lhs, RVal * rhs) {
     auto r = cast<DoubleVector>(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
-    return *doubleDiv(l, r);
+    return doubleDiv(l, r);
 }
 
 DoubleVector * doubleEq(DoubleVector * lhs, DoubleVector * rhs) {
@@ -240,14 +240,14 @@ DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
 
 RVal * genericEq(RVal * lhs, RVal * rhs) {
     if (lhs->type() != rhs->type())
-        return * new DoubleVector(0);
+        return new DoubleVector(0);
 
     if (auto l = cast<DoubleVector>(lhs))
-        return *doubleEq(l, static_cast<DoubleVector*>(*rhs));
+        return doubleEq(l, static_cast<DoubleVector*>(rhs));
     if (auto l = cast<CharacterVector>(lhs))
-        return *characterEq(l, static_cast<CharacterVector*>(*rhs));
+        return characterEq(l, static_cast<CharacterVector*>(rhs));
     if (auto l = cast<RFun>(lhs))
-        return * new DoubleVector(l->code == static_cast<RFun*>(*rhs)->code);
+        return new DoubleVector(l->code == static_cast<RFun*>(rhs)->code);
 
     assert(false);
     return nullptr;
@@ -271,14 +271,14 @@ DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
 
 RVal * genericNeq(RVal * lhs, RVal * rhs) {
     if (lhs->type() != rhs->type())
-        return * new DoubleVector(1);
+        return new DoubleVector(1);
 
     if (auto l = cast<DoubleVector>(lhs))
-        return *doubleNeq(l, static_cast<DoubleVector*>(*rhs));
+        return doubleNeq(l, static_cast<DoubleVector*>(rhs));
     if (auto l = cast<CharacterVector>(lhs))
-        return *characterNeq(l, static_cast<CharacterVector*>(*rhs));
+        return characterNeq(l, static_cast<CharacterVector*>(rhs));
     if (auto l = cast<RFun>(lhs))
-        return * new DoubleVector(l->code != static_cast<RFun*>(*rhs)->code);
+        return new DoubleVector(l->code != static_cast<RFun*>(rhs)->code);
 
     assert(false);
     return nullptr;
@@ -298,7 +298,7 @@ RVal * genericLt(RVal * lhs, RVal * rhs) {
     if (!(l && r))
         throw "Invalid types for binary sub";
 
-    return *doubleLt(l, r);
+    return doubleLt(l, r);
 }
 
 DoubleVector * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
@@ -315,11 +315,11 @@ RVal * genericGt(RVal * lhs, RVal * rhs) {
     auto r = cast<DoubleVector>(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
-    return *doubleGt(l, r);
+    return doubleGt(l, r);
 }
 
 RVal * createFunction(int index, Environment * env) {
-    return * new RFun(Pool::getFunction(index), env);
+    return new RFun(Pool::getFunction(index), env);
 }
 
 bool toBoolean(RVal * v) {
@@ -383,7 +383,7 @@ RVal * eval(Environment * env, char const * value) {
     Parser p;
     ast::Fun * x = new ast::Fun(p.parse(s));
     if (x->body->body.empty())
-        return * new DoubleVector(0);
+        return new DoubleVector(0);
     FunPtr f = compile(x);
     auto start = chrono::high_resolution_clock::now();
     RVal * result = f(env);
@@ -446,7 +446,7 @@ CharacterVector * characterc(int size, ...) {
 
 RVal * c(int size, ...) {
     if (size == 0)
-        return * new DoubleVector(nullptr, 0);
+        return new DoubleVector(nullptr, 0);
     std::vector<RVal *> args;
     va_list ap;
     va_start(ap, size);
@@ -466,27 +466,27 @@ RVal * c(int size, ...) {
     if (t == Type::Double) {
         size_t size = 0;
         for (RVal * v : args) {
-            auto d = static_cast<DoubleVector*>(*v);
+            auto d = static_cast<DoubleVector*>(v);
             size += d->size;
         }
         double * result = new double[size];
         unsigned offset = 0;
         for (RVal * v : args) {
-            auto d = static_cast<DoubleVector*>(*v);
+            auto d = static_cast<DoubleVector*>(v);
             memcpy(result + offset, d->data, d->size * sizeof(double));
             offset += d->size;
         }
-        return * new DoubleVector(result, size);
+        return new DoubleVector(result, size);
     } else { // Character
         size_t size = 0;
         for (RVal * v : args) {
-            auto c = static_cast<CharacterVector*>(*v);
+            auto c = static_cast<CharacterVector*>(v);
             size += c->size;
         }
         CharacterVector * result = new CharacterVector(size);
         unsigned offset = 0;
         for (RVal * v : args) {
-            auto c = static_cast<CharacterVector*>(*v);
+            auto c = static_cast<CharacterVector*>(v);
             memcpy(result->data + offset, c->data, c->size * sizeof(char));
             offset += c->size;
         }
