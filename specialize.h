@@ -1,7 +1,7 @@
 
 #pragma once
-#ifndef UNBOXING_H
-#define UNBOXING_H
+#ifndef SPECIALIZE_H
+#define SPECIALIZE_H
 
 #include "llvm.h"
 #include "type_analysis.h"
@@ -16,14 +16,14 @@ class RiftModule;
 
   Note that the algorithm does not make use of all possible optimizations. For instance, while unboxed functions are defined in the type analysis, the optimization does not specialize on them yet. 
   */
-class Unboxing : public llvm::FunctionPass {
+class Specialize : public llvm::FunctionPass {
 public:
     static char ID;
 
-    Unboxing() : llvm::FunctionPass(ID) {}
+    Specialize() : llvm::FunctionPass(ID) {}
 
     char const * getPassName() const override {
-        return "Unboxing";
+        return "Specialize";
     }
 
     void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
@@ -37,19 +37,33 @@ protected:
 
     void updateDoubleScalar(llvm::Value * newVal);
 
-    bool doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
-                          AType * lhsType, AType * rhsType,
-                          llvm::Instruction::BinaryOps op);
+    void updateDoubleOp(llvm::Function * fun,
+                        llvm::Value * arg1, llvm::Value * arg2,
+                        AType * res);
 
-    bool genericArithmetic(llvm::Instruction::BinaryOps op);
+    void updateCharOp(llvm::Function * fun,
+                      llvm::Value * arg1, llvm::Value * arg2,
+                      AType * res);
 
-    bool doubleRelational(llvm::Value * lhs, llvm::Value * rhs,
-                          AType * lhsType, AType * rhsType,
-                          llvm::CmpInst::Predicate op);
+    bool genericAdd();
 
-    bool genericRelational(llvm::CmpInst::Predicate op);
+    bool genericArithmetic(llvm::Function * fop);
+
+    bool genericRelational(llvm::Function * fop);
+
+    bool genericComparison(llvm::Value * lhs, llvm::Value * rhs,
+                           AType * lhsType, AType * rhsType,
+                           llvm::Function * fop, llvm::Function * cop);
+
+    bool genericEq();
+
+    bool genericNeq();
 
     bool genericGetElement();
+
+    bool genericC();
+
+    bool genericEval();
 
     /** Rift module currently being optimized, obtained from the function.
 

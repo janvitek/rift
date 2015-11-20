@@ -12,8 +12,6 @@ using namespace llvm;
 namespace rift {
 char Unboxing::ID = 0;
 
-
-
 #define RUNTIME_CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 
 void Unboxing::updateDoubleScalar(llvm::Value * newVal) {
@@ -22,32 +20,9 @@ void Unboxing::updateDoubleScalar(llvm::Value * newVal) {
     ins->replaceAllUsesWith(box);
 }
 
-void Unboxing::updateDoubleOp(llvm::Function * fun,
-                              llvm::Value * arg1, llvm::Value * arg2,
-                              AType * resType) {
-    llvm::Value * l = CastInst::CreatePointerCast(arg1, type::ptrDoubleVector, "", ins); 
-    llvm::Value * r = CastInst::CreatePointerCast(arg2, type::ptrDoubleVector, "", ins); 
-    llvm::Value * res = RUNTIME_CALL(fun, l, r);
-    state().update(res, resType);
-    ins->replaceAllUsesWith(res);
-}
-
-void Unboxing::updateCharOp(llvm::Function * fun,
-                            llvm::Value * arg1, llvm::Value * arg2,
-                            AType * resType) {
-    llvm::Value * l = CastInst::CreatePointerCast(arg1, type::ptrCharacterVector, "", ins); 
-    llvm::Value * r = CastInst::CreatePointerCast(arg2, type::ptrCharacterVector, "", ins); 
-    llvm::Value * res = RUNTIME_CALL(fun, l, r);
-    state().update(res, resType);
-    ins->replaceAllUsesWith(res);
-}
-
-
-
 bool Unboxing::doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
                                 AType * lhsType, AType * rhsType,
-                                llvm::Instruction::BinaryOps op,
-                                llvm::Function * fop) {
+                                llvm::Instruction::BinaryOps op) {
     assert(lhsType->isDouble() and rhsType->isDouble() and "Doubles expected");
     if (lhsType->isDoubleScalar() and rhsType->isDoubleScalar()) {
         llvm::Value * l = state().getScalarLocation(lhs);
@@ -59,44 +34,23 @@ bool Unboxing::doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
         }
     }
 
-    updateDoubleOp(fop, lhs, rhs, lhsType->merge(rhsType));
-    return true;
-}
-
-bool Unboxing::genericAdd() {
-    // first check if we are dealing with character add
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
-    AType * lhsType = state().get(lhs);
-    AType * rhsType = state().get(rhs);
-    if (lhsType->isDouble() and rhsType->isDouble()) {
-        return doubleArithmetic(lhs, rhs, lhsType, rhsType, Instruction::FAdd, m->doubleAdd);
-    } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
-        llvm::Value * l = CastInst::CreatePointerCast(lhs, type::ptrCharacterVector, "", ins); 
-        llvm::Value * r = CastInst::CreatePointerCast(rhs, type::ptrCharacterVector, "", ins); 
-        llvm::Value * res = RUNTIME_CALL(m->characterAdd, l, r);
-        state().update(res, AType::CV);
-        ins->replaceAllUsesWith(res);
-        return true;
-    }
     return false;
 }
- 
-bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function * fop) {
+
+bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op) {
     llvm::Value * lhs = ins->getOperand(0);
     llvm::Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        return doubleArithmetic(lhs, rhs, lhsType, rhsType, op, fop);
-    } else {
-        return false;
+        return doubleArithmetic(lhs, rhs, lhsType, rhsType, op);
     }
+    return false;
 }
 
 bool Unboxing::doubleRelational(llvm::Value* lhs, llvm::Value * rhs,
                                 AType * lhsType, AType * rhsType,
-                                llvm::CmpInst::Predicate op, llvm::Function * fop) {
+                                llvm::CmpInst::Predicate op) {
     assert(lhsType->isDouble() and rhsType->isDouble() and "Doubles expected");
 
     if (lhsType->isDoubleScalar() and rhsType->isDoubleScalar()) {
@@ -109,67 +63,21 @@ bool Unboxing::doubleRelational(llvm::Value* lhs, llvm::Value * rhs,
             return true;
         }
     }
-
-    updateDoubleOp(fop, lhs, rhs, lhsType->merge(rhsType));
-    return true;
+    return false;
 }
 
-bool Unboxing::genericRelational(llvm::CmpInst::Predicate op, llvm::Function * fop) {
+bool Unboxing::genericRelational(llvm::CmpInst::Predicate op) {
     llvm::Value * lhs = ins->getOperand(0);
     llvm::Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        return doubleRelational(lhs, rhs, lhsType, rhsType, op, fop);
+        return doubleRelational(lhs, rhs, lhsType, rhsType, op);
     }
 
     return false;
 }
 
-bool Unboxing::genericComparison(llvm::Value * lhs, llvm::Value * rhs,
-                                 AType * lhsType, AType * rhsType,
-                                 llvm::CmpInst::Predicate op, llvm::Function * dop, llvm::Function * cop) {
-    if (lhsType->isDouble() and rhsType->isDouble()) {
-        doubleRelational(lhs, rhs, lhsType, rhsType, op, dop);
-        return true;
-    }
-    if (lhsType->isCharacter() and rhsType->isCharacter()) {
-        updateCharOp(cop, lhs, rhs, AType::DV);
-        return true;
-    }
-    return false;
-}
-
-bool Unboxing::genericNeq() {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
-    AType * lhsType = state().get(lhs);
-    AType * rhsType = state().get(rhs);
-
-    if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(getGlobalContext(), APFloat(1.0));
-        updateDoubleScalar(res);
-        return true;
-    }
-
-    return genericComparison(lhs, rhs, lhsType, lhsType, FCmpInst::FCMP_ONE, m->doubleNeq, m->characterNeq);
-}
-
-
-bool Unboxing::genericEq() {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
-    AType * lhsType = state().get(lhs);
-    AType * rhsType = state().get(rhs);
-
-    if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(getGlobalContext(), APFloat(0.0));
-        updateDoubleScalar(res);
-        return true;
-    }
-
-    return genericComparison(lhs, rhs, lhsType, lhsType, FCmpInst::FCMP_OEQ, m->doubleEq, m->characterEq);
-}
 
 bool Unboxing::genericGetElement() {
     llvm::Value * src = ins->getOperand(0);
@@ -187,64 +95,6 @@ bool Unboxing::genericGetElement() {
                 return true;
             }
         }
-        if (idxType->isDouble()) {
-            updateDoubleOp(m->doubleGetElement, src, idx, AType::DV);
-            return true;
-        }
-    } else if (srcType->isCharacter() and idxType->isDouble()) {
-        src = CastInst::CreatePointerCast(src, type::ptrCharacterVector, "", ins); 
-        idx = CastInst::CreatePointerCast(src, type::ptrDoubleVector, "", ins); 
-        llvm::Value * res = RUNTIME_CALL(m->characterGetElement, src, idx);
-        state().update(res, AType::CV);
-        ins->replaceAllUsesWith(res);
-        return true;
-    }
-    return false;
-}
-
-bool Unboxing::genericC() {
-    // if all are double, or all are character, we can do special versions
-    CallInst * ci = reinterpret_cast<CallInst*>(ins);
-    bool canBeDV = true;
-    bool canBeCV = true;
-    for (unsigned i = 1; i < ci->getNumArgOperands(); ++i) {
-        AType * t = state().get(ci->getArgOperand(i));
-        canBeDV = canBeDV and t->isDouble();
-        canBeCV = canBeCV and t->isCharacter();
-        if (not canBeDV and not canBeCV)
-            return false;
-    }
-    std::vector<llvm::Value *> args;
-    args.push_back(ci->getArgOperand(0)); // size
-    for (unsigned i = 1; i < ci->getNumArgOperands(); ++i) {
-        llvm::Value * a = ci->getOperand(i);
-        args.push_back(canBeDV ?
-                CastInst::CreatePointerCast(a, type::ptrDoubleVector, "", ins) :
-                CastInst::CreatePointerCast(a, type::ptrCharacterVector, "", ins));
-    }
-    llvm::Value * res;
-    if (canBeDV) {
-        res = CallInst::Create(m->doublec, args, "", ins);
-        state().update(res, AType::DV);
-    } else {
-        assert (canBeCV);
-        res = CallInst::Create(m->characterc, args, "", ins);
-        state().update(res, AType::CV);
-    }
-    ins->replaceAllUsesWith(res);
-    return true;
-}
-
-bool Unboxing::genericEval() {
-    llvm::Value * arg = ins->getOperand(1);
-    AType * argType = state().get(arg);
-    if (argType->isCharacter()) {
-        arg = CastInst::CreatePointerCast(arg, type::ptrCharacterVector, "", ins); 
-
-        llvm::Value * res = RUNTIME_CALL(m->characterEval, ins->getOperand(0), arg);
-        state().update(res, AType::T);
-        ins->replaceAllUsesWith(res);
-        return true;
     }
     return false;
 }
@@ -261,27 +111,23 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
             if (CallInst * ci = dyn_cast<CallInst>(ins)) {
                 StringRef s = ci->getCalledFunction()->getName();
                 if (s == "genericAdd") {
-                    erase = genericAdd();
+                    erase = genericArithmetic(Instruction::FAdd);
                 } else if (s == "genericSub") {
-                    erase = genericArithmetic(Instruction::FSub, m->doubleSub);
+                    erase = genericArithmetic(Instruction::FSub);
                 } else if (s == "genericMul") {
-                    erase = genericArithmetic(Instruction::FMul, m->doubleMul);
+                    erase = genericArithmetic(Instruction::FMul);
                 } else if (s == "genericDiv") {
-                    erase = genericArithmetic(Instruction::FDiv, m->doubleDiv);
+                    erase = genericArithmetic(Instruction::FDiv);
                 } else if (s == "genericLt") {
-                    erase = genericRelational(FCmpInst::FCMP_OLT, m->doubleLt);
+                    erase = genericRelational(FCmpInst::FCMP_OLT);
                 } else if (s == "genericGt") {
-                    erase = genericRelational(FCmpInst::FCMP_OGT, m->doubleGt);
+                    erase = genericRelational(FCmpInst::FCMP_OGT);
                 } else if (s == "genericEq") {
-                    erase = genericEq();
+                    erase = genericRelational(FCmpInst::FCMP_OEQ);
                 } else if (s == "genericNeq") {
-                    erase = genericNeq();
+                    erase = genericRelational(FCmpInst::FCMP_ONE);
                 } else if (s == "genericGetElement") {
                     erase = genericGetElement();
-                } else if (s == "c") {
-                    erase = genericC();
-                } else if (s == "genericEval") {
-                    erase = genericEval();
                 }
             }
             if (erase) {

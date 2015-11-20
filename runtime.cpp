@@ -42,24 +42,11 @@ RVal * characterVectorLiteral(int cpIndex) {
 
 }
 
-DoubleVector * doubleFromValue(RVal * v) {
-    return static_cast<DoubleVector*>(v);
-}
-
 double scalarFromVector(DoubleVector * v) {
     if (v->size != 1)
         throw "not a scalar";
     return v->data[0];
 }
-
-CharacterVector * characterFromValue(RVal *v) {
-    return static_cast<CharacterVector*>(v);
-}
-
-RFun * functionFromValue(RVal *v) {
-    return static_cast<RFun*>(v);
-}
-
 
 double doubleGetSingleElement(DoubleVector * from, double index) {
     if (index < 0 or index >= from->size)
@@ -67,7 +54,7 @@ double doubleGetSingleElement(DoubleVector * from, double index) {
     return from->data[static_cast<unsigned>(index)];
 }
 
-DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
+RVal * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
     double * result = new double[resultSize];
     for (unsigned i = 0; i < resultSize; ++i) {
@@ -79,7 +66,7 @@ DoubleVector * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     return new DoubleVector(result, resultSize);
 }
 
-CharacterVector * characterGetElement(CharacterVector * from, DoubleVector * index) {
+RVal * characterGetElement(CharacterVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
     CharacterVector * result = new CharacterVector(resultSize);
     for (unsigned i = 0; i < resultSize; ++i) {
@@ -143,7 +130,7 @@ void genericSetElement(RVal * target, RVal * index, RVal * value) {
     }
 }
 
-DoubleVector * doubleAdd(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleAdd(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -151,7 +138,7 @@ DoubleVector * doubleAdd(DoubleVector * lhs, DoubleVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-CharacterVector * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
+RVal * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = lhs->size + rhs->size;
     CharacterVector * result = new CharacterVector(resultSize);
     memcpy(result->data, lhs->data, lhs->size);
@@ -172,7 +159,7 @@ RVal * genericAdd(RVal * lhs, RVal * rhs) {
     }
 }
 
-DoubleVector * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -190,7 +177,7 @@ RVal * genericSub(RVal * lhs, RVal * rhs) {
     return doubleSub(l, r);
 }
 
-DoubleVector * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -206,7 +193,7 @@ RVal * genericMul(RVal * lhs, RVal * rhs) {
     return doubleMul(l, r);
 }
 
-DoubleVector * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -222,7 +209,7 @@ RVal * genericDiv(RVal * lhs, RVal * rhs) {
     return doubleDiv(l, r);
 }
 
-DoubleVector * doubleEq(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleEq(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -230,7 +217,7 @@ DoubleVector * doubleEq(DoubleVector * lhs, DoubleVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-DoubleVector * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
+RVal * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -253,7 +240,7 @@ RVal * genericEq(RVal * lhs, RVal * rhs) {
     return nullptr;
 }
 
-DoubleVector * doubleNeq(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleNeq(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -261,7 +248,7 @@ DoubleVector * doubleNeq(DoubleVector * lhs, DoubleVector * rhs) {
     return new DoubleVector(result, resultSize);
 }
 
-DoubleVector * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
+RVal * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -284,7 +271,7 @@ RVal * genericNeq(RVal * lhs, RVal * rhs) {
     return nullptr;
 }
 
-DoubleVector * doubleLt(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleLt(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -301,7 +288,7 @@ RVal * genericLt(RVal * lhs, RVal * rhs) {
     return doubleLt(l, r);
 }
 
-DoubleVector * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
+RVal * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
     double * result = new double[resultSize];
     for (int i = 0; i < resultSize; ++i)
@@ -365,8 +352,8 @@ double length(RVal * v) {
     throw "Cannot determine length of unknown object";
 }
 
-CharacterVector * type(RVal * RVal) {
-    switch (RVal->type()) {
+RVal * type(RVal * v) {
+    switch (v->type()) {
     case Type::Double:
         return new CharacterVector("double");
     case Type::Character:
@@ -406,7 +393,7 @@ RVal * genericEval(Environment * env, RVal * arg) {
     throw "Only character vectors can be evaluated";
 }
 
-DoubleVector * doublec(int size, ...) {
+RVal * doublec(int size, ...) {
     std::vector<DoubleVector *> args;
     va_list ap;
     va_start(ap, size);
@@ -425,7 +412,7 @@ DoubleVector * doublec(int size, ...) {
     return new DoubleVector(result, size);
 }
 
-CharacterVector * characterc(int size, ...) {
+RVal * characterc(int size, ...) {
     std::vector<CharacterVector *> args;
     va_list ap;
     va_start(ap, size);
@@ -494,9 +481,4 @@ RVal * c(int size, ...) {
     }
 }
 
-
-
-
-
 } // extern "C"
-

@@ -374,7 +374,7 @@ double length(RVal * value);
 /** Returns the type of a value as a character vector: 'double',
     'character', or 'function'.
  */
-CharacterVector * type(RVal * value);
+RVal * type(RVal * value);
 
 /** Evaluates character vector in env. */
 RVal * eval(Environment * env, char const * value);
