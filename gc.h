@@ -10,7 +10,14 @@
 #include <cassert>
 #include <cstring>
 
+#ifndef __GNUG__
+#include <intrin.h>
+#endif
+
 // #define GC_DEBUG 1
+
+void spillRegistersAndScanStack();
+void _scanStack();
 
 namespace gc {
 
@@ -349,12 +356,19 @@ private:
         // Clobber all registers:
         // -> forces all variables currently hold in registers to be spilled
         //    to the stack where our stackScan can find them.
-        __asm__ __volatile__ ( "nop" : :
-                : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
-                "%r8", "%r9", "%r10", "%r11", "%r12",
-                "%r13", "%r14", "%r15");
+#ifdef __GNUG__
+        __asm__ __volatile__("nop" : :
+            : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
+            "%r8", "%r9", "%r10", "%r11", "%r12",
+            "%r13", "%r14", "%r15");
         _scanStack();
+#else 
+        spillRegistersAndScanStack();
+#endif
+
     }
+
+
 
     // Performance Hack: we assume the first page of memory not to contain any
     // heap pointers. Maybe there is also a reasonable upper limit?
@@ -364,17 +378,6 @@ private:
 
     const void * BOTTOM_OF_STACK;
 
-    // The stack scan traverses the memory of the C stack and looks at every
-    // possible stack slot. If we find a valid heap pointer we mark the
-    // object as well as all objects reachable through it as live.
-    void __attribute__ ((noinline)) _scanStack() {
-        void ** p = (void**)__builtin_frame_address(0);
-        while (p < BOTTOM_OF_STACK) {
-            if (maybePointer(*p))
-                markMaybe(*p);
-            p++;
-        }
-    }
 
     void mark() {
         // TODO: maybe some mechanism to define static roots?
@@ -444,10 +447,16 @@ private:
     // TODO: setting the BOTTOM_OF_STACK here is a bit brittle, as we just
     // assume that the site of the first allocation is the earliest call frame
     // holding live objects.
+#ifdef __GNUG__
     GarbageCollector() : BOTTOM_OF_STACK(__builtin_frame_address(0)) { }
+#else
+    GarbageCollector() : BOTTOM_OF_STACK(_AddressOfReturnAddress()) {}
+#endif
 
     GarbageCollector(GarbageCollector const &) = delete;
     void operator=(GarbageCollector const &) = delete;
+
+    friend void ::_scanStack();
 };
 
 
@@ -461,7 +470,8 @@ struct HeapObject {
         return gc::GarbageCollector::alloc<OBJECT>();
     }
 
-    void operator delete(void*) = delete;
+    void operator delete(void*) {
+    };
 };
 
 #endif

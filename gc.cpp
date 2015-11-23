@@ -1,7 +1,29 @@
 #include "gc.h"
 #include "runtime.h"
 
+// The stack scan traverses the memory of the C stack and looks at every
+// possible stack slot. If we find a valid heap pointer we mark the
+// object as well as all objects reachable through it as live.
+#ifdef __GNUG__
+void __attribute__((noinline)) _scanStack() {
+    void ** p = (void**)__builtin_frame_address(0);
+#else
+__declspec(noinline) void _scanStack() {
+    void ** p = (void**)_AddressOfReturnAddress();
+#endif
+    gc::GarbageCollector & inst = gc::GarbageCollector::inst();
+
+    while (p < inst.BOTTOM_OF_STACK) {
+        if (inst.maybePointer(*p))
+            inst.markMaybe(*p);
+        p++;
+    }
+}
+
+
 namespace gc {
+
+
 
 /*
  * Type specific parts
