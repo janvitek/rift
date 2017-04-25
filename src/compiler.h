@@ -10,6 +10,9 @@
 
 namespace rift {
 
+llvm::LLVMContext & getContext();
+
+
 /** Declaration of all Rift types, initialized in the cpp file.  */
 namespace type {
 
@@ -99,7 +102,7 @@ private:
         llvm::AttributeSet as;
 	llvm::AttrBuilder b;
 	b.addAttribute(llvm::Attribute::ReadNone);
-	as = llvm::AttributeSet::get(llvm::getGlobalContext(), 
+    as = llvm::AttributeSet::get(rift::getContext(),
 				     llvm::AttributeSet::FunctionIndex, 
 				     b);
         f->setAttributes(as);
@@ -108,7 +111,7 @@ private:
 
 public:
     RiftModule() :
-        llvm::Module("rift", llvm::getGlobalContext()) {}
+        llvm::Module("rift", rift::getContext()) {}
 
     /** Shorthand for pure fun.   */
 #define DEF_FUN_PURE(name, signature) \

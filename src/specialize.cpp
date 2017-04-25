@@ -107,7 +107,7 @@ bool Specialize::genericNeq() {
     AType * rhsType = state().get(rhs);
 
     if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(getGlobalContext(), APFloat(1.0));
+        llvm::Value * res = ConstantFP::get(getContext(), APFloat(1.0));
         updateDoubleScalar(res);
         return true;
     }
@@ -124,7 +124,7 @@ bool Specialize::genericEq() {
     AType * rhsType = state().get(rhs);
 
     if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(getGlobalContext(), APFloat(0.0));
+        llvm::Value * res = ConstantFP::get(getContext(), APFloat(0.0));
         updateDoubleScalar(res);
         return true;
     }
@@ -205,7 +205,7 @@ bool Specialize::runOnFunction(llvm::Function & f) {
     for (auto & b : f) {
         auto i = b.begin();
         while (i != b.end()) {
-            ins = i;
+            ins = &*i;
             bool erase = false;
             if (CallInst * ci = dyn_cast<CallInst>(ins)) {
                 StringRef s = ci->getCalledFunction()->getName();
@@ -234,7 +234,7 @@ bool Specialize::runOnFunction(llvm::Function & f) {
                 }
             }
             if (erase) {
-                llvm::Instruction * v = i;
+                llvm::Instruction * v = &*i;
                 ++i;
                 state().erase(v);
                 v->eraseFromParent();

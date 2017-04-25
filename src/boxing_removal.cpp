@@ -37,7 +37,7 @@ bool BoxingRemoval::runOnFunction(llvm::Function & f) {
                                               } */
                 }
                 if (erase) {
-                    llvm::Instruction * v = i;
+                    llvm::Instruction * v = &*i;
                     ++i;
                     v->eraseFromParent();
                     c = true;

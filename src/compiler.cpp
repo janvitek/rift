@@ -33,11 +33,11 @@ namespace type {
 
 StructType * environmentType();
 
-llvm::Type * Void = llvm::Type::getVoidTy(getGlobalContext());
-llvm::Type * Int = IntegerType::get(getGlobalContext(), 32);
-llvm::Type * Double = llvm::Type::getDoubleTy(getGlobalContext());
-llvm::Type * Character = IntegerType::get(getGlobalContext(), 8);
-llvm::Type * Bool = IntegerType::get(getGlobalContext(), 1);
+llvm::Type * Void = llvm::Type::getVoidTy(getContext());
+llvm::Type * Int = IntegerType::get(getContext(), 32);
+llvm::Type * Double = llvm::Type::getDoubleTy(getContext());
+llvm::Type * Character = IntegerType::get(getContext(), 8);
+llvm::Type * Bool = IntegerType::get(getContext(), 1);
 
 PointerType * ptrInt = PointerType::get(Int, 0);
 PointerType * ptrCharacter = PointerType::get(Character, 0);
@@ -100,7 +100,7 @@ FunctionType * d_dv = FUN_TYPE(Double, ptrDoubleVector);
 FunctionType * f_v = FUN_TYPE(ptrFunction, ptrValue);
 
 StructType * environmentType() {
-    StructType * result = StructType::create(getGlobalContext(), "Environment");
+    StructType * result = StructType::create(getContext(), "Environment");
     ptrEnvironment = PointerType::get(result, 0);
     result->setBody(ptrEnvironment, ptrBinding, Int, nullptr);
     return result;
@@ -227,7 +227,7 @@ public:
       */
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
-        m->setDataLayout(*ee->getDataLayout());
+        //m->setDataLayout(*ee->getDataLayout());
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
@@ -264,14 +264,14 @@ public:
                 llvm::Function::ExternalLinkage,
                 "riftFunction",
                 m);
-        b = BasicBlock::Create(getGlobalContext(),
+        b = BasicBlock::Create(getContext(),
                 "entry",
                 f,
                 nullptr);
         // Get the (single) argument of the function and store is as the
         // environment
         llvm::Function::arg_iterator args = f->arg_begin();
-        env = args++;
+        env = &*args;
         env->setName("env");
 
         if (node->body->body.empty()) {
@@ -282,7 +282,7 @@ public:
         }
 
         // Append return instruction of the last used value
-        ReturnInst::Create(getGlobalContext(), result, b);
+        ReturnInst::Create(getContext(), result, b);
 
         // Register and get index
         int result = Pool::addFunction(node, f);
@@ -295,12 +295,12 @@ public:
 
     /** Create Value from double scalar .  */
     llvm::Value * fromDouble(double value) {
-        return ConstantFP::get(getGlobalContext(), APFloat(value));
+        return ConstantFP::get(getContext(), APFloat(value));
     }
 
     /** Create Value from integer. */
     llvm::Value * fromInt(int value) {
-        return ConstantInt::get(getGlobalContext(), APInt(32, value));
+        return ConstantInt::get(getContext(), APInt(32, value));
     }
 
     /** Safeguard against forgotten  visitor methods.   */
@@ -462,9 +462,9 @@ public:
         node->guard->accept(this);
         llvm::Value * guard = RUNTIME_CALL(toBoolean, result);
         // Basic blocks and guard...
-        BasicBlock * ifTrue = BasicBlock::Create(getGlobalContext(), "trueCase", f, nullptr);
-        BasicBlock * ifFalse = BasicBlock::Create(getGlobalContext(), "falseCase", f, nullptr);
-        BasicBlock * merge = BasicBlock::Create(getGlobalContext(), "afterIf", f, nullptr);
+        BasicBlock * ifTrue = BasicBlock::Create(getContext(), "trueCase", f, nullptr);
+        BasicBlock * ifFalse = BasicBlock::Create(getContext(), "falseCase", f, nullptr);
+        BasicBlock * merge = BasicBlock::Create(getContext(), "afterIf", f, nullptr);
         // Branch...
         BranchInst::Create(ifTrue, ifFalse, guard, b);
         // Current BB set to true case, compile, remember result and merge
@@ -494,9 +494,9 @@ public:
       */
     void visit(ast::WhileLoop * node) override {
         // create BB for loop start (evaluation of the guard), loop body, and exit
-        BasicBlock * guard = BasicBlock::Create(getGlobalContext(), "guard", f, nullptr);
-        BasicBlock * body = BasicBlock::Create(getGlobalContext(), "body", f, nullptr);
-        BasicBlock * cont = BasicBlock::Create(getGlobalContext(), "cont", f, nullptr);
+        BasicBlock * guard = BasicBlock::Create(getContext(), "guard", f, nullptr);
+        BasicBlock * body = BasicBlock::Create(getContext(), "body", f, nullptr);
+        BasicBlock * cont = BasicBlock::Create(getContext(), "cont", f, nullptr);
 
         // we need a default value for the loop to evaluate to
         BasicBlock * entry = b;
@@ -530,6 +530,14 @@ public:
     }
 
 private:
+
+    static LLVMContext context;
+
+    friend LLVMContext & getContext() {
+        return Compiler::context;
+    }
+
+
     /** Current BB */
     BasicBlock * b;
 
@@ -545,6 +553,8 @@ private:
     /* Current Environment */
     llvm::Value * env;
 };
+
+LLVMContext Compiler::context;
 
 
 FunPtr compile(ast::Fun * what) {

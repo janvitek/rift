@@ -106,7 +106,7 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
     for (auto & b : f) {
         auto i = b.begin();
         while (i != b.end()) {
-            ins = i;
+            ins = &*i;
             bool erase = false;
             if (CallInst * ci = dyn_cast<CallInst>(ins)) {
                 StringRef s = ci->getCalledFunction()->getName();
@@ -131,7 +131,7 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
                 }
             }
             if (erase) {
-                llvm::Instruction * v = i;
+                llvm::Instruction * v = &*i;
                 ++i;
                 state().erase(v);
                 v->eraseFromParent();

@@ -1,39 +1,46 @@
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.4.3)
 
 project(rift)
 
-#SET(CMAKE_C_COMPILER "/usr/bin/clang-3.5")
-#SET(CMAKE_CXX_COMPILER "/usr/bin/clang++-3.5")
+# see if there is local configuration available
 
+include(${CMAKE_SOURCE_DIR}/local/cmake.cmake OPTIONAL)
 
-# set LLVM
+# setup LLVM
 
 find_package(LLVM REQUIRED CONFIG)
+
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+# Set your project compile flags.
+# E.g. if using the C++ header files
+# you will need to enable C++11 support
+# for your compiler.
+
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
+# Now build our tools
 
-# TODO for now, make all builds debug
-set(CMAKE_BUILD_TYPE Debug)
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
-# build the shared library for the JIT
-if(${CMAKE_CXX_COMPILER_ID} EQUAL "MSVC")
-    enable_language(ASM_MASM)
-    add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-    file(GLOB SRC "*.cpp" "*.h" "*.asm" "tests/*.ri")
-else()
-    add_definitions(-Wall -std=c++11 -Wno-unknown-pragmas)
-    file(GLOB SRC "*.cpp" "*.h" "tests/*.ri")
-endif()
-
-
+add_definitions(-Wall -std=c++11 -Wno-unknown-pragmas)
+file(GLOB SRC
+    "src/*.cpp"
+    "src/*.h"
+    "src/**/*.cpp"
+    "src/**/*.h"
+    "README.md"
+    "LICENSE"
+    "notes/*"
+)
 add_executable(${PROJECT_NAME} ${SRC})
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
-llvm_map_components_to_libnames(llvm_libs support core mcjit native irreader linker ipo executionengine runtimedyld)
-
+llvm_map_components_to_libnames(llvm_libs core support mcjit native irreader linker ipo executionengine runtimedyld)
+#llvm_map_components_to_libnames(llvm_libs all)
 # Link against LLVM libraries
 target_link_libraries(${PROJECT_NAME} ${llvm_libs})
+message(STATUS "LLVM libs detected: ${llvm_libs}")
