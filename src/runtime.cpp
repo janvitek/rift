@@ -9,8 +9,9 @@
 #include "runtime.h"
 #include "lexer.h"
 #include "parser.h"
-#include "compiler.h"
 #include "pool.h"
+
+#include "compiler/jit.h"
 
 using namespace std;
 using namespace rift;
@@ -371,7 +372,7 @@ RVal * eval(Environment * env, char const * value) {
     ast::Fun * x = new ast::Fun(p.parse(s));
     if (x->body->body.empty())
         return new DoubleVector(0);
-    FunPtr f = compile(x);
+    FunPtr f = JIT::compile(x);
     auto start = chrono::high_resolution_clock::now();
     RVal * result = f(env);
     auto t = chrono::high_resolution_clock::now() - start;

@@ -6,10 +6,11 @@
 #include "ast.h"
 #include "parser.h"
 #include "runtime.h"
-#include "compiler.h"
 #include "tests.h"
 #include "rift.h"
 #include "gc.h"
+
+#include "compiler/jit.h"
 
 using namespace std;
 using namespace llvm;
@@ -64,13 +65,11 @@ void runScript(char const * filename) {
         Parser p;
         ast::Fun * x = new ast::Fun(p.parse(s));
         Environment * env = new Environment(nullptr);
-        auto res = compile(x)(env);
+        auto res = JIT::compile(x)(env);
         res->print(cout);
     }
 
 }
-
-bool DEBUG = false;
 
 int main(int argc, char * argv[]) {
     // initialize the JIT
@@ -84,7 +83,7 @@ int main(int argc, char * argv[]) {
     int argPos = 1;
     if (argc > argPos) {
         if (0 == strncmp("-d", argv[argPos], 2)) {
-            DEBUG = true;
+            JIT::DEBUG = true;
             argPos++;
         }
     }

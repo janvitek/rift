@@ -2,7 +2,6 @@
 #include <ciso646>
 
 #include "type_analysis.h"
-#include "compiler.h"
 #include "rift.h"
 
 using namespace std;

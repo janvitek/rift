@@ -3,8 +3,9 @@
 #include <ciso646>
 
 #include "specialize.h"
-#include "compiler.h"
 #include "rift.h"
+#include "compiler/compiler.h"
+#include "compiler/module.h"
 
 using namespace std;
 using namespace llvm;
@@ -107,7 +108,7 @@ bool Specialize::genericNeq() {
     AType * rhsType = state().get(rhs);
 
     if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(getContext(), APFloat(1.0));
+        llvm::Value * res = ConstantFP::get(Compiler::context(), APFloat(1.0));
         updateDoubleScalar(res);
         return true;
     }
@@ -124,7 +125,7 @@ bool Specialize::genericEq() {
     AType * rhsType = state().get(rhs);
 
     if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(getContext(), APFloat(0.0));
+        llvm::Value * res = ConstantFP::get(Compiler::context(), APFloat(0.0));
         updateDoubleScalar(res);
         return true;
     }

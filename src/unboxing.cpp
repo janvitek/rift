@@ -3,8 +3,8 @@
 #include <ciso646>
 
 #include "unboxing.h"
-#include "compiler.h"
 #include "rift.h"
+#include "compiler/module.h"
 
 using namespace std;
 using namespace llvm;

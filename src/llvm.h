@@ -2,8 +2,6 @@
 #ifndef LLVM_H
 #define LLVM_H
 
-#pragma warning(push, 0)
-#pragma warning(disable : 4996)
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
@@ -26,7 +24,8 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h> 
 #include <llvm/Pass.h>
-#pragma warning(pop)
+
+#undef DEBUG
 
 
 #endif // LLVM_H
