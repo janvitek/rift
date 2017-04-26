@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.4.3)
 
 project(rift)
 
+# if no debug configuration specified, use debug as default
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
+    message(STATUS "Build type set to Debug because no build type was explicitly specified")
+endif()
+
 # see if there is local configuration available
 
 include(${CMAKE_SOURCE_DIR}/local/cmake.cmake OPTIONAL)
@@ -21,6 +27,16 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-std=c++11 -g)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_definitions(-std=c++11 -O2)
+else()
+    message(FATAL_ERROR "Unknown build type: ${CMAKE_BUILD_TYPE}")
+endif()
+
+
 # Now build our tools
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -34,13 +50,14 @@ file(GLOB SRC
     "README.md"
     "LICENSE"
     "notes/*"
+    "teaching/*"
 )
+
 add_executable(${PROJECT_NAME} ${SRC})
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
 llvm_map_components_to_libnames(llvm_libs core support mcjit native irreader linker ipo executionengine runtimedyld)
-#llvm_map_components_to_libnames(llvm_libs all)
+
 # Link against LLVM libraries
 target_link_libraries(${PROJECT_NAME} ${llvm_libs})
-message(STATUS "LLVM libs detected: ${llvm_libs}")

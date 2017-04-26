@@ -28,9 +28,10 @@ And the debug build as well:
     cmake -G "Ninja" -DLLVM_OPTIMIZED_TABLEGEN=1 -DLLVM_ENABLE_RTTI=1 -DLLVM_TARGETS_TO_BUILD="X86" -DCMAKE_BUILD_TYPE="Debug" --enable-debug-symbols --with-oprofile ../src
     ninja
 
-> The `CppBackend` which created the `C++` code for creating the IR has been removed from LLVM because it was no longer maintained. See [here](https://reviews.llvm.org/rL268631).
-
 ## Rift
+
+In the `rift` directory, first go to the `local` folder
+
 
 
 
