@@ -62,3 +62,6 @@ Makefile
 *.swp
 massif.out*
 perf.data
+
+local/cmake.cmake
+
