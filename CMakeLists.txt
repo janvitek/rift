@@ -51,6 +51,7 @@ file(GLOB SRC
     "LICENSE"
     "notes/*"
     "teaching/*"
+    "local/*"
 )
 
 add_executable(${PROJECT_NAME} ${SRC})
