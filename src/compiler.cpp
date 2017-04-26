@@ -19,6 +19,12 @@ using namespace std;
 
 namespace rift {
 
+LLVMContext & getContext() {
+    static LLVMContext context;
+    return context;
+}
+
+
 namespace type {
 
 /** Initialization type declarations. Each Rift type must be declared to
@@ -206,7 +212,6 @@ public:
     FunPtr compile(ast::Fun * what) {
         unsigned start = Pool::functionsCount();
         int result = compileFunction(what);
-        throw "NOT IMPLEMENTED";
         ExecutionEngine * engine =
             EngineBuilder(std::unique_ptr<Module>(m))
                 .setMCJITMemoryManager(
@@ -533,13 +538,6 @@ public:
 
 private:
 
-    static LLVMContext context;
-
-    friend LLVMContext & getContext() {
-        return Compiler::context;
-    }
-
-
     /** Current BB */
     BasicBlock * b;
 
@@ -556,13 +554,13 @@ private:
     llvm::Value * env;
 };
 
-LLVMContext Compiler::context;
-
-
 FunPtr compile(ast::Fun * what) {
     Compiler c;
     return c.compile(what);
 }
+
+
+
 
 } // namespace rift
 
