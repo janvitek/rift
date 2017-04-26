@@ -111,6 +111,7 @@ StructType * environmentType() {
     support for resolving the Rift runtime functions. This is achieved by
     extending the behavior of the getSymbolAddress function.
   */
+
 class MemoryManager : public llvm::SectionMemoryManager {
 
 public:
@@ -205,6 +206,7 @@ public:
     FunPtr compile(ast::Fun * what) {
         unsigned start = Pool::functionsCount();
         int result = compileFunction(what);
+        throw "NOT IMPLEMENTED";
         ExecutionEngine * engine =
             EngineBuilder(std::unique_ptr<Module>(m))
                 .setMCJITMemoryManager(
@@ -227,7 +229,7 @@ public:
       */
     void optimizeModule(ExecutionEngine * ee) {
         auto *pm = new legacy::FunctionPassManager(m);
-        //m->setDataLayout(*ee->getDataLayout());
+        m->setDataLayout(ee->getDataLayout());
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());

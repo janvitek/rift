@@ -126,7 +126,7 @@ public:
     typedef AbstractState<AType*, llvm::Value*> State;
     static char ID;
 
-    char const * getPassName() const override { return "TypeAnalysis"; }
+    llvm::StringRef getPassName() const override { return "TypeAnalysis"; }
 
     TypeAnalysis() : llvm::FunctionPass(ID) {}
 

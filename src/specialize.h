@@ -22,7 +22,7 @@ public:
 
     Specialize() : llvm::FunctionPass(ID) {}
 
-    char const * getPassName() const override {
+    llvm::StringRef getPassName() const override {
         return "Specialize";
     }
 

@@ -8,7 +8,7 @@ For Windows user, enable the Windows Subsystem for Linux and then run the comman
 
 ## Prerequisites
 
-    sudo apt-get install cmake g++ git  ninja-build svn
+    sudo apt-get install cmake g++ git  ninja-build subversion
 
 ## LLVM Setup
 

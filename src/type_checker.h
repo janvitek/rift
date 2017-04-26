@@ -33,7 +33,7 @@ public:
 
     static char ID;
 
-    char const * getPassName() const override {
+    llvm::StringRef getPassName() const override {
         return "TypeChecker";
     }
 
