@@ -15,6 +15,7 @@ enum class Type {
     Character,
     Function,
     Environment,
+    Bindings,
 };
 
 /*
@@ -124,9 +125,64 @@ struct DoubleVector : RVal {
 
 Binding is a pair of symbol and corresponding Value. 
 */
-struct Binding {
-    rift::Symbol symbol;
-    RVal * value;
+struct Bindings : RVal {
+    const static size_t initialSize = 4;
+
+    struct Binding {
+        rift::Symbol symbol;
+        RVal * value;
+    };
+
+    unsigned size = 0;
+    unsigned available;
+    
+    static Bindings* New(size_t initial = initialSize) {
+        void *store = gc::GarbageCollector::alloc(
+                sizeof(Binding) * initial + sizeof(Bindings));
+        return new (store) Bindings(initial);
+    }
+
+    /** Returns the value corresponding to given Symbol. 
+
+    If the symbol is not found in current bindings, recursively searches parent environments as well. 
+     */
+    RVal * get(rift::Symbol symbol) {
+        for (unsigned i = 0; i < size; ++i)
+            if (bindings[i].symbol == symbol)
+                return bindings[i].value;
+        return nullptr;
+    }
+
+    /** Assigns given value to symbol. 
+    
+    If the symbol already exists it the environment, updates its value,
+    otherwise creates new binding for the symbol and attaches it to the value. 
+     */
+    bool set(rift::Symbol symbol, RVal * value) {
+        for (unsigned i = 0; i < size; ++i)
+            if (bindings[i].symbol == symbol) {
+                bindings[i].value = value;
+                return true;
+            }
+        if (size < available) {
+            bindings[size].symbol = symbol;
+            bindings[size].value = value;
+            size++;
+            return true;
+        }
+        return false;
+    }
+
+    Bindings(size_t initial) : RVal(Type::Bindings), available(initial) {}
+
+    Bindings* grow() {
+        Bindings* g = Bindings::New(available+initialSize);
+        memcpy(g->bindings, bindings, sizeof(Binding)*size);
+        g->size = size;
+        return g;
+    }
+
+    Binding bindings[];
 };
 
 /** Rift Environment. 
@@ -140,15 +196,8 @@ struct Environment : RVal {
     Nullptr if top environment. 
      */
     Environment * parent;
-    
-    /** Array of active bindings. 
-     */
-    Binding * bindings;
+    Bindings * bindings;
 
-    /** Size of the bindings array. 
-     */
-    unsigned size;
-    
     static Environment* New(Environment* parent) {
         void *store = gc::GarbageCollector::alloc(sizeof(Environment));
         return new (store) Environment(parent);
@@ -158,19 +207,16 @@ struct Environment : RVal {
      */
     Environment(Environment* parent):
         RVal(Type::Environment),
-        parent(parent),
-        bindings(nullptr),
-        size(0) {
+        parent(parent) {
+            bindings = nullptr; // important because next line might trigger gc
+            bindings = Bindings::New();
     }
 
-    /** Returns the value corresponding to given Symbol. 
-
-    If the symbol is not found in current bindings, recursively searches parent environments as well. 
-     */
     RVal * get(rift::Symbol symbol) {
-        for (unsigned i = 0; i < size; ++i)
-            if (bindings[i].symbol == symbol)
-                return bindings[i].value;
+        RVal* res = bindings->get(symbol);
+        if (res)
+            return res;
+
         if (parent != nullptr)
             return parent->get(symbol);
         else
@@ -183,23 +229,13 @@ struct Environment : RVal {
     otherwise creates new binding for the symbol and attaches it to the value. 
      */
     void set(rift::Symbol symbol, RVal * value) {
-        for (unsigned i = 0; i < size; ++i)
-            if (bindings[i].symbol == symbol) {
-                bindings[i].value = value;
-                return;
-            }
-        Binding * n = new Binding[size + 1];
-        memcpy(n, bindings, size * sizeof(Binding));
-        delete [] bindings;
-        bindings = n;
-        bindings[size].symbol = symbol;
-        bindings[size].value = value;
-        ++size;
+        if (bindings->set(symbol, value))
+            return;
+
+        bindings = bindings->grow();
+        assert(bindings->set(symbol, value));
     }
 
-    ~Environment() {
-        delete [] bindings;
-    }
 };
 
 /** Pointer to Rift function. These functions all takes Environment* and

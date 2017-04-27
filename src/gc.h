@@ -129,7 +129,7 @@ public:
         objSize.fill(0);
 
         Free* first = (Free*)getAt(0);
-        first->next = NULL;
+        first->next = nullptr;
         first->nodes = pageSize;
         freelist.next = first;
         freelist.nodes = 0;
@@ -154,11 +154,15 @@ public:
     }
 
     void verify() const {
+        size_t foundFree = 0;
         Free* f = freelist.next;
         while (f) {
+            auto i __attribute__((unused)) = getIndex(f);
             assert(!mark[i] && !objSize[i]);
+            foundFree += f->nodes * nodeSize;
             f = f->next;
         }
+        assert(foundFree == freeSpace);
 
         for (index_t i = 0; i < pageSize; ++i) {
             assert(objSize[i] || !mark[i]);

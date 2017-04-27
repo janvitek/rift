@@ -21,13 +21,21 @@ void GarbageCollector::visitChildren(RVal* val) {
     switch (val->type) {
         case Type::Environment: {
             Environment* env = (Environment*)val;
-            for (unsigned i = 0; i < env->size; ++i) {
-                mark(env->bindings[i].value);
-            }
+            if (env->bindings)
+                mark(env->bindings);
             if (env->parent)
                 mark(env->parent);
             break;
         }
+
+        case Type::Bindings: {
+            Bindings* env = (Bindings*)val;
+            for (unsigned i = 0; i < env->size; ++i) {
+                mark(env->bindings[i].value);
+            }
+            break;
+        }
+
 
         case Type::Function: {
             RFun* fun = (RFun*)val;
