@@ -7,6 +7,8 @@
 #include "module.h"
 #include "memory_manager.h"
 
+#include "rift.h"
+
 #include "type_checker.h"
 #include "type_analysis.h"
 #include "unboxing.h"
@@ -27,11 +29,11 @@ public:
         unsigned start = Pool::functionsCount();
         int result = c.compile(f);
         llvm::ExecutionEngine * engine =
-            llvm::EngineBuilder(std::unique_ptr<llvm::Module>(c.m))
+            llvm::EngineBuilder(std::unique_ptr<llvm::Module>(c.m.get()))
                 .setMCJITMemoryManager(
                         std::unique_ptr<MemoryManager>(new MemoryManager()))
                 .create();
-        optimizeModule(engine, c.m);
+        optimizeModule(engine, c.m.get());
         engine->finalizeObject();
         // Compile newly registered functions; update their native code in the
         // registered functions vector
@@ -42,9 +44,32 @@ public:
         return Pool::getFunction(result)->code;
     }
 
-    static bool DEBUG;
-
 private:
+
+    static void optimize() {
+//        llvm::FunctionPassManager
+    }
+
+/*
+    void InitializeModuleAndPassManager(void) {
+      // Open a new module.
+      TheModule = llvm::make_unique<Module>("my cool jit", TheContext);
+
+      // Create a new pass manager attached to it.
+      TheFPM = llvm::make_unique<FunctionPassManager>(TheModule.get());
+
+      // Do simple "peephole" optimizations and bit-twiddling optzns.
+      TheFPM->add(createInstructionCombiningPass());
+      // Reassociate expressions.
+      TheFPM->add(createReassociatePass());
+      // Eliminate Common SubExpressions.
+      TheFPM->add(createGVNPass());
+      // Simplify the control flow graph (deleting unreachable blocks, etc).
+      TheFPM->add(createCFGSimplificationPass());
+
+      TheFPM->doInitialization();
+    }     */
+
 
     /** Optimize on the bitcode before native code generation. The
       TypeAnalysis, Unboxing and BoxingRemoval are Rift passes, the rest is

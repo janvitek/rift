@@ -28,7 +28,7 @@ int Compiler::compile(ast::Fun * node) {
     f = llvm::Function::Create(type::NativeCode,
             llvm::Function::ExternalLinkage,
             "riftFunction",
-            m);
+            m.get());
     llvm::BasicBlock * entry = llvm::BasicBlock::Create(context(),
             "entry",
             f,

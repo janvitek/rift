@@ -2,6 +2,4 @@
 
 namespace rift {
 
-bool JIT::DEBUG = false;
-
 }

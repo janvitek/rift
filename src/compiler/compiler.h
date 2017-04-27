@@ -2,6 +2,7 @@
 #include "llvm.h"
 #include "ast.h"
 #include "runtime.h"
+#include "module.h"
 
 namespace rift {
 
@@ -66,7 +67,7 @@ private:
     llvm::Value * result;
     llvm::Value * env;
 
-    RiftModule * m;
+    std::unique_ptr<RiftModule> m;
     llvm::Function * f;
     llvm::IRBuilder<>  * b;
 

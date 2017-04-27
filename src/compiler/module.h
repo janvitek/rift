@@ -1,16 +1,13 @@
 #pragma once
 #include "llvm.h"
 #include "runtime.h"
-#include "compiler.h"
 #include "types.h"
 
 namespace rift {
 
 class RiftModule : public llvm::Module {
 public:
-    RiftModule() :
-        llvm::Module("rift", Compiler::context()) {
-    }
+    RiftModule();
 
 #define DEF_FUN_PURE(NAME, SIGNATURE) \
     llvm::Function * NAME = declarePureFunction(#NAME, SIGNATURE, this)
@@ -64,20 +61,10 @@ public:
 
 private:
 
-    static llvm::Function * declareFunction(char const * name, llvm::FunctionType * signature, llvm::Module * m) {
-        return llvm::Function::Create(signature, llvm::Function::ExternalLinkage, name, m);
-    }
+    static llvm::Function * declareFunction(char const * name, llvm::FunctionType * signature, llvm::Module * m);
 
     /** Adds attribute readnone (pure function in LLVM) to function.  */
-    static llvm::Function * declarePureFunction(char const * name, llvm::FunctionType * signature, llvm::Module * m) {
-        llvm::Function * f = declareFunction(name, signature, m);
-        llvm::AttributeSet as;
-        llvm::AttrBuilder b;
-        b.addAttribute(llvm::Attribute::ReadNone);
-        as = llvm::AttributeSet::get(Compiler::context(),llvm::AttributeSet::FunctionIndex, b);
-        f->setAttributes(as);
-        return f;
-    }
+    static llvm::Function * declarePureFunction(char const * name, llvm::FunctionType * signature, llvm::Module * m);
 
 
 };

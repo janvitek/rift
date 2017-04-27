@@ -18,6 +18,8 @@ using namespace rift;
 
 extern double eval_time;
 
+bool DEBUG = false;
+
 void interactive() {
     cout << "rift console - type exit to quit" << endl;
     Environment * env = new Environment(nullptr);
@@ -83,7 +85,7 @@ int main(int argc, char * argv[]) {
     int argPos = 1;
     if (argc > argPos) {
         if (0 == strncmp("-d", argv[argPos], 2)) {
-            JIT::DEBUG = true;
+            DEBUG = true;
             argPos++;
         }
     }
