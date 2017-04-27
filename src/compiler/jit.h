@@ -33,7 +33,11 @@ public:
                 .setMCJITMemoryManager(
                         std::unique_ptr<MemoryManager>(new MemoryManager()))
                 .create();
-        optimizeModule(engine, c.m.get());
+        // set data layout accordingly
+        c.m->setDataLayout(engine->getDataLayout());
+        // optimize the module
+        optimizeModule(c.m.get());
+
         engine->finalizeObject();
         // Compile newly registered functions; update their native code in the
         // registered functions vector
@@ -46,38 +50,12 @@ public:
 
 private:
 
-    static void optimize() {
-//        llvm::FunctionPassManager
-    }
-
-/*
-    void InitializeModuleAndPassManager(void) {
-      // Open a new module.
-      TheModule = llvm::make_unique<Module>("my cool jit", TheContext);
-
-      // Create a new pass manager attached to it.
-      TheFPM = llvm::make_unique<FunctionPassManager>(TheModule.get());
-
-      // Do simple "peephole" optimizations and bit-twiddling optzns.
-      TheFPM->add(createInstructionCombiningPass());
-      // Reassociate expressions.
-      TheFPM->add(createReassociatePass());
-      // Eliminate Common SubExpressions.
-      TheFPM->add(createGVNPass());
-      // Simplify the control flow graph (deleting unreachable blocks, etc).
-      TheFPM->add(createCFGSimplificationPass());
-
-      TheFPM->doInitialization();
-    }     */
-
-
     /** Optimize on the bitcode before native code generation. The
       TypeAnalysis, Unboxing and BoxingRemoval are Rift passes, the rest is
       from LLVM.
       */
-    static void optimizeModule(llvm::ExecutionEngine * ee, llvm::Module * m) {
-        auto *pm = new llvm::legacy::FunctionPassManager(m);
-        m->setDataLayout(ee->getDataLayout());
+    static void optimizeModule(llvm::Module * m) {
+        auto pm = std::unique_ptr<llvm::legacy::FunctionPassManager>(new llvm::legacy::FunctionPassManager(m));
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
@@ -98,7 +76,6 @@ private:
                 }
             }
         }
-        delete pm;
     }
 
 };
