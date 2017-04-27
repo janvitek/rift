@@ -22,7 +22,7 @@ double eval_time;
 extern "C" {
 
 Environment * envCreate(Environment * parent) {
-    return new Environment(parent);
+    return Environment::New(parent);
 }
 
 RVal * envGet(Environment * env, int symbol) {
@@ -34,47 +34,47 @@ void envSet(Environment * env, int symbol, RVal * RVal) {
 }
 
 RVal * doubleVectorLiteral(double RVal) {
-    return new DoubleVector(RVal);
+    return DoubleVector::New({RVal});
 }
 
 RVal * characterVectorLiteral(int cpIndex) {
     std::string const & original = Pool::getPoolObject(cpIndex);
-    return new CharacterVector(original.c_str());
+    return CharacterVector::New(original.c_str());
 
 }
 
 double scalarFromVector(DoubleVector * v) {
     if (v->size != 1)
         throw "not a scalar";
-    return v->data[0];
+    return (*v)[0];
 }
 
 double doubleGetSingleElement(DoubleVector * from, double index) {
     if (index < 0 or index >= from->size)
         throw "Index out of bounds";
-    return from->data[static_cast<unsigned>(index)];
+    return (*from)[static_cast<unsigned>(index)];
 }
 
 RVal * doubleGetElement(DoubleVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (unsigned i = 0; i < resultSize; ++i) {
-        double idx = index->data[i];
+        double idx = (*index)[i];
         if (idx < 0 or idx >= from->size)
             throw "Index out of bounds";
-        result[i] = from->data[static_cast<int>(idx)];
+        (*result)[i] = (*from)[static_cast<int>(idx)];
     }
-    return new DoubleVector(result, resultSize);
+    return result;
 }
 
 RVal * characterGetElement(CharacterVector * from, DoubleVector * index) {
     unsigned resultSize = index->size;
-    CharacterVector * result = new CharacterVector(resultSize);
+    CharacterVector* result = CharacterVector::New(resultSize);
     for (unsigned i = 0; i < resultSize; ++i) {
-        double idx = index->data[i];
+        double idx = (*index)[i];
         if (idx < 0 or idx >= from->size)
             throw "Index out of bounds";
-        result->data[i] = from->data[static_cast<int>(idx)];
+        (*result)[i] = (*from)[static_cast<int>(idx)];
     }
     return result;
 }
@@ -93,27 +93,27 @@ RVal * genericGetElement(RVal * from, RVal * index) {
 
 void doubleSetElement(DoubleVector * target, DoubleVector * index, DoubleVector * RVal) {
     for (unsigned i = 0; i < index->size; ++i) {
-        double idx = index->data[i];
+        double idx = (*index)[i];
         if (idx < 0 or idx >= target->size)
             throw "Index out of bound";
-        double val = RVal->data[i % RVal->size];
-        target->data[static_cast<int>(idx)] = val;
+        double val = (*RVal)[i % RVal->size];
+        (*target)[static_cast<int>(idx)] = val;
     }
 }
 
 void scalarSetElement(DoubleVector * target, double index, double RVal) {
     if (index < 0 or index >= target->size)
         throw "Index out of bound";
-    target->data[static_cast<int>(index)] = RVal;
+    (*target)[static_cast<int>(index)] = RVal;
 }
 
 void characterSetElement(CharacterVector * target, DoubleVector * index, CharacterVector * RVal) {
     for (unsigned i = 0; i < index->size; ++i) {
-        double  idx = index->data[i];
+        double  idx = (*index)[i];
         if (idx < 0 or idx >= target->size)
             throw "Index out of bound";
-        char val = RVal->data[i % RVal->size];
-        target->data[static_cast<int>(idx)] = val;
+        char val = (*RVal)[i % RVal->size];
+        (*target)[static_cast<int>(idx)] = val;
     }
 }
 
@@ -133,15 +133,15 @@ void genericSetElement(RVal * target, RVal * index, RVal * value) {
 
 RVal * doubleAdd(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* res = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] + rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*res)[i] = (*lhs)[i % lhs->size] + (*rhs)[i % rhs->size];
+    return res;
 }
 
 RVal * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = lhs->size + rhs->size;
-    CharacterVector * result = new CharacterVector(resultSize);
+    CharacterVector* result = CharacterVector::New(resultSize);
     memcpy(result->data, lhs->data, lhs->size);
     memcpy(result->data + lhs->size, rhs->data, rhs->size);
     return result;
@@ -162,10 +162,10 @@ RVal * genericAdd(RVal * lhs, RVal * rhs) {
 
 RVal * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] - rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] - (*rhs)[i % rhs->size];
+    return result;
 }
 
 
@@ -180,10 +180,10 @@ RVal * genericSub(RVal * lhs, RVal * rhs) {
 
 RVal * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] * rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] * (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * genericMul(RVal * lhs, RVal * rhs) {
@@ -196,10 +196,10 @@ RVal * genericMul(RVal * lhs, RVal * rhs) {
 
 RVal * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] / rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] / (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * genericDiv(RVal * lhs, RVal * rhs) {
@@ -212,30 +212,31 @@ RVal * genericDiv(RVal * lhs, RVal * rhs) {
 
 RVal * doubleEq(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] == rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] == (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] == rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] == (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * genericEq(RVal * lhs, RVal * rhs) {
     if (lhs->type() != rhs->type())
-        return new DoubleVector(0);
+        return DoubleVector::New({0});
 
     if (auto l = cast<DoubleVector>(lhs))
         return doubleEq(l, static_cast<DoubleVector*>(rhs));
     if (auto l = cast<CharacterVector>(lhs))
         return characterEq(l, static_cast<CharacterVector*>(rhs));
     if (auto l = cast<RFun>(lhs))
-        return new DoubleVector(l->code == static_cast<RFun*>(rhs)->code);
+        return DoubleVector::New(
+                {static_cast<double>(l->code == static_cast<RFun*>(rhs)->code)});
 
     assert(false);
     return nullptr;
@@ -243,30 +244,31 @@ RVal * genericEq(RVal * lhs, RVal * rhs) {
 
 RVal * doubleNeq(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] != rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] != (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] == rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] == (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * genericNeq(RVal * lhs, RVal * rhs) {
     if (lhs->type() != rhs->type())
-        return new DoubleVector(1);
+        return DoubleVector::New({1});
 
     if (auto l = cast<DoubleVector>(lhs))
         return doubleNeq(l, static_cast<DoubleVector*>(rhs));
     if (auto l = cast<CharacterVector>(lhs))
         return characterNeq(l, static_cast<CharacterVector*>(rhs));
     if (auto l = cast<RFun>(lhs))
-        return new DoubleVector(l->code != static_cast<RFun*>(rhs)->code);
+        return DoubleVector::New(
+                {static_cast<double>(l->code != static_cast<RFun*>(rhs)->code)});
 
     assert(false);
     return nullptr;
@@ -274,10 +276,10 @@ RVal * genericNeq(RVal * lhs, RVal * rhs) {
 
 RVal * doubleLt(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] < rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] < (*rhs)[i % rhs->size];
+    return result;
 }
 
 RVal * genericLt(RVal * lhs, RVal * rhs) {
@@ -291,10 +293,10 @@ RVal * genericLt(RVal * lhs, RVal * rhs) {
 
 RVal * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
     int resultSize = max(lhs->size, rhs->size);
-    double * result = new double[resultSize];
+    DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
-        result[i] = lhs->data[i % lhs->size] > rhs->data[i % rhs->size];
-    return new DoubleVector(result, resultSize);
+        (*result)[i] = (*lhs)[i % lhs->size] > (*rhs)[i % rhs->size];
+    return result;
 }
 
 
@@ -307,16 +309,16 @@ RVal * genericGt(RVal * lhs, RVal * rhs) {
 }
 
 RVal * createFunction(int index, Environment * env) {
-    return new RFun(Pool::getFunction(index), env);
+    return Pool::getFunction(index)->close(env);
 }
 
 bool toBoolean(RVal * v) {
     if (cast<RFun>(v)) {
         return true;
     } else if (auto c = cast<CharacterVector>(v)) {
-        return (c->size > 0) and (c->data[0] != 0);
-    } else if (auto d = cast<DoubleVector>(v)) { 
-        return (d->size > 0) and (d->data[0] != 0);
+        return (c->size > 0) and ((*c)[0] != 0);
+    } else if (auto d = cast<DoubleVector>(v)) {
+        return (d->size > 0) and ((*d)[0] != 0);
     }
 
     assert(false);
@@ -329,7 +331,7 @@ RVal * call(RVal * callee, unsigned argc, ...) {
 
     if (f->argsSize != argc) throw "Wrong number of arguments";
 
-    Environment * calleeEnv = new Environment(f->env);
+    Environment * calleeEnv = Environment::New(f->env);
     va_list ap;
     va_start(ap, argc);
     for (unsigned i = 0; i < argc; ++i) {
@@ -356,11 +358,11 @@ double length(RVal * v) {
 RVal * type(RVal * v) {
     switch (v->type()) {
     case Type::Double:
-        return new CharacterVector("double");
+        return CharacterVector::New("double");
     case Type::Character:
-        return new CharacterVector("character");
+        return CharacterVector::New("character");
     case Type::Function:
-        return new CharacterVector("function");
+        return CharacterVector::New("function");
     default:
         return nullptr;
     }
@@ -371,7 +373,7 @@ RVal * eval(Environment * env, char const * value) {
     Parser p;
     ast::Fun * x = new ast::Fun(p.parse(s));
     if (x->body->body.empty())
-        return new DoubleVector(0);
+        return DoubleVector::New({0});
     FunPtr f = JIT::compile(x);
     auto start = chrono::high_resolution_clock::now();
     RVal * result = f(env);
@@ -404,13 +406,13 @@ RVal * doublec(int size, ...) {
     size = 0;
     for (DoubleVector * v : args)
         size += v->size;
-    double * result = new double[size];
+    DoubleVector* result = DoubleVector::New(size);
     int offset = 0;
     for (DoubleVector * v : args) {
-        memcpy(result + offset, v->data, v->size * sizeof(double));
+        memcpy(result->data + offset, v->data, v->size * sizeof(double));
         offset += v->size;
     }
-    return new DoubleVector(result, size);
+    return result;
 }
 
 RVal * characterc(int size, ...) {
@@ -423,7 +425,7 @@ RVal * characterc(int size, ...) {
     size = 0;
     for (CharacterVector * v : args)
         size += v->size;
-    CharacterVector * result = new CharacterVector(size);
+    CharacterVector * result = CharacterVector::New(size);
     int offset = 0;
     for (CharacterVector * v : args) {
         memcpy(result->data + offset, v->data, v->size * sizeof(char));
@@ -434,7 +436,7 @@ RVal * characterc(int size, ...) {
 
 RVal * c(int size, ...) {
     if (size == 0)
-        return new DoubleVector(nullptr, 0);
+        return DoubleVector::New({});
     std::vector<RVal *> args;
     va_list ap;
     va_start(ap, size);
@@ -457,21 +459,21 @@ RVal * c(int size, ...) {
             auto d = static_cast<DoubleVector*>(v);
             size += d->size;
         }
-        double * result = new double[size];
+        DoubleVector* result = DoubleVector::New(size);
         unsigned offset = 0;
         for (RVal * v : args) {
             auto d = static_cast<DoubleVector*>(v);
-            memcpy(result + offset, d->data, d->size * sizeof(double));
+            memcpy(result->data + offset, d->data, d->size * sizeof(double));
             offset += d->size;
         }
-        return new DoubleVector(result, size);
+        return result;
     } else { // Character
         size_t size = 0;
         for (RVal * v : args) {
             auto c = static_cast<CharacterVector*>(v);
             size += c->size;
         }
-        CharacterVector * result = new CharacterVector(size);
+        CharacterVector * result = CharacterVector::New(size);
         unsigned offset = 0;
         for (RVal * v : args) {
             auto c = static_cast<CharacterVector*>(v);

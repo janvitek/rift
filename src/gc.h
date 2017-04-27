@@ -455,19 +455,14 @@ private:
     friend void ::_scanStack();
 };
 
+class NewGc {
+  public:
+    static void* alloc(size_t size) {
+        return malloc(size);
+    }
+};
 
 } // namespace gc
 
-
-template <typename OBJECT>
-struct HeapObject {
-    // Overriding new makes sure memory is allocated through the GC
-    static void* operator new(size_t sz) {
-        return gc::GarbageCollector::alloc<OBJECT>();
-    }
-
-    void operator delete(void*) {
-    };
-};
 
 #endif

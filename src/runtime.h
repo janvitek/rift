@@ -20,6 +20,7 @@ enum class Type {
     Double,
     Character,
     Function,
+    Environment,
 };
 
 /** A Rift Value. All values have a type tage and can point either of a
@@ -37,6 +38,11 @@ public:
         return t;
     }
 
+    // deleting new makes sure memory is allocated through the GC
+    void* operator new(size_t sz) = delete;
+    void* operator new (size_t, void* p) { return p; }
+    void operator delete(void*) = delete;
+
     /** Prints to given stream.  */
     inline void print(std::ostream & s);
 };
@@ -45,80 +51,69 @@ public:
 /** Character vector: strings of variable size. They are null
     terminated. Size excludes the trailing terminator.
 */
-struct CharacterVector : HeapObject<CharacterVector>, RVal {
-    char * data;
-
+struct CharacterVector : RVal {
     unsigned size;
+
+    static CharacterVector* New(unsigned size) {
+        size_t byteSize = (size+1) * sizeof(char) + sizeof(CharacterVector);
+        void *store = gc::NewGc::alloc(byteSize);
+        return new (store) CharacterVector(size);
+    }
 
     /** Creates a CV from given data and size. Takes ownership of the data.
     */
-    CharacterVector(int size) : RVal(Type::Character),
-                                data(new char[size + 1]),
-                                size(size) {
+    CharacterVector(unsigned size) : RVal(Type::Character), size(size) {
         data[size] = 0;
     }
 
-    /** Creates the character vector from existing null terminated string. 
-        Creates a copy of the string internally. 
-    */
-    CharacterVector(char const * from) : RVal(Type::Character) {
-        size = strlen(from);
-        data = new char[size + 1];
-        memcpy(data, from, size + 1);
+    static CharacterVector* New(const char * c) {
+        unsigned size = strlen(c);
+        CharacterVector& res = *New(size);
+        for (unsigned i = 0; i < size; ++i)
+            res[i] = *c++;
+        return &res;
     }
 
-    /** Deletes data. */
-    ~CharacterVector() {
-        delete [] data;
-    }
 
     /** Prints to given stream. */
     void print(std::ostream & s) {
         s << data;
     }
 
+    char& operator[] (const size_t i) {
+        return data[i];
+    }
+
+    char data[];
 };
 
 /** A Double vector consists of an array of doubles and a size.
 */
-struct DoubleVector : HeapObject<DoubleVector>, RVal {
-    Type type;
-    
-    double * data;
-
+struct DoubleVector : RVal {
     unsigned size;
-    
-    /** Creates vector of length one.
-     */
-    DoubleVector(double value) : RVal(Type::Double),
-                                 data(new double[1]),
-                                 size(1) {
-        data[0] = value;
+
+    static DoubleVector* New(unsigned size) {
+        size_t byteSize = size * sizeof(double) + sizeof(DoubleVector);
+        void *store = gc::NewGc::alloc(byteSize);
+        return new (store) DoubleVector(size);
     }
 
-    /** Creates vector from array. The array is owned by the vector.
-    */
-    DoubleVector(double * data, unsigned size) : RVal(Type::Double),
-                                                 data(data),
-                                                 size(size) {}
+    DoubleVector(unsigned size) : RVal(Type::Double), size(size) {
+        memset(data, 0, size);
+    }
 
     /** Creates vector from doubles.
      */
-    DoubleVector(std::initializer_list<double> d) : RVal(Type::Double) {
-        size = d.size();
-        data = new double[size];
+    static DoubleVector* New(std::initializer_list<double> d) {
+        unsigned size = d.size();
+        DoubleVector& res = *New(size);
         unsigned i = 0;
         for (double dd : d)
-            data[i++] = dd;
+            res[i++] = dd;
+        return &res;
     }
 
     DoubleVector(DoubleVector const&) = delete;
-
-    /** Deletes data. 
-     */
-    ~DoubleVector() {
-        delete [] data;
-    }
 
     /** Prints to given stream. 
      */
@@ -126,6 +121,12 @@ struct DoubleVector : HeapObject<DoubleVector>, RVal {
         for (unsigned i = 0; i < size; ++i)
             s << data[i] << " ";
     }
+
+    double& operator[] (const size_t i) {
+        return data[i];
+    }
+
+    double data[];
 };
 
 /** Binding for the environment. 
@@ -142,7 +143,7 @@ struct Binding {
 Environment represents function's local variables as well as a pointer to the parent environment, i.e. the environment in which the function was declared. 
 
 */
-struct Environment : public HeapObject<Environment> {
+struct Environment : RVal {
     /** Parent environment. 
 
     Nullptr if top environment. 
@@ -155,11 +156,17 @@ struct Environment : public HeapObject<Environment> {
 
     /** Size of the bindings array. 
      */
-    int size;
+    unsigned size;
     
+    static Environment* New(Environment* parent) {
+        void *store = gc::NewGc::alloc(sizeof(Environment));
+        return new (store) Environment(parent);
+    }
+
     /** Creates new environment with the given parent. 
      */
-    Environment(Environment * parent):
+    Environment(Environment* parent):
+        RVal(Type::Environment),
         parent(parent),
         bindings(nullptr),
         size(0) {
@@ -170,7 +177,7 @@ struct Environment : public HeapObject<Environment> {
     If the symbol is not found in current bindings, recursively searches parent environments as well. 
      */
     RVal * get(rift::Symbol symbol) {
-        for (int i = 0; i < size; ++i)
+        for (unsigned i = 0; i < size; ++i)
             if (bindings[i].symbol == symbol)
                 return bindings[i].value;
         if (parent != nullptr)
@@ -185,7 +192,7 @@ struct Environment : public HeapObject<Environment> {
     otherwise creates new binding for the symbol and attaches it to the value. 
      */
     void set(rift::Symbol symbol, RVal * value) {
-        for (int i = 0; i < size; ++i)
+        for (unsigned i = 0; i < size; ++i)
             if (bindings[i].symbol == symbol) {
                 bindings[i].value = value;
                 return;
@@ -198,6 +205,10 @@ struct Environment : public HeapObject<Environment> {
         bindings[size].value = value;
         ++size;
     }
+
+    ~Environment() {
+        delete [] bindings;
+    }
 };
 
 /** Pointer to Rift function. These functions all takes Environment* and
@@ -209,19 +220,24 @@ typedef RVal * (*FunPtr)(Environment *);
     bitcode, an argument list, and an arity.  The bitcode and argument names
     are there for debugging purposes.
  */
-struct RFun : HeapObject<RFun>, RVal {
-    Type type;
-
+struct RFun : RVal {
     Environment * env;
-
     FunPtr code;
-    
     llvm::Function * bitcode;
-
     rift::Symbol * args;
-    
     unsigned argsSize;
     
+    static RFun* New(rift::ast::Fun * fun, llvm::Function * bitcode) {
+        void *store = gc::NewGc::alloc(sizeof(RFun));
+        return new (store) RFun(fun, bitcode);
+    }
+
+    static RFun* Copy(RFun* fun) {
+        void *store = gc::NewGc::alloc(sizeof(RFun));
+        return new (store) RFun(fun->env, fun->code, fun->bitcode, fun->args, fun->argsSize);
+    }
+
+
     /** Create a Rift function. A new argument list is needed, everything
 	else is shared.
     */
@@ -237,19 +253,25 @@ struct RFun : HeapObject<RFun>, RVal {
             args[i++] = arg->symbol;
     }
 
+    RFun(Environment* env, FunPtr code, llvm::Function * bitcode, rift::Symbol* args, unsigned argsSize) :
+        RVal(Type::Function),
+        env(env),
+        code(code),
+        bitcode(bitcode),
+        args(args),
+        argsSize(argsSize) { }
+
+
     /** Create a closure by copying function f and binding it to environment
 	e. Arguments are shared.
      */
-    RFun(RFun * f, Environment * e) :
-        RVal(Type::Function),
-        env(e),
-        code(f->code),
-        bitcode(f->bitcode),
-        args(f->args),
-        argsSize(f->argsSize) {
+    RFun* close(Environment * e) {
+        RFun* closure = Copy(this);
+        closure->env = e;
+        return closure;
     }
   
-  /* Args and env are shared, they are not deleted. */
+    /* Args and env are shared, they are not deleted. */
     ~RFun() { }
 
     /** Prints bitcode to given stream.  */

@@ -22,7 +22,7 @@ public:
 
     /** Adds function to compiled functions, returns its index.     */
     static int addFunction(ast::Fun * fun, llvm::Function * bitcode) {
-        RFun * f = new RFun(fun, bitcode);
+        RFun * f = RFun::New(fun, bitcode);
         f_.push_back(f);
         return f_.size() - 1;
     }

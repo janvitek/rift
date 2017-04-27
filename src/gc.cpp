@@ -41,7 +41,7 @@ void GarbageCollector::markImpl(CharacterVector *) {
 
 template<>
 void GarbageCollector::markImpl<Environment>(Environment * env) {
-    for (int i = 0; i < env->size; ++i) {
+    for (unsigned i = 0; i < env->size; ++i) {
         auto v = env->bindings[i].value;
         if (auto f = cast<RFun>(v)) {
             mark(f);

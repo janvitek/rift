@@ -32,7 +32,7 @@ namespace rift {
 
     void test(int line, char const * source, RVal * expected) {
         try {
-            Environment * env = new Environment(nullptr);
+            Environment * env = Environment::New(nullptr);
             RVal * actual = eval(env, source);
             if (! eq(expected, actual)) {
                 cout << "Expected: " << *expected << endl;
@@ -50,11 +50,11 @@ namespace rift {
     }
 
     void doTest(int line, const char * code, std::initializer_list<double> expected) {
-        test(line, code, new DoubleVector(expected));
+        test(line, code, DoubleVector::New(expected));
     }
 
     void doTestC(int line, const char * code, const char * expected) {
-        test(line, code, new CharacterVector(expected));
+        test(line, code, CharacterVector::New(expected));
     }
 
 #define TEST(code, ...) doTest(__LINE__, code, {__VA_ARGS__})
