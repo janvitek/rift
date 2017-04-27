@@ -8,7 +8,7 @@ namespace {
 
 /** Compares values for equality. Only use in tests.  */
 bool eq(RVal * a, RVal * b) {
-    if (a->type() != b->type())  return false;
+    if (a->type != b->type)  return false;
 
     if (auto d1 = cast<DoubleVector>(a)) {
         auto d2 = cast<DoubleVector>(b);
@@ -24,8 +24,11 @@ bool eq(RVal * a, RVal * b) {
         return true;
     } else if (cast<RFun>(a)) {
         return a == b;
-    } else assert(false);
+    }
+    assert(false);
+    return false;
 }
+
 }
 
 namespace rift {

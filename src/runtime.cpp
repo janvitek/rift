@@ -120,7 +120,7 @@ void characterSetElement(CharacterVector * target, DoubleVector * index, Charact
 void genericSetElement(RVal * target, RVal * index, RVal * value) {
     auto i = cast<DoubleVector>(index);
     if (!i) throw "Index vector must be double";
-    if (target->type() != value->type())
+    if (target->type != value->type)
         throw "Vector and element must be of same type";
     if (auto t = cast<DoubleVector>(target)) {
         doubleSetElement(t, i, static_cast<DoubleVector*>(value));
@@ -149,7 +149,7 @@ RVal * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
 
 
 RVal * genericAdd(RVal * lhs, RVal * rhs) {
-    if (lhs->type() != rhs->type())
+    if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
     if (auto l = cast<DoubleVector>(lhs)) {
         return doubleAdd(l, static_cast<DoubleVector*>(rhs));
@@ -227,7 +227,7 @@ RVal * characterEq(CharacterVector * lhs, CharacterVector * rhs) {
 }
 
 RVal * genericEq(RVal * lhs, RVal * rhs) {
-    if (lhs->type() != rhs->type())
+    if (lhs->type != rhs->type)
         return DoubleVector::New({0});
 
     if (auto l = cast<DoubleVector>(lhs))
@@ -259,7 +259,7 @@ RVal * characterNeq(CharacterVector * lhs, CharacterVector * rhs) {
 }
 
 RVal * genericNeq(RVal * lhs, RVal * rhs) {
-    if (lhs->type() != rhs->type())
+    if (lhs->type != rhs->type)
         return DoubleVector::New({1});
 
     if (auto l = cast<DoubleVector>(lhs))
@@ -356,7 +356,7 @@ double length(RVal * v) {
 }
 
 RVal * type(RVal * v) {
-    switch (v->type()) {
+    switch (v->type) {
     case Type::Double:
         return CharacterVector::New("double");
     case Type::Character:
@@ -444,12 +444,12 @@ RVal * c(int size, ...) {
         args.push_back(va_arg(ap, RVal*));
     va_end(ap);
 
-    Type t = args[0]->type();
+    Type t = args[0]->type;
     if (t == Type::Function)
         throw "Cannot concatenate functions";
 
     for (unsigned i = 1; i < args.size(); ++i) {
-        if (args[i]->type() != t)
+        if (args[i]->type != t)
             throw "Types of all c arguments must be the same";
     }
 

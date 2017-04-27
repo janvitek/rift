@@ -6,15 +6,9 @@
 #include "llvm.h"
 #include "ast.h"
 
-#pragma warning(disable : 4267 4297 4018)
+// #pragma warning(disable : 4267 4297 4018)
 
 #include "gc.h"
-
-#define HEAP_OBJECTS(O) \
-  O(DoubleVector)       \
-  O(CharacterVector)    \
-  O(RFun)               \
-  O(Environment)
 
 enum class Type {
     Double,
@@ -23,20 +17,17 @@ enum class Type {
     Environment,
 };
 
-/** A Rift Value. All values have a type tage and can point either of a
-    vector of doubles or chararcters, or a function.
-*/
+/*
+ * A Rift Value.
+ * All objects start with this
+ *
+ */
 struct RVal {
-private:
-    Type t;
-
 protected:
-    RVal(Type t) : t(t) {}
+    RVal(Type type) : type(type) {}
 
 public:
-    Type type() const {
-        return t;
-    }
+    Type type;
 
     // deleting new makes sure memory is allocated through the GC
     void* operator new(size_t sz) = delete;
@@ -56,7 +47,7 @@ struct CharacterVector : RVal {
 
     static CharacterVector* New(unsigned size) {
         size_t byteSize = (size+1) * sizeof(char) + sizeof(CharacterVector);
-        void *store = gc::NewGc::alloc(byteSize);
+        void *store = gc::GarbageCollector::alloc(byteSize);
         return new (store) CharacterVector(size);
     }
 
@@ -94,7 +85,7 @@ struct DoubleVector : RVal {
 
     static DoubleVector* New(unsigned size) {
         size_t byteSize = size * sizeof(double) + sizeof(DoubleVector);
-        void *store = gc::NewGc::alloc(byteSize);
+        void *store = gc::GarbageCollector::alloc(byteSize);
         return new (store) DoubleVector(size);
     }
 
@@ -159,7 +150,7 @@ struct Environment : RVal {
     unsigned size;
     
     static Environment* New(Environment* parent) {
-        void *store = gc::NewGc::alloc(sizeof(Environment));
+        void *store = gc::GarbageCollector::alloc(sizeof(Environment));
         return new (store) Environment(parent);
     }
 
@@ -228,12 +219,12 @@ struct RFun : RVal {
     unsigned argsSize;
     
     static RFun* New(rift::ast::Fun * fun, llvm::Function * bitcode) {
-        void *store = gc::NewGc::alloc(sizeof(RFun));
+        void *store = gc::GarbageCollector::alloc(sizeof(RFun));
         return new (store) RFun(fun, bitcode);
     }
 
     static RFun* Copy(RFun* fun) {
-        void *store = gc::NewGc::alloc(sizeof(RFun));
+        void *store = gc::GarbageCollector::alloc(sizeof(RFun));
         return new (store) RFun(fun->env, fun->code, fun->bitcode, fun->args, fun->argsSize);
     }
 
@@ -289,9 +280,9 @@ static inline T* cast(RVal * r) {
                   std::is_same<T, DoubleVector>::value,
                   "Invalid RVal cast");
 
-    if ((typeid(T) == typeid(RFun)            && r->type() == Type::Function)  ||
-        (typeid(T) == typeid(CharacterVector) && r->type() == Type::Character) ||
-        (typeid(T) == typeid(DoubleVector)    && r->type() == Type::Double)) {
+    if ((typeid(T) == typeid(RFun)            && r->type == Type::Function)  ||
+        (typeid(T) == typeid(CharacterVector) && r->type == Type::Character) ||
+        (typeid(T) == typeid(DoubleVector)    && r->type == Type::Double)) {
         return static_cast<T*>(r);
     }
     return nullptr;
