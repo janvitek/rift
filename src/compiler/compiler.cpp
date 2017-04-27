@@ -1,8 +1,9 @@
+#include "rift.h"
 #include "compiler.h"
 #include "types.h"
 #include "module.h"
-#include "memory_manager.h"
 #include "pool.h"
+
 
 /** Shorthand for calling runtime functions.  */
 #define RUNTIME_CALL(NAME, ...) b->CreateCall(m->NAME, std::vector<llvm::Value*>({ __VA_ARGS__ }), "")
@@ -54,6 +55,7 @@ int Compiler::compile(ast::Fun * node) {
 
     // Register and get index
     int result = Pool::addFunction(node, f);
+    f->setName(STR(result));
     // Restore context
     f = oldF;
     delete b;

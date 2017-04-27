@@ -9,7 +9,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Analysis/Passes.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/Support/raw_os_ostream.h>
@@ -24,6 +23,17 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h> 
 #include <llvm/Pass.h>
+
+
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
+#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/LambdaResolver.h"
+#include "llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h"
+#include "llvm/IR/Mangler.h"
+#include "llvm/Support/DynamicLibrary.h"
+
 
 #undef DEBUG
 
