@@ -24,6 +24,8 @@ private:
 
     typedef llvm::orc::ObjectLinkingLayer<> ObjectLayer;
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
+    typedef std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)> OptimizeFunction;
+    typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeFunction> OptimizeLayer;
 
 public:
 
@@ -39,7 +41,7 @@ public:
         unsigned start = Pool::functionsCount();
         int result = c.compile(f);
 
-        optimizeModule(c.m.get());
+        //optimizeModule(c.m.get());
 
         llvm::Module * m = c.m.release();
         singleton().addModule(std::unique_ptr<llvm::Module>(m));
@@ -54,7 +56,11 @@ public:
     JIT():
         targetMachine(llvm::EngineBuilder().selectTarget()),
         dataLayout(targetMachine->createDataLayout()),
-        compileLayer(objectLayer, llvm::orc::SimpleCompiler(*targetMachine)) {
+        compileLayer(objectLayer, llvm::orc::SimpleCompiler(*targetMachine)),
+        optimizeLayer(compileLayer, [this](std::unique_ptr<llvm::Module> m) {
+            optimizeModule(m.get());
+            return m;
+        }) {
         // this loads the host process itself, making the symbols in it available for execution
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
     }
@@ -63,7 +69,7 @@ public:
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
             [&](std::string const & name) {
-                if (auto s = compileLayer.findSymbol(name, false))
+                if (auto s = optimizeLayer.findSymbol(name, false))
                     return s;
                 return llvm::JITSymbol(nullptr);
             },
@@ -81,7 +87,7 @@ public:
 
         // Add the set to the JIT with the resolver we created above and a newly
         // created SectionMemoryManager.
-        return compileLayer.addModuleSet(std::move(ms),
+        return optimizeLayer.addModuleSet(std::move(ms),
             llvm::make_unique<llvm::SectionMemoryManager>(),
             std::move(resolver));
     }
@@ -94,7 +100,7 @@ public:
     }
 
     void removeModule(ModuleHandle m) {
-        compileLayer.removeModuleSet(m);
+        optimizeLayer.removeModuleSet(m);
     }
 
 
@@ -184,6 +190,7 @@ private:
     const llvm::DataLayout dataLayout;
     ObjectLayer objectLayer;
     CompileLayer compileLayer;
+    OptimizeLayer optimizeLayer;
 
 
 };
