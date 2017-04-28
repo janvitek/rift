@@ -200,7 +200,7 @@ namespace rift {
                 switch (top().type) {
                 case Token::Type::mul:
                 case Token::Type::div: {
-                    ast::BinExp::Type t;
+                    ast::BinExp::Type t /* -warn */ = ast::BinExp::Type::mul;
                     switch (pop().type) {
                     case Token::Type::mul:
                         t = ast::BinExp::Type::mul;
@@ -226,7 +226,7 @@ namespace rift {
                 switch (top().type) {
                 case Token::Type::add:
                 case Token::Type::sub: {
-                    ast::BinExp::Type t;
+                    ast::BinExp::Type t /* -warn */ = ast::BinExp::Type::mul;
                     switch (pop().type) {
                     case Token::Type::add:
                         t = ast::BinExp::Type::add;
@@ -254,7 +254,7 @@ namespace rift {
                 case Token::Type::neq:
                 case Token::Type::lt:
                 case Token::Type::gt: {
-                    ast::BinExp::Type t;
+                    ast::BinExp::Type t /* -warn */ = ast::BinExp::Type::mul;
                     switch (pop().type) {
                     case Token::Type::eq:
                         t = ast::BinExp::Type::eq;

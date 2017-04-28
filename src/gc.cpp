@@ -1,107 +1,139 @@
 #include "gc.h"
 #include "runtime.h"
 
+namespace gc {
+
+void GarbageCollector::visitChildren(RVal* val) {
+    switch (val->type) {
+        case Type::Environment: {
+            Environment* env = (Environment*)val;
+            if (env->bindings)
+                mark(env->bindings);
+            if (env->parent)
+                mark(env->parent);
+            break;
+        }
+
+        case Type::Bindings: {
+            Bindings* env = (Bindings*)val;
+            for (unsigned i = 0; i < env->size; ++i) {
+                mark(env->binding[i].value);
+            }
+            break;
+        }
+
+
+        case Type::Function: {
+            RFun* fun = (RFun*)val;
+            if (fun->args)
+                mark(fun->args);
+            if (fun->env)
+                mark(fun->env);
+            break;
+        }
+
+        case Type::FunctionArgs:
+        case Type::Double:
+        case Type::Character:
+            // leaf nodes
+            break;
+
+        default:
+            assert(false && "Broken RVal");
+    }
+}
+
+// The core mark & sweep algorithm
+void GarbageCollector::doGc() {
+#ifdef GC_DEBUG
+    unsigned memUsage = size() - free();
+    verify();
+#endif
+
+    mark();
+
+#ifdef GC_DEBUG
+    verify();
+#endif
+
+    sweep();
+
+#ifdef GC_DEBUG
+    verify();
+    unsigned memUsage2 = size() - free();
+    assert(memUsage2 <= memUsage);
+    std::cout << "reclaiming " << memUsage - memUsage2
+              << "b, used " << memUsage2 << "b, total " << size() << "b\n";
+#endif
+}
+
 // The stack scan traverses the memory of the C stack and looks at every
 // possible stack slot. If we find a valid heap pointer we mark the
 // object as well as all objects reachable through it as live.
-void __attribute__((noinline)) _scanStack() {
-    void ** p = (void**)__builtin_frame_address(0);
-    gc::GarbageCollector & inst = gc::GarbageCollector::inst();
+void __attribute__((noinline)) scanStack_() {
+    GarbageCollector& gc = GarbageCollector::inst();
 
-    while (p < inst.BOTTOM_OF_STACK) {
-        if (inst.maybePointer(*p))
-            inst.markMaybe(*p);
+    void ** p = (void**)__builtin_frame_address(0);
+
+#ifdef GC_DEBUG
+    unsigned found = 0;
+#endif
+    while (p < gc.BOTTOM_OF_STACK) {
+        uintptr_t po = (uintptr_t)*p;
+        if (po > 1024 && po % 4 == 0 && gc.arena.find(*p)) {
+#ifdef GC_DEBUG
+            found++;
+#endif
+            gc.mark((RVal*)*p);
+        }
         p++;
     }
+
+#ifdef GC_DEBUG
+    void ** pt = (void**)__builtin_frame_address(0);
+    printf("scanned %lu slots, found %u objs\n", (p-pt)/sizeof(void*), found);
+#endif
 }
 
 
-namespace gc {
-
-
-
-/*
- * Type specific parts
- */
-
-template<>
-void GarbageCollector::markImpl<RFun>(RFun * fun) {
-    mark(fun->env);
+void GarbageCollector::scanStack() {
+    // Clobber all registers:
+    // -> forces all variables currently hold in registers to be spilled
+    //    to the stack where our stackScan can find them.
+    __asm__ __volatile__("nop" : :
+        : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
+        "%r8", "%r9", "%r10", "%r11", "%r12",
+        "%r13", "%r14", "%r15");
+    scanStack_();
 }
 
-template<>
-void GarbageCollector::markImpl(DoubleVector *) {
-    // Leaf node, nothing to do
+void GarbageCollector::mark() {
+    // TODO: maybe some mechanism to define static roots?
+    scanStack();
 }
 
-template<>
-void GarbageCollector::markImpl(CharacterVector *) {
-    // Leaf node, nothing to do
-}
+void Page::verify() {
+    size_t foundFree = 0;
+    Free* f = freelist.next;
+    while (f) {
+        auto b = getIndex(f);
+        for (auto i = b; i < b+f->blocks; i++)
+           assert(!objSize[i]);
+        foundFree += f->blocks * blockSize;
+        f = f->next;
+    }
+    assert(foundFree == freeSpace);
 
-template<>
-void GarbageCollector::markImpl<Environment>(Environment * env) {
-    for (int i = 0; i < env->size; ++i) {
-        auto v = env->bindings[i].value;
-        if (auto f = cast<RFun>(v)) {
-            mark(f);
-        } else if (auto d = cast<DoubleVector>(v)) {
-            mark(d);
-        } else if (auto c = cast<CharacterVector>(v)) {
-            mark(c);
-        } else {
-            assert(false);
+    for (index_t i = 0; i < pageSize; ++i) {
+        if (objSize[i]) {
+            for (auto c = i+1; c < i+objSize[i]; c++)
+              assert(!objSize[c]);
+            RVal* o __attribute__((unused)) = getAt(i);
+            assert(o->type > Type::Invalid && o->type < Type::End);
+            assert(o->mark == 0 || o->mark == 1);
         }
     }
-    if (env->parent)
-        mark(env->parent);
 }
 
-/*
- * Generic GC implementation. Most things are here since they depend on the
- * HEAP_OBJECTS list provided by the runtime. HEAP_OBJECTS is a second order
- * macro which lets us statically loop and generate code for each entry.
- */
-
-size_t GarbageCollector::size() const {
-    size_t size = 0;
-#define O(T) size += arena<T>().size();
-    HEAP_OBJECTS(O);
-#undef O
-    return size;
-}
-
-size_t GarbageCollector::free() const {
-    size_t size = 0;
-#define O(T) size += arena<T>().free();
-    HEAP_OBJECTS(O);
-#undef O
-    return size;
-}
-
-void GarbageCollector::markMaybe(void * ptr) {
-#define O(T)                                                            \
-    {                                                                   \
-        auto i = arena<T>().findNode(ptr);                              \
-        if (i.found()) {                                                \
-            T * obj = reinterpret_cast<T*>(ptr);                        \
-            mark(obj, i);                                               \
-        }                                                               \
-    }
-    HEAP_OBJECTS(O);
-#undef O
-}
-
-void GarbageCollector::sweep() {
-#define O(T) arena<T>().sweep();
-    HEAP_OBJECTS(O);
-#undef O
-}
-
-void GarbageCollector::verify() const {
-#define O(T) arena<T>().verify();
-    HEAP_OBJECTS(O);
-#undef O
-}
 
 }

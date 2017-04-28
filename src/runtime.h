@@ -6,70 +6,76 @@
 #include "llvm.h"
 #include "ast.h"
 
-#pragma warning(disable : 4267 4297 4018)
-
 #include "gc.h"
 
-#define HEAP_OBJECTS(O) \
-  O(DoubleVector)       \
-  O(CharacterVector)    \
-  O(RFun)               \
-  O(Environment)
-
-enum class Type {
-    Double,
-    Character,
-    Function,
-};
-
-/** A Rift Value. All values have a type tage and can point either of a
-    vector of doubles or chararcters, or a function.
-*/
-struct RVal {
-private:
-    Type t;
-
-protected:
-    RVal(Type t) : t(t) {}
-
-public:
-    Type type() const {
-        return t;
+template <typename T>
+struct RValOps {
+  public:
+    static T* Cast(RVal* obj) {
+        if (obj->type != T::TYPE)
+            return nullptr;
+        return (T*) obj;
     }
 
-    /** Prints to given stream.  */
-    inline void print(std::ostream & s);
+    RValOps<T>() = delete;
+    RValOps<T>(RValOps<T> const&) = delete;
+
+  protected:
+    // Those operators are used internally by the different RVals to allocate a
+    // new instance of themselves through the GC.
+    //
+    // The convention is that each RVal should implement at least one static
+    // New method to create new instances.
+    //
+    // Constructors are disallowed because the type tag needs to be set by the
+    // GC already. Otherwise a GC during object construction will result in an
+    // untagged object being scanned. Since defining a constructor on a struct
+    // might cause C++ to override the type tag we avoid using them.
+    struct AllocPlain {
+        T* operator() () const {
+            return (T*) gc::GarbageCollector::alloc(sizeof(T), T::TYPE);
+        }
+    };
+    struct AllocVect {
+        T* operator() (unsigned length) const {
+            return (T*) gc::GarbageCollector::alloc(
+                    sizeof(T) + length * T::ELEMENT_SIZE, T::TYPE);
+        }
+    };
 };
 
-
-/** Character vector: strings of variable size. They are null
-    terminated. Size excludes the trailing terminator.
-*/
-struct CharacterVector : HeapObject<CharacterVector>, RVal {
-    char * data;
-
+/*
+ *  Character vector
+ *
+ *  strings of variable size. They are null terminated. Size excludes the
+ *  trailing terminator.
+ *
+ */
+struct CharacterVector : RVal, RValOps<CharacterVector> {
     unsigned size;
 
-    /** Creates a CV from given data and size. Takes ownership of the data.
-    */
-    CharacterVector(int size) : RVal(Type::Character),
-                                data(new char[size + 1]),
-                                size(size) {
-        data[size] = 0;
+    CharacterVector() = delete;
+
+    static constexpr Type TYPE = Type::Character;
+    static constexpr size_t ELEMENT_SIZE = sizeof(char);
+
+    static CharacterVector* New(unsigned size) {
+        CharacterVector* obj = AllocVect()(size+1);
+        obj->size = size;
+        obj->data[size] = 0;
+        return obj;
     }
 
-    /** Creates the character vector from existing null terminated string. 
-        Creates a copy of the string internally. 
-    */
-    CharacterVector(char const * from) : RVal(Type::Character) {
-        size = strlen(from);
-        data = new char[size + 1];
-        memcpy(data, from, size + 1);
-    }
-
-    /** Deletes data. */
-    ~CharacterVector() {
-        delete [] data;
+    static CharacterVector* New(const char* c) {
+        size_t size = strlen(c);
+        CharacterVector* obj = AllocVect()(size+1);
+        obj->size = size;
+        unsigned i = 0;
+        while (*c && i < size) {
+            (*obj)[i++] = *c++;
+        }
+        obj->data[size] = 0;
+        return obj;
     }
 
     /** Prints to given stream. */
@@ -77,47 +83,39 @@ struct CharacterVector : HeapObject<CharacterVector>, RVal {
         s << data;
     }
 
+    char& operator[] (const size_t i) {
+        assert (i < size);
+        return data[i];
+    }
+
+    char data[];
 };
 
-/** A Double vector consists of an array of doubles and a size.
-*/
-struct DoubleVector : HeapObject<DoubleVector>, RVal {
-    Type type;
-    
-    double * data;
-
+/*
+ * A Double vector
+ *
+ * consists of an array of doubles and a size.
+ * 
+ */
+struct DoubleVector : RVal, RValOps<DoubleVector> {
     unsigned size;
-    
-    /** Creates vector of length one.
-     */
-    DoubleVector(double value) : RVal(Type::Double),
-                                 data(new double[1]),
-                                 size(1) {
-        data[0] = value;
+
+    static constexpr Type TYPE = Type::Double;
+    static constexpr size_t ELEMENT_SIZE = sizeof(double);
+
+    static DoubleVector* New(unsigned size) {
+        DoubleVector* obj = AllocVect()(size);
+        obj->size = size;
+        return obj;
     }
 
-    /** Creates vector from array. The array is owned by the vector.
-    */
-    DoubleVector(double * data, unsigned size) : RVal(Type::Double),
-                                                 data(data),
-                                                 size(size) {}
-
-    /** Creates vector from doubles.
-     */
-    DoubleVector(std::initializer_list<double> d) : RVal(Type::Double) {
-        size = d.size();
-        data = new double[size];
+    static DoubleVector* New(std::initializer_list<double> d) {
+        DoubleVector* obj = AllocVect()(d.size());
+        obj->size = d.size();
         unsigned i = 0;
         for (double dd : d)
-            data[i++] = dd;
-    }
-
-    DoubleVector(DoubleVector const&) = delete;
-
-    /** Deletes data. 
-     */
-    ~DoubleVector() {
-        delete [] data;
+            (*obj)[i++] = dd;
+        return obj;
     }
 
     /** Prints to given stream. 
@@ -126,43 +124,40 @@ struct DoubleVector : HeapObject<DoubleVector>, RVal {
         for (unsigned i = 0; i < size; ++i)
             s << data[i] << " ";
     }
+
+    double& operator[] (const size_t i) {
+        assert (i < size);
+        return data[i];
+    }
+
+    double data[];
 };
 
-/** Binding for the environment. 
+/*
+ * Binding for the environment. 
+ * List of pair of symbol and corresponding Value.
+ *
+ */
+struct Bindings : RVal, RValOps<Bindings> {
+    constexpr static size_t growSize = 4;
+    constexpr static size_t initialSize = 4;
 
-Binding is a pair of symbol and corresponding Value. 
-*/
-struct Binding {
-    rift::Symbol symbol;
-    RVal * value;
-};
+    struct Binding {
+        rift::Symbol symbol;
+        RVal * value;
+    };
 
-/** Rift Environment. 
-
-Environment represents function's local variables as well as a pointer to the parent environment, i.e. the environment in which the function was declared. 
-
-*/
-struct Environment : public HeapObject<Environment> {
-    /** Parent environment. 
-
-    Nullptr if top environment. 
-     */
-    Environment * parent;
+    unsigned size;
+    unsigned available;
     
-    /** Array of active bindings. 
-     */
-    Binding * bindings;
+    static constexpr Type TYPE = Type::Bindings;
+    static constexpr size_t ELEMENT_SIZE = sizeof(Binding);
 
-    /** Size of the bindings array. 
-     */
-    int size;
-    
-    /** Creates new environment with the given parent. 
-     */
-    Environment(Environment * parent):
-        parent(parent),
-        bindings(nullptr),
-        size(0) {
+    static Bindings* New(unsigned size = initialSize) {
+        Bindings* obj = AllocVect()(size);
+        obj->size = 0;
+        obj->available = size;
+        return obj;
     }
 
     /** Returns the value corresponding to given Symbol. 
@@ -170,9 +165,84 @@ struct Environment : public HeapObject<Environment> {
     If the symbol is not found in current bindings, recursively searches parent environments as well. 
      */
     RVal * get(rift::Symbol symbol) {
-        for (int i = 0; i < size; ++i)
-            if (bindings[i].symbol == symbol)
-                return bindings[i].value;
+        for (unsigned i = 0; i < size; ++i)
+            if (binding[i].symbol == symbol)
+                return binding[i].value;
+        return nullptr;
+    }
+
+    /** Assigns given value to symbol. 
+    
+    If the symbol already exists it the environment, updates its value,
+    otherwise creates new binding for the symbol and attaches it to the value. 
+     */
+    bool set(rift::Symbol symbol, RVal * value) {
+        for (unsigned i = 0; i < size; ++i)
+            if (binding[i].symbol == symbol) {
+                binding[i].value = value;
+                return true;
+            }
+        if (size < available) {
+            binding[size].symbol = symbol;
+            binding[size].value = value;
+            size++;
+            return true;
+        }
+        return false;
+    }
+
+    Bindings* grow() {
+        Bindings* g = Bindings::New(available + growSize);
+        memcpy(g->binding, binding, sizeof(Binding)*size);
+        g->size = size;
+        return g;
+    }
+
+    Binding binding[];
+};
+
+/*
+ * Rift Environment. 
+ * 
+ * Environment represents function's local variables as well as a pointer to
+ * the parent environment (i.e. the environment in which the function was
+ * declared).
+ *
+ * The bindings are stored externally because we need to be able to grow
+ * them dynamically.
+ *
+ */
+struct Environment : RVal, RValOps<Environment> {
+    /** Parent environment. 
+
+    Nullptr if top environment. 
+     */
+    Environment * parent;
+    Bindings * bindings;
+
+    static constexpr Type TYPE = Type::Environment;
+
+    static Environment* New(Environment* parent) {
+        Environment* obj = AllocPlain()();
+        obj->bindings = nullptr;
+        obj->parent = parent;
+        return obj;
+    }
+
+    static Environment* New(Environment* parent, Bindings* bindings) {
+        Environment* obj = AllocPlain()();
+        obj->bindings = bindings;
+        obj->parent = parent;
+        return obj;
+    }
+
+    RVal * get(rift::Symbol symbol) {
+        if (bindings) {
+            RVal* res = bindings->get(symbol);
+            if (res)
+                return res;
+        }
+
         if (parent != nullptr)
             return parent->get(symbol);
         else
@@ -185,73 +255,105 @@ struct Environment : public HeapObject<Environment> {
     otherwise creates new binding for the symbol and attaches it to the value. 
      */
     void set(rift::Symbol symbol, RVal * value) {
-        for (int i = 0; i < size; ++i)
-            if (bindings[i].symbol == symbol) {
-                bindings[i].value = value;
-                return;
-            }
-        Binding * n = new Binding[size + 1];
-        memcpy(n, bindings, size * sizeof(Binding));
-        delete [] bindings;
-        bindings = n;
-        bindings[size].symbol = symbol;
-        bindings[size].value = value;
-        ++size;
+        if (!bindings)
+            bindings = Bindings::New();
+
+        if (bindings->set(symbol, value))
+            return;
+
+        bindings = bindings->grow();
+        assert(bindings->set(symbol, value));
     }
+
 };
 
-/** Pointer to Rift function. These functions all takes Environment* and
-    return an RVal*.
+/*
+ * Pointer to Rift function. These functions all takes Environment*
+ * and return an RVal*
+ *
  */
 typedef RVal * (*FunPtr)(Environment *);
 
-/** Rift Function.  Each function contains an environment, compiled code,
-    bitcode, an argument list, and an arity.  The bitcode and argument names
-    are there for debugging purposes.
+/*
+ * List of formal arguments. Stored externally to be able to share between
+ * functions.
+ *
  */
-struct RFun : HeapObject<RFun>, RVal {
-    Type type;
+struct FunctionArgs : RVal, RValOps<FunctionArgs> {
+    static constexpr Type TYPE = Type::FunctionArgs;
+    static constexpr size_t ELEMENT_SIZE = sizeof(rift::Symbol);
 
-    Environment * env;
+    unsigned length;
 
-    FunPtr code;
-    
-    llvm::Function * bitcode;
-
-    rift::Symbol * args;
-    
-    unsigned argsSize;
-    
-    /** Create a Rift function. A new argument list is needed, everything
-	else is shared.
-    */
-    RFun(rift::ast::Fun * fun, llvm::Function * bitcode) :
-        RVal(Type::Function),
-        env(nullptr),
-        code(nullptr),
-        bitcode(bitcode),
-        args(fun->args.size()==0 ? nullptr : new int[fun->args.size()]),
-        argsSize(fun->args.size()) {
+    static FunctionArgs* New(std::vector<rift::ast::Var*>& args, unsigned length) {
+        FunctionArgs* obj = AllocVect()(length);
         unsigned i = 0;
-        for (rift::ast::Var * arg : fun->args)
-            args[i++] = arg->symbol;
+        obj->length = length;
+        for (rift::ast::Var * arg : args)
+            (*obj)[i++] = arg->symbol;
+        return obj;
     }
 
+    rift::Symbol& operator[] (const size_t i) {
+        assert (i < length);
+        return symbol[i];
+    }
+
+    rift::Symbol symbol[];
+};
+
+/*
+ * Rift Function.
+ *
+ * Each function contains an environment, compiled code, bitcode, and the list
+ * of formal parameters. The bitcode and argument names are there for debugging
+ * purposes.
+ *
+ */
+struct RFun : RVal, RValOps<RFun> {
+    Environment * env;
+    FunPtr code;
+    llvm::Function * bitcode;
+    FunctionArgs * args;
+    
+    static constexpr Type TYPE = Type::Function;
+
+    static RFun* New(rift::ast::Fun * fun, llvm::Function * bitcode) {
+        RFun* obj = AllocPlain()();
+        obj->env = nullptr;
+        obj->code = nullptr;
+        obj->bitcode = bitcode;
+        obj->args = nullptr;
+        if (fun->args.size() > 0) {
+            obj->args = FunctionArgs::New(fun->args, fun->args.size());
+        }
+        return obj;
+    }
+
+    static RFun* Copy(RFun* fun) {
+        RFun* obj = AllocPlain()();
+        obj->env = fun->env;
+        obj->code = fun->code;
+        obj->bitcode = fun->bitcode;
+        obj->args = fun->args;
+        return obj;
+    }
+
+    size_t nargs() {
+        if (!args)
+            return 0;
+        return args->length;
+    }
     /** Create a closure by copying function f and binding it to environment
 	e. Arguments are shared.
      */
-    RFun(RFun * f, Environment * e) :
-        RVal(Type::Function),
-        env(e),
-        code(f->code),
-        bitcode(f->bitcode),
-        args(f->args),
-        argsSize(f->argsSize) {
+    RFun* close(Environment * e) {
+        assert(!env);
+        RFun* closure = Copy(this);
+        closure->env = e;
+        return closure;
     }
   
-  /* Args and env are shared, they are not deleted. */
-    ~RFun() { }
-
     /** Prints bitcode to given stream.  */
     void print(std::ostream & s) {
         llvm::raw_os_ostream ss(s);
@@ -260,26 +362,11 @@ struct RFun : HeapObject<RFun>, RVal {
 
 };
 
-template <typename T>
-static inline T* cast(RVal * r) {
-    static_assert(std::is_same<T, RFun>::value ||
-                  std::is_same<T, CharacterVector>::value ||
-                  std::is_same<T, DoubleVector>::value,
-                  "Invalid RVal cast");
-
-    if ((typeid(T) == typeid(RFun)            && r->type() == Type::Function)  ||
-        (typeid(T) == typeid(CharacterVector) && r->type() == Type::Character) ||
-        (typeid(T) == typeid(DoubleVector)    && r->type() == Type::Double)) {
-        return static_cast<T*>(r);
-    }
-    return nullptr;
-}
-
 /** Prints to given stream.  */
 void RVal::print(std::ostream & s) {
-         if (auto d = cast<DoubleVector>(this))    d->print(s);
-    else if (auto c = cast<CharacterVector>(this)) c->print(s);
-    else if (auto f = cast<RFun>(this))            f->print(s);
+         if (auto d = DoubleVector::Cast(this))    d->print(s);
+    else if (auto c = CharacterVector::Cast(this)) c->print(s);
+    else if (auto f = RFun::Cast(this))            f->print(s);
     else assert(false);
 }
 

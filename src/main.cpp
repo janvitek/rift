@@ -22,7 +22,7 @@ bool DEBUG = false;
 
 void interactive() {
     cout << "rift console - type exit to quit" << endl;
-    Environment * env = new Environment(nullptr);
+    Environment * env = Environment::New(nullptr);
     while (not cin.eof()) {
         try {
             cout << "> ";
@@ -66,7 +66,7 @@ void runScript(char const * filename) {
     } else {
         Parser p;
         ast::Fun * x = new ast::Fun(p.parse(s));
-        Environment * env = new Environment(nullptr);
+        Environment * env = Environment::New(nullptr);
         auto res = JIT::compile(x)(env);
         res->print(cout);
     }
@@ -80,7 +80,7 @@ int main(int argc, char * argv[]) {
     LLVMInitializeNativeAsmParser();
 
     // force GC to be initialized:
-    new Environment(nullptr);
+    Environment::New(nullptr);
 
     int argPos = 1;
     if (argc > argPos) {

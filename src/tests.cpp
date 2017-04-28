@@ -8,31 +8,34 @@ namespace {
 
 /** Compares values for equality. Only use in tests.  */
 bool eq(RVal * a, RVal * b) {
-    if (a->type() != b->type())  return false;
+    if (a->type != b->type)  return false;
 
-    if (auto d1 = cast<DoubleVector>(a)) {
-        auto d2 = cast<DoubleVector>(b);
+    if (auto d1 = DoubleVector::Cast(a)) {
+        auto d2 = DoubleVector::Cast(b);
         if (d1->size != d2->size) return false;
         for (unsigned i = 0; i < d1->size; ++i)
             if (d1->data[i] != d2->data[i]) return false;
         return true;
-    } else if (auto c1 = cast<CharacterVector>(a)) {
-        auto c2 = cast<CharacterVector>(b);
+    } else if (auto c1 = CharacterVector::Cast(a)) {
+        auto c2 = CharacterVector::Cast(b);
         if (c1->size != c2->size) return false;
         for (unsigned i = 0; i < c1->size; ++i)
             if (c1->data[i] != c2->data[i]) return false;
         return true;
-    } else if (cast<RFun>(a)) {
+    } else if (RFun::Cast(a)) {
         return a == b;
-    } else assert(false);
+    }
+    assert(false);
+    return false;
 }
+
 }
 
 namespace rift {
 
     void test(int line, char const * source, RVal * expected) {
         try {
-            Environment * env = new Environment(nullptr);
+            Environment * env = Environment::New(nullptr);
             RVal * actual = eval(env, source);
             if (! eq(expected, actual)) {
                 cout << "Expected: " << *expected << endl;
@@ -50,11 +53,11 @@ namespace rift {
     }
 
     void doTest(int line, const char * code, std::initializer_list<double> expected) {
-        test(line, code, new DoubleVector(expected));
+        test(line, code, DoubleVector::New(expected));
     }
 
     void doTestC(int line, const char * code, const char * expected) {
-        test(line, code, new CharacterVector(expected));
+        test(line, code, CharacterVector::New(expected));
     }
 
 #define TEST(code, ...) doTest(__LINE__, code, {__VA_ARGS__})

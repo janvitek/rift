@@ -56,6 +56,7 @@ inline bool operator < (TypeChecker::Type t1, TypeChecker::Type t2) {
     if (t1 == t2) return false;
 
     assert(false);
+    return false;
 }
 
 
