@@ -31,7 +31,7 @@ void GarbageCollector::visitChildren(RVal* val) {
         case Type::Bindings: {
             Bindings* env = (Bindings*)val;
             for (unsigned i = 0; i < env->size; ++i) {
-                mark(env->bindings[i].value);
+                mark(env->binding[i].value);
             }
             break;
         }

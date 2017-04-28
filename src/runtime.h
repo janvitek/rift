@@ -11,6 +11,7 @@
 #include "gc.h"
 
 enum class Type {
+    Invalid,
     Double,
     Character,
     Function,
@@ -91,7 +92,6 @@ struct DoubleVector : RVal {
     }
 
     DoubleVector(unsigned size) : RVal(Type::Double), size(size) {
-        memset(data, 0, size);
     }
 
     /** Creates vector from doubles.
@@ -126,7 +126,7 @@ struct DoubleVector : RVal {
 Binding is a pair of symbol and corresponding Value. 
 */
 struct Bindings : RVal {
-    const static size_t initialSize = 4;
+    const static size_t growSize = 4;
 
     struct Binding {
         rift::Symbol symbol;
@@ -136,7 +136,7 @@ struct Bindings : RVal {
     unsigned size = 0;
     unsigned available;
     
-    static Bindings* New(size_t initial = initialSize) {
+    static Bindings* New(size_t initial) {
         void *store = gc::GarbageCollector::alloc(
                 sizeof(Binding) * initial + sizeof(Bindings));
         return new (store) Bindings(initial);
@@ -148,8 +148,8 @@ struct Bindings : RVal {
      */
     RVal * get(rift::Symbol symbol) {
         for (unsigned i = 0; i < size; ++i)
-            if (bindings[i].symbol == symbol)
-                return bindings[i].value;
+            if (binding[i].symbol == symbol)
+                return binding[i].value;
         return nullptr;
     }
 
@@ -160,13 +160,13 @@ struct Bindings : RVal {
      */
     bool set(rift::Symbol symbol, RVal * value) {
         for (unsigned i = 0; i < size; ++i)
-            if (bindings[i].symbol == symbol) {
-                bindings[i].value = value;
+            if (binding[i].symbol == symbol) {
+                binding[i].value = value;
                 return true;
             }
         if (size < available) {
-            bindings[size].symbol = symbol;
-            bindings[size].value = value;
+            binding[size].symbol = symbol;
+            binding[size].value = value;
             size++;
             return true;
         }
@@ -176,13 +176,13 @@ struct Bindings : RVal {
     Bindings(size_t initial) : RVal(Type::Bindings), available(initial) {}
 
     Bindings* grow() {
-        Bindings* g = Bindings::New(available+initialSize);
-        memcpy(g->bindings, bindings, sizeof(Binding)*size);
+        Bindings* g = Bindings::New(available + growSize);
+        memcpy(g->binding, binding, sizeof(Binding)*size);
         g->size = size;
         return g;
     }
 
-    Binding bindings[];
+    Binding binding[];
 };
 
 /** Rift Environment. 
@@ -198,18 +198,18 @@ struct Environment : RVal {
     Environment * parent;
     Bindings * bindings;
 
-    static Environment* New(Environment* parent) {
+    static Environment* New(Environment* parent, size_t initialSize = 4) {
         void *store = gc::GarbageCollector::alloc(sizeof(Environment));
-        return new (store) Environment(parent);
+        return new (store) Environment(parent, initialSize);
     }
 
     /** Creates new environment with the given parent. 
      */
-    Environment(Environment* parent):
+    Environment(Environment* parent, size_t initialSize):
         RVal(Type::Environment),
         parent(parent) {
             bindings = nullptr; // important because next line might trigger gc
-            bindings = Bindings::New();
+            bindings = Bindings::New(initialSize);
     }
 
     RVal * get(rift::Symbol symbol) {

@@ -45,7 +45,7 @@ public:
 
 class Page {
 public:
-    static constexpr size_t nodeSize = 64;
+    static constexpr size_t nodeSize = 32;
 
     struct Node {
         uint8_t data[nodeSize];
@@ -121,7 +121,7 @@ public:
     }
 
     Page() : first(reinterpret_cast<uintptr_t>(&node[0])),
-    last(reinterpret_cast<uintptr_t>(&node[pageSize - 1])) {
+             last(reinterpret_cast<uintptr_t>(&node[pageSize - 1])) {
         assert(getClosestIndex((uintptr_t)first + 1) == 0);
         assert(getClosestIndex((uintptr_t)last + 1) == pageSize - 1);
 
@@ -236,7 +236,7 @@ public:
         if (page.size() == NodeIndex::MaxPage) {
             throw std::bad_alloc();
         }
-        auto p = new Page;
+        auto p = new Page();
         registerPage(p);
         auto n = p->alloc(sz);
         assert(n);
@@ -245,6 +245,8 @@ public:
 
     NodeIndex findNode(void* ptr) {
         uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+
+        assert(minAddr < maxAddr);
 
         // quickly discard implausible pointers
         if (addr < minAddr || addr > maxAddr)

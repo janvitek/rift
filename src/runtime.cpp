@@ -331,15 +331,17 @@ RVal * call(RVal * callee, unsigned argc, ...) {
 
     if (f->argsSize != argc) throw "Wrong number of arguments";
 
-    Environment * calleeEnv = Environment::New(f->env);
+    Environment * calleeEnv = Environment::New(f->env, argc);
     va_list ap;
     va_start(ap, argc);
     for (unsigned i = 0; i < argc; ++i) {
         // TODO this is pass by reference always!
         auto name = f->args[i];
         auto value = va_arg(ap, RVal*);
-        calleeEnv->set(name, value);
+        calleeEnv->bindings->binding[i].symbol = name;
+        calleeEnv->bindings->binding[i].value = value;
     }
+    calleeEnv->bindings->size = argc;
     va_end(ap);
     return f->code(calleeEnv);
 }
