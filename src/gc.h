@@ -14,9 +14,10 @@
 #include <intrin.h>
 #endif
 
+#include "rval.h"
+
 // #define GC_DEBUG 1
 
-class RVal;
 void gc_scanStack();
 
 namespace gc {
@@ -343,14 +344,14 @@ public:
     constexpr static double GC_GROW_RATE = 1.3f;
 
     // Interface to request memory from the GC
-    static void* alloc(size_t sz) {
-        return inst().doAlloc(sz);
+    static RVal* alloc(size_t sz, Type type) {
+        return inst().doAlloc(sz, type);
     }
 
 private:
     Arena arena;
 
-    void* doAlloc(size_t sz) {
+    RVal* doAlloc(size_t sz, Type type) {
         void* res = arena.alloc(sz, false);
         if (!res) {
             doGc();
@@ -358,7 +359,9 @@ private:
             if (!res) res = arena.alloc(sz, true);
         }
         assert(res);
-        return res;
+        RVal* rval = (RVal*)res;
+        rval->type = type;
+        return rval;
     };
 
     size_t size() const {

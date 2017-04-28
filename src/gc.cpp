@@ -39,11 +39,14 @@ void GarbageCollector::visitChildren(RVal* val) {
 
         case Type::Function: {
             RFun* fun = (RFun*)val;
+            if (fun->args)
+                mark(fun->args);
             if (fun->env)
                 mark(fun->env);
             break;
         }
 
+        case Type::FunctionArgs:
         case Type::Double:
         case Type::Character:
             // leaf nodes

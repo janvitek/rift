@@ -10,19 +10,19 @@ namespace {
 bool eq(RVal * a, RVal * b) {
     if (a->type != b->type)  return false;
 
-    if (auto d1 = cast<DoubleVector>(a)) {
-        auto d2 = cast<DoubleVector>(b);
+    if (auto d1 = DoubleVector::Cast(a)) {
+        auto d2 = DoubleVector::Cast(b);
         if (d1->size != d2->size) return false;
         for (unsigned i = 0; i < d1->size; ++i)
             if (d1->data[i] != d2->data[i]) return false;
         return true;
-    } else if (auto c1 = cast<CharacterVector>(a)) {
-        auto c2 = cast<CharacterVector>(b);
+    } else if (auto c1 = CharacterVector::Cast(a)) {
+        auto c2 = CharacterVector::Cast(b);
         if (c1->size != c2->size) return false;
         for (unsigned i = 0; i < c1->size; ++i)
             if (c1->data[i] != c2->data[i]) return false;
         return true;
-    } else if (cast<RFun>(a)) {
+    } else if (RFun::Cast(a)) {
         return a == b;
     }
     assert(false);

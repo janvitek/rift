@@ -81,11 +81,11 @@ RVal * characterGetElement(CharacterVector * from, DoubleVector * index) {
 
 
 RVal * genericGetElement(RVal * from, RVal * index) {
-    auto i = cast<DoubleVector>(index);
+    auto i = DoubleVector::Cast(index);
     if (!i) throw "Index vector must be double";
-    if (auto fr = cast<DoubleVector>(from))
+    if (auto fr = DoubleVector::Cast(from))
         return doubleGetElement(fr, i);
-    if (auto fr = cast<CharacterVector>(from)) {
+    if (auto fr = CharacterVector::Cast(from)) {
         return characterGetElement(fr, i);
     }
     throw "Cannot index a function";
@@ -118,13 +118,13 @@ void characterSetElement(CharacterVector * target, DoubleVector * index, Charact
 }
 
 void genericSetElement(RVal * target, RVal * index, RVal * value) {
-    auto i = cast<DoubleVector>(index);
+    auto i = DoubleVector::Cast(index);
     if (!i) throw "Index vector must be double";
     if (target->type != value->type)
         throw "Vector and element must be of same type";
-    if (auto t = cast<DoubleVector>(target)) {
+    if (auto t = DoubleVector::Cast(target)) {
         doubleSetElement(t, i, static_cast<DoubleVector*>(value));
-    } else if (auto t = cast<CharacterVector>(target)) {
+    } else if (auto t = CharacterVector::Cast(target)) {
         characterSetElement(t, i, static_cast<CharacterVector*>(value));
     } else {
         throw "Cannot index a function";
@@ -151,9 +151,9 @@ RVal * characterAdd(CharacterVector * lhs, CharacterVector * rhs) {
 RVal * genericAdd(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         throw "Incompatible types for binary operator";
-    if (auto l = cast<DoubleVector>(lhs)) {
+    if (auto l = DoubleVector::Cast(lhs)) {
         return doubleAdd(l, static_cast<DoubleVector*>(rhs));
-    } else if (auto l = cast<CharacterVector>(lhs)) {
+    } else if (auto l = CharacterVector::Cast(lhs)) {
         return characterAdd(l, static_cast<CharacterVector*>(rhs));
     } else {
         throw "Invalid types for binary add";
@@ -171,8 +171,8 @@ RVal * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
 
 
 RVal * genericSub(RVal * lhs, RVal * rhs) {
-    auto l = cast<DoubleVector>(lhs);
-    auto r = cast<DoubleVector>(rhs);
+    auto l = DoubleVector::Cast(lhs);
+    auto r = DoubleVector::Cast(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
     return doubleSub(l, r);
@@ -187,8 +187,8 @@ RVal * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {
 }
 
 RVal * genericMul(RVal * lhs, RVal * rhs) {
-    auto l = cast<DoubleVector>(lhs);
-    auto r = cast<DoubleVector>(rhs);
+    auto l = DoubleVector::Cast(lhs);
+    auto r = DoubleVector::Cast(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
     return doubleMul(l, r);
@@ -203,8 +203,8 @@ RVal * doubleDiv(DoubleVector * lhs, DoubleVector * rhs) {
 }
 
 RVal * genericDiv(RVal * lhs, RVal * rhs) {
-    auto l = cast<DoubleVector>(lhs);
-    auto r = cast<DoubleVector>(rhs);
+    auto l = DoubleVector::Cast(lhs);
+    auto r = DoubleVector::Cast(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
     return doubleDiv(l, r);
@@ -230,11 +230,11 @@ RVal * genericEq(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         return DoubleVector::New({0});
 
-    if (auto l = cast<DoubleVector>(lhs))
+    if (auto l = DoubleVector::Cast(lhs))
         return doubleEq(l, static_cast<DoubleVector*>(rhs));
-    if (auto l = cast<CharacterVector>(lhs))
+    if (auto l = CharacterVector::Cast(lhs))
         return characterEq(l, static_cast<CharacterVector*>(rhs));
-    if (auto l = cast<RFun>(lhs))
+    if (auto l = RFun::Cast(lhs))
         return DoubleVector::New(
                 {static_cast<double>(l->code == static_cast<RFun*>(rhs)->code)});
 
@@ -262,11 +262,11 @@ RVal * genericNeq(RVal * lhs, RVal * rhs) {
     if (lhs->type != rhs->type)
         return DoubleVector::New({1});
 
-    if (auto l = cast<DoubleVector>(lhs))
+    if (auto l = DoubleVector::Cast(lhs))
         return doubleNeq(l, static_cast<DoubleVector*>(rhs));
-    if (auto l = cast<CharacterVector>(lhs))
+    if (auto l = CharacterVector::Cast(lhs))
         return characterNeq(l, static_cast<CharacterVector*>(rhs));
-    if (auto l = cast<RFun>(lhs))
+    if (auto l = RFun::Cast(lhs))
         return DoubleVector::New(
                 {static_cast<double>(l->code != static_cast<RFun*>(rhs)->code)});
 
@@ -283,8 +283,8 @@ RVal * doubleLt(DoubleVector * lhs, DoubleVector * rhs) {
 }
 
 RVal * genericLt(RVal * lhs, RVal * rhs) {
-    auto l = cast<DoubleVector>(lhs);
-    auto r = cast<DoubleVector>(rhs);
+    auto l = DoubleVector::Cast(lhs);
+    auto r = DoubleVector::Cast(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
 
@@ -301,8 +301,8 @@ RVal * doubleGt(DoubleVector * lhs, DoubleVector * rhs) {
 
 
 RVal * genericGt(RVal * lhs, RVal * rhs) {
-    auto l = cast<DoubleVector>(lhs);
-    auto r = cast<DoubleVector>(rhs);
+    auto l = DoubleVector::Cast(lhs);
+    auto r = DoubleVector::Cast(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
     return doubleGt(l, r);
@@ -313,11 +313,11 @@ RVal * createFunction(int index, Environment * env) {
 }
 
 bool toBoolean(RVal * v) {
-    if (cast<RFun>(v)) {
+    if (RFun::Cast(v)) {
         return true;
-    } else if (auto c = cast<CharacterVector>(v)) {
+    } else if (auto c = CharacterVector::Cast(v)) {
         return (c->size > 0) and ((*c)[0] != 0);
-    } else if (auto d = cast<DoubleVector>(v)) {
+    } else if (auto d = DoubleVector::Cast(v)) {
         return (d->size > 0) and ((*d)[0] != 0);
     }
 
@@ -326,33 +326,34 @@ bool toBoolean(RVal * v) {
 }
 
 RVal * call(RVal * callee, unsigned argc, ...) {
-    auto f = cast<RFun>(callee);
+    auto f = RFun::Cast(callee);
     if (!f) throw "Not a function!";
 
-    if (f->argsSize != argc) throw "Wrong number of arguments";
+    if (f->nargs() != argc) throw "Wrong number of arguments";
 
-    Environment * calleeEnv = Environment::New(f->env, argc);
+    Bindings * calleeBindings = Bindings::New(argc);
     va_list ap;
     va_start(ap, argc);
     for (unsigned i = 0; i < argc; ++i) {
         // TODO this is pass by reference always!
-        auto name = f->args[i];
+        auto name = (*f->args)[i];
         auto value = va_arg(ap, RVal*);
-        calleeEnv->bindings->binding[i].symbol = name;
-        calleeEnv->bindings->binding[i].value = value;
+        calleeBindings->binding[i].symbol = name;
+        calleeBindings->binding[i].value = value;
     }
-    calleeEnv->bindings->size = argc;
+    calleeBindings->size = argc;
     va_end(ap);
+    Environment * calleeEnv = Environment::New(f->env, calleeBindings);
     return f->code(calleeEnv);
 }
 
 double length(RVal * v) {
-    if (auto d = cast<DoubleVector>(v))
+    if (auto d = DoubleVector::Cast(v))
         return d->size;
-    if (auto c = cast<CharacterVector>(v))
+    if (auto c = CharacterVector::Cast(v))
         return c->size;
 
-    if (cast<RFun>(v))
+    if (RFun::Cast(v))
         throw "Cannot determine length of a function";
     throw "Cannot determine length of unknown object";
 }
@@ -392,7 +393,7 @@ RVal * characterEval(Environment * env, CharacterVector * RVal) {
 }
 
 RVal * genericEval(Environment * env, RVal * arg) {
-    if (auto c = cast<CharacterVector>(arg))
+    if (auto c = CharacterVector::Cast(arg))
         return characterEval(env, c);
 
     throw "Only character vectors can be evaluated";

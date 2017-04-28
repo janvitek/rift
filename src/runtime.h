@@ -6,67 +6,77 @@
 #include "llvm.h"
 #include "ast.h"
 
-// #pragma warning(disable : 4267 4297 4018)
-
 #include "gc.h"
 
-enum class Type {
-    Invalid,
-    Double,
-    Character,
-    Function,
-    Environment,
-    Bindings,
+template <typename T>
+struct RValOps {
+  public:
+    static T* Cast(RVal* obj) {
+        if (obj->type != T::TYPE)
+            return nullptr;
+        return (T*) obj;
+    }
+
+    RValOps<T>() = delete;
+    RValOps<T>(RValOps<T> const&) = delete;
+
+  protected:
+    // Those operators are used internally by the different RVals to allocate a
+    // new instance of themselves through the GC.
+    //
+    // The convention is that each RVal should implement at least one static
+    // New method to create new instances.
+    //
+    // Constructors are disallowed because the type tag needs to be set by the
+    // GC already. Otherwise a GC during object construction will result in an
+    // untagged object being scanned. Since defining a constructor on a struct
+    // might cause C++ to override the type tag we avoid using them.
+    struct AllocPlain {
+        T* operator() () const {
+            return (T*) gc::GarbageCollector::alloc(sizeof(T), T::TYPE);
+        }
+    };
+    struct AllocVect {
+        T* operator() (unsigned length) const {
+            return (T*) gc::GarbageCollector::alloc(
+                    sizeof(T) + length * T::ELEMENT_SIZE, T::TYPE);
+        }
+    };
 };
 
 /*
- * A Rift Value.
- * All objects start with this
+ *  Character vector
+ *
+ *  strings of variable size. They are null terminated. Size excludes the
+ *  trailing terminator.
  *
  */
-struct RVal {
-protected:
-    RVal(Type type) : type(type) {}
-
-public:
-    Type type;
-
-    // deleting new makes sure memory is allocated through the GC
-    void* operator new(size_t sz) = delete;
-    void* operator new (size_t, void* p) { return p; }
-    void operator delete(void*) = delete;
-
-    /** Prints to given stream.  */
-    inline void print(std::ostream & s);
-};
-
-
-/** Character vector: strings of variable size. They are null
-    terminated. Size excludes the trailing terminator.
-*/
-struct CharacterVector : RVal {
+struct CharacterVector : RVal, RValOps<CharacterVector> {
     unsigned size;
 
+    CharacterVector() = delete;
+
+    static constexpr Type TYPE = Type::Character;
+    static constexpr size_t ELEMENT_SIZE = sizeof(char);
+
     static CharacterVector* New(unsigned size) {
-        size_t byteSize = (size+1) * sizeof(char) + sizeof(CharacterVector);
-        void *store = gc::GarbageCollector::alloc(byteSize);
-        return new (store) CharacterVector(size);
+        CharacterVector* obj = AllocVect()(size+1);
+        obj->size = size;
+        obj->data[size] = 0;
+        return obj;
     }
 
-    /** Creates a CV from given data and size. Takes ownership of the data.
-    */
-    CharacterVector(unsigned size) : RVal(Type::Character), size(size) {
-        data[size] = 0;
+    static CharacterVector* New(const char* c) {
+        size_t size = strlen(c);
+        CharacterVector* obj = AllocVect()(size+1);
+        obj->size = size;
+        unsigned i = 0;
+        while (*c && i < size) {
+            (*obj)[i++] = *c++;
+        }
+        obj->data[size] = 0;
+        return obj;
     }
-
-    static CharacterVector* New(const char * c) {
-        unsigned size = strlen(c);
-        CharacterVector& res = *New(size);
-        for (unsigned i = 0; i < size; ++i)
-            res[i] = *c++;
-        return &res;
-    }
-
 
     /** Prints to given stream. */
     void print(std::ostream & s) {
@@ -74,38 +84,39 @@ struct CharacterVector : RVal {
     }
 
     char& operator[] (const size_t i) {
+        assert (i < size);
         return data[i];
     }
 
     char data[];
 };
 
-/** A Double vector consists of an array of doubles and a size.
-*/
-struct DoubleVector : RVal {
+/*
+ * A Double vector
+ *
+ * consists of an array of doubles and a size.
+ * 
+ */
+struct DoubleVector : RVal, RValOps<DoubleVector> {
     unsigned size;
 
+    static constexpr Type TYPE = Type::Double;
+    static constexpr size_t ELEMENT_SIZE = sizeof(double);
+
     static DoubleVector* New(unsigned size) {
-        size_t byteSize = size * sizeof(double) + sizeof(DoubleVector);
-        void *store = gc::GarbageCollector::alloc(byteSize);
-        return new (store) DoubleVector(size);
+        DoubleVector* obj = AllocVect()(size);
+        obj->size = size;
+        return obj;
     }
 
-    DoubleVector(unsigned size) : RVal(Type::Double), size(size) {
-    }
-
-    /** Creates vector from doubles.
-     */
     static DoubleVector* New(std::initializer_list<double> d) {
-        unsigned size = d.size();
-        DoubleVector& res = *New(size);
+        DoubleVector* obj = AllocVect()(d.size());
+        obj->size = d.size();
         unsigned i = 0;
         for (double dd : d)
-            res[i++] = dd;
-        return &res;
+            (*obj)[i++] = dd;
+        return obj;
     }
-
-    DoubleVector(DoubleVector const&) = delete;
 
     /** Prints to given stream. 
      */
@@ -115,31 +126,38 @@ struct DoubleVector : RVal {
     }
 
     double& operator[] (const size_t i) {
+        assert (i < size);
         return data[i];
     }
 
     double data[];
 };
 
-/** Binding for the environment. 
-
-Binding is a pair of symbol and corresponding Value. 
-*/
-struct Bindings : RVal {
-    const static size_t growSize = 4;
+/*
+ * Binding for the environment. 
+ * List of pair of symbol and corresponding Value.
+ *
+ */
+struct Bindings : RVal, RValOps<Bindings> {
+    constexpr static size_t growSize = 4;
+    constexpr static size_t initialSize = 4;
 
     struct Binding {
         rift::Symbol symbol;
         RVal * value;
     };
 
-    unsigned size = 0;
+    unsigned size;
     unsigned available;
     
-    static Bindings* New(size_t initial) {
-        void *store = gc::GarbageCollector::alloc(
-                sizeof(Binding) * initial + sizeof(Bindings));
-        return new (store) Bindings(initial);
+    static constexpr Type TYPE = Type::Bindings;
+    static constexpr size_t ELEMENT_SIZE = sizeof(Binding);
+
+    static Bindings* New(unsigned size = initialSize) {
+        Bindings* obj = AllocVect()(size);
+        obj->size = 0;
+        obj->available = size;
+        return obj;
     }
 
     /** Returns the value corresponding to given Symbol. 
@@ -173,8 +191,6 @@ struct Bindings : RVal {
         return false;
     }
 
-    Bindings(size_t initial) : RVal(Type::Bindings), available(initial) {}
-
     Bindings* grow() {
         Bindings* g = Bindings::New(available + growSize);
         memcpy(g->binding, binding, sizeof(Binding)*size);
@@ -185,12 +201,18 @@ struct Bindings : RVal {
     Binding binding[];
 };
 
-/** Rift Environment. 
-
-Environment represents function's local variables as well as a pointer to the parent environment, i.e. the environment in which the function was declared. 
-
-*/
-struct Environment : RVal {
+/*
+ * Rift Environment. 
+ * 
+ * Environment represents function's local variables as well as a pointer to
+ * the parent environment (i.e. the environment in which the function was
+ * declared).
+ *
+ * The bindings are stored externally because we need to be able to grow
+ * them dynamically.
+ *
+ */
+struct Environment : RVal, RValOps<Environment> {
     /** Parent environment. 
 
     Nullptr if top environment. 
@@ -198,24 +220,28 @@ struct Environment : RVal {
     Environment * parent;
     Bindings * bindings;
 
-    static Environment* New(Environment* parent, size_t initialSize = 4) {
-        void *store = gc::GarbageCollector::alloc(sizeof(Environment));
-        return new (store) Environment(parent, initialSize);
+    static constexpr Type TYPE = Type::Environment;
+
+    static Environment* New(Environment* parent) {
+        Environment* obj = AllocPlain()();
+        obj->bindings = nullptr;
+        obj->parent = parent;
+        return obj;
     }
 
-    /** Creates new environment with the given parent. 
-     */
-    Environment(Environment* parent, size_t initialSize):
-        RVal(Type::Environment),
-        parent(parent) {
-            bindings = nullptr; // important because next line might trigger gc
-            bindings = Bindings::New(initialSize);
+    static Environment* New(Environment* parent, Bindings* bindings) {
+        Environment* obj = AllocPlain()();
+        obj->bindings = bindings;
+        obj->parent = parent;
+        return obj;
     }
 
     RVal * get(rift::Symbol symbol) {
-        RVal* res = bindings->get(symbol);
-        if (res)
-            return res;
+        if (bindings) {
+            RVal* res = bindings->get(symbol);
+            if (res)
+                return res;
+        }
 
         if (parent != nullptr)
             return parent->get(symbol);
@@ -229,6 +255,9 @@ struct Environment : RVal {
     otherwise creates new binding for the symbol and attaches it to the value. 
      */
     void set(rift::Symbol symbol, RVal * value) {
+        if (!bindings)
+            bindings = Bindings::New();
+
         if (bindings->set(symbol, value))
             return;
 
@@ -238,69 +267,93 @@ struct Environment : RVal {
 
 };
 
-/** Pointer to Rift function. These functions all takes Environment* and
-    return an RVal*.
+/*
+ * Pointer to Rift function. These functions all takes Environment*
+ * and return an RVal*
+ *
  */
 typedef RVal * (*FunPtr)(Environment *);
 
-/** Rift Function.  Each function contains an environment, compiled code,
-    bitcode, an argument list, and an arity.  The bitcode and argument names
-    are there for debugging purposes.
+/*
+ * List of formal arguments. Stored externally to be able to share between
+ * functions.
+ *
  */
-struct RFun : RVal {
+struct FunctionArgs : RVal, RValOps<FunctionArgs> {
+    static constexpr Type TYPE = Type::FunctionArgs;
+    static constexpr size_t ELEMENT_SIZE = sizeof(rift::Symbol);
+
+    unsigned length;
+
+    static FunctionArgs* New(std::vector<rift::ast::Var*>& args, unsigned length) {
+        FunctionArgs* obj = AllocVect()(length);
+        unsigned i = 0;
+        obj->length = length;
+        for (rift::ast::Var * arg : args)
+            (*obj)[i++] = arg->symbol;
+        return obj;
+    }
+
+    rift::Symbol& operator[] (const size_t i) {
+        assert (i < length);
+        return symbol[i];
+    }
+
+    rift::Symbol symbol[];
+};
+
+/*
+ * Rift Function.
+ *
+ * Each function contains an environment, compiled code, bitcode, and the list
+ * of formal parameters. The bitcode and argument names are there for debugging
+ * purposes.
+ *
+ */
+struct RFun : RVal, RValOps<RFun> {
     Environment * env;
     FunPtr code;
     llvm::Function * bitcode;
-    rift::Symbol * args;
-    unsigned argsSize;
+    FunctionArgs * args;
     
+    static constexpr Type TYPE = Type::Function;
+
     static RFun* New(rift::ast::Fun * fun, llvm::Function * bitcode) {
-        void *store = gc::GarbageCollector::alloc(sizeof(RFun));
-        return new (store) RFun(fun, bitcode);
+        RFun* obj = AllocPlain()();
+        obj->env = nullptr;
+        obj->code = nullptr;
+        obj->bitcode = bitcode;
+        obj->args = nullptr;
+        if (fun->args.size() > 0) {
+            obj->args = FunctionArgs::New(fun->args, fun->args.size());
+        }
+        return obj;
     }
 
     static RFun* Copy(RFun* fun) {
-        void *store = gc::GarbageCollector::alloc(sizeof(RFun));
-        return new (store) RFun(fun->env, fun->code, fun->bitcode, fun->args, fun->argsSize);
+        RFun* obj = AllocPlain()();
+        obj->env = fun->env;
+        obj->code = fun->code;
+        obj->bitcode = fun->bitcode;
+        obj->args = fun->args;
+        return obj;
     }
 
-
-    /** Create a Rift function. A new argument list is needed, everything
-	else is shared.
-    */
-    RFun(rift::ast::Fun * fun, llvm::Function * bitcode) :
-        RVal(Type::Function),
-        env(nullptr),
-        code(nullptr),
-        bitcode(bitcode),
-        args(fun->args.size()==0 ? nullptr : new int[fun->args.size()]),
-        argsSize(fun->args.size()) {
-        unsigned i = 0;
-        for (rift::ast::Var * arg : fun->args)
-            args[i++] = arg->symbol;
+    size_t nargs() {
+        if (!args)
+            return 0;
+        return args->length;
     }
-
-    RFun(Environment* env, FunPtr code, llvm::Function * bitcode, rift::Symbol* args, unsigned argsSize) :
-        RVal(Type::Function),
-        env(env),
-        code(code),
-        bitcode(bitcode),
-        args(args),
-        argsSize(argsSize) { }
-
-
     /** Create a closure by copying function f and binding it to environment
 	e. Arguments are shared.
      */
     RFun* close(Environment * e) {
+        assert(!env);
         RFun* closure = Copy(this);
         closure->env = e;
         return closure;
     }
   
-    /* Args and env are shared, they are not deleted. */
-    ~RFun() { }
-
     /** Prints bitcode to given stream.  */
     void print(std::ostream & s) {
         llvm::raw_os_ostream ss(s);
@@ -309,26 +362,11 @@ struct RFun : RVal {
 
 };
 
-template <typename T>
-static inline T* cast(RVal * r) {
-    static_assert(std::is_same<T, RFun>::value ||
-                  std::is_same<T, CharacterVector>::value ||
-                  std::is_same<T, DoubleVector>::value,
-                  "Invalid RVal cast");
-
-    if ((typeid(T) == typeid(RFun)            && r->type == Type::Function)  ||
-        (typeid(T) == typeid(CharacterVector) && r->type == Type::Character) ||
-        (typeid(T) == typeid(DoubleVector)    && r->type == Type::Double)) {
-        return static_cast<T*>(r);
-    }
-    return nullptr;
-}
-
 /** Prints to given stream.  */
 void RVal::print(std::ostream & s) {
-         if (auto d = cast<DoubleVector>(this))    d->print(s);
-    else if (auto c = cast<CharacterVector>(this)) c->print(s);
-    else if (auto f = cast<RFun>(this))            f->print(s);
+         if (auto d = DoubleVector::Cast(this))    d->print(s);
+    else if (auto c = CharacterVector::Cast(this)) c->print(s);
+    else if (auto f = RFun::Cast(this))            f->print(s);
     else assert(false);
 }
 
