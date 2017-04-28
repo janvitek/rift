@@ -1,20 +1,6 @@
 #include "gc.h"
 #include "runtime.h"
 
-// The stack scan traverses the memory of the C stack and looks at every
-// possible stack slot. If we find a valid heap pointer we mark the
-// object as well as all objects reachable through it as live.
-void __attribute__((noinline)) gc_scanStack() {
-    void ** p = (void**)__builtin_frame_address(0);
-    gc::GarbageCollector & inst = gc::GarbageCollector::inst();
-
-    while (p < inst.BOTTOM_OF_STACK) {
-        if ((uintptr_t)p > 1024)
-            inst.markMaybe(*p);
-        p++;
-    }
-}
-
 namespace gc {
 
 void GarbageCollector::visitChildren(RVal* val) {
@@ -56,5 +42,98 @@ void GarbageCollector::visitChildren(RVal* val) {
             assert(false && "Broken RVal");
     }
 }
+
+// The core mark & sweep algorithm
+void GarbageCollector::doGc() {
+#ifdef GC_DEBUG
+    unsigned memUsage = size() - free();
+    verify();
+#endif
+
+    mark();
+
+#ifdef GC_DEBUG
+    verify();
+#endif
+
+    sweep();
+
+#ifdef GC_DEBUG
+    verify();
+    unsigned memUsage2 = size() - free();
+    assert(memUsage2 <= memUsage);
+    std::cout << "reclaiming " << memUsage - memUsage2
+              << "b, used " << memUsage2 << "b, total " << size() << "b\n";
+#endif
+}
+
+// The stack scan traverses the memory of the C stack and looks at every
+// possible stack slot. If we find a valid heap pointer we mark the
+// object as well as all objects reachable through it as live.
+void __attribute__((noinline)) scanStack_() {
+    GarbageCollector& gc = GarbageCollector::inst();
+
+    void ** p = (void**)__builtin_frame_address(0);
+
+#ifdef GC_DEBUG
+    unsigned found = 0;
+#endif
+    while (p < gc.BOTTOM_OF_STACK) {
+        uintptr_t po = (uintptr_t)*p;
+        if (po > 1024 && po % 4 == 0 && gc.arena.find(*p)) {
+#ifdef GC_DEBUG
+            found++;
+#endif
+            gc.mark((RVal*)*p);
+        }
+        p++;
+    }
+
+#ifdef GC_DEBUG
+    void ** pt = (void**)__builtin_frame_address(0);
+    printf("scanned %lu slots, found %u objs\n", (p-pt)/sizeof(void*), found);
+#endif
+}
+
+
+void GarbageCollector::scanStack() {
+    // Clobber all registers:
+    // -> forces all variables currently hold in registers to be spilled
+    //    to the stack where our stackScan can find them.
+    __asm__ __volatile__("nop" : :
+        : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
+        "%r8", "%r9", "%r10", "%r11", "%r12",
+        "%r13", "%r14", "%r15");
+    scanStack_();
+}
+
+void GarbageCollector::mark() {
+    // TODO: maybe some mechanism to define static roots?
+    scanStack();
+}
+
+void Page::verify() {
+    size_t foundFree = 0;
+    Free* f = freelist.next;
+    while (f) {
+        auto b = getIndex(f);
+        for (auto i = b; i < b+f->blocks; i++)
+           assert(!objSize[i]);
+        foundFree += f->blocks * blockSize;
+        f = f->next;
+    }
+    assert(foundFree == freeSpace);
+
+    for (index_t i = 0; i < pageSize; ++i) {
+        if (objSize[i]) {
+            for (auto c = i+1; c < i+objSize[i]; c++)
+              assert(!objSize[c]);
+            RVal* o __attribute__((unused)) = getAt(i);
+            assert(o->type > Type::Invalid && o->type < Type::End);
+            assert(o->mark == 0 || o->mark == 1);
+        }
+    }
+}
+
 
 }

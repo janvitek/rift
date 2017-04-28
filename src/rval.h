@@ -2,14 +2,17 @@
 #ifndef RVAL_H
 #define RVAL_H
 
-enum class Type {
-    Invalid,
+enum class Type : uint8_t {
+    Invalid,          // Used for debugging uninitialized tags
+    
     Double,
     Character,
     Function,
     FunctionArgs,
     Environment,
     Bindings,
+
+    End,             // Used to get the max possible value
 };
 
 /*
@@ -19,6 +22,7 @@ enum class Type {
  */
 struct RVal {
     Type type;
+    uint8_t mark;
 
     // deleting new makes sure memory is allocated through the GC
     void* operator new(size_t sz) = delete;
