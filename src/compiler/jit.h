@@ -81,6 +81,8 @@ public:
                 return JIT::fallbackHostSymbolResolver(name);
           });
 
+        m->setDataLayout(dataLayout);
+
         // Build a singleton module set to hold our module.
         std::vector<std::unique_ptr<llvm::Module>> ms;
         ms.push_back(std::move(m));
