@@ -72,11 +72,53 @@ void GarbageCollector::doGc() {
 #endif
 }
 
+void GarbageCollector::scanStack() {
+    // Clobber all registers, this should spill them to the stack.
+    // -> force all variables currently hold in registers to be spilled
+    //    to the stack where our stackScan can find them.
+    __asm__ __volatile__(
+        "push %%rbp \n\t call scanStack_ \n\t pop %%rbp"
+        : :
+        : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
+        "%r8", "%r9", "%r10", "%r11", "%r12",
+        "%r13", "%r14", "%r15");
+}
+
+void GarbageCollector::mark() {
+    // TODO: maybe some mechanism to define static roots?
+    scanStack();
+}
+
+void Page::verify() {
+    size_t foundFree = 0;
+    Free* f = freelist.next;
+    while (f) {
+        auto b = getIndex(f);
+        for (auto i = b; i < b+f->blocks; i++)
+             assert(!objSize[i]);
+        foundFree += f->blocks;
+        f = f->next;
+    }
+    assert(foundFree == freeSpace);
+
+    for (index_t i = 0; i < pageSize; ++i) {
+        if (objSize[i]) {
+            for (auto c = i+1; c < i+objSize[i]; c++)
+                assert(!objSize[c]);
+            RVal* o __attribute__((unused)) = getAt(i);
+            assert(o->type > Type::Invalid && o->type < Type::End);
+            assert(o->mark == MARKED || o->mark == UNMARKED);
+        }
+    }
+}
+
+}
+
 // The stack scan traverses the memory of the C stack and looks at every
 // possible stack slot. If we find a valid heap pointer we mark the
 // object as well as all objects reachable through it as live.
-void __attribute__((noinline)) scanStack_() {
-    GarbageCollector& gc = GarbageCollector::inst();
+extern "C" void __attribute__((noinline)) scanStack_() {
+    gc::GarbageCollector& gc = gc::GarbageCollector::inst();
 
     void ** top = (void**)__builtin_frame_address(0);
     void ** p = top;
@@ -100,44 +142,3 @@ void __attribute__((noinline)) scanStack_() {
 }
 
 
-void GarbageCollector::scanStack() {
-    // Clobber all registers:
-    // -> forces all variables currently hold in registers to be spilled
-    //    to the stack where our stackScan can find them.
-    __asm__ __volatile__("nop" : :
-        : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
-        "%r8", "%r9", "%r10", "%r11", "%r12",
-        "%r13", "%r14", "%r15");
-    scanStack_();
-}
-
-void GarbageCollector::mark() {
-    // TODO: maybe some mechanism to define static roots?
-    scanStack();
-}
-
-void Page::verify() {
-    size_t foundFree = 0;
-    Free* f = freelist.next;
-    while (f) {
-        auto b = getIndex(f);
-        for (auto i = b; i < b+f->blocks; i++)
-           assert(!objSize[i]);
-        foundFree += f->blocks * blockSize;
-        f = f->next;
-    }
-    assert(foundFree == freeSpace);
-
-    for (index_t i = 0; i < pageSize; ++i) {
-        if (objSize[i]) {
-            for (auto c = i+1; c < i+objSize[i]; c++)
-              assert(!objSize[c]);
-            RVal* o __attribute__((unused)) = getAt(i);
-            assert(o->type > Type::Invalid && o->type < Type::End);
-            assert(o->mark == 0 || o->mark == 1);
-        }
-    }
-}
-
-
-}

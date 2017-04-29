@@ -250,7 +250,7 @@ struct Environment : RVal, RValOps<Environment> {
     }
 
     /** Assigns given value to symbol. 
-    
+
     If the symbol already exists it the environment, updates its value,
     otherwise creates new binding for the symbol and attaches it to the value. 
      */
@@ -262,7 +262,9 @@ struct Environment : RVal, RValOps<Environment> {
             return;
 
         bindings = bindings->grow();
-        assert(bindings->set(symbol, value));
+        bool succ __attribute__((unused)) =
+            bindings->set(symbol, value);
+        assert(succ);
     }
 
 };

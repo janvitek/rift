@@ -19,7 +19,17 @@
 
 // #define GC_DEBUG 1
 
+extern "C" void scanStack_();
+
 namespace gc {
+
+#ifdef GC_DEBUG
+constexpr static uint8_t MARKED = 3;
+constexpr static uint8_t UNMARKED = 7;
+#else
+constexpr static uint8_t MARKED = 1;
+constexpr static uint8_t UNMARKED = 0;
+#endif
 
 typedef size_t index_t;
 
@@ -109,7 +119,7 @@ public:
         objSize[idx] = sz;
 
         RVal* obj = getAt(idx);
-        obj->mark = 0;
+        obj->mark = UNMARKED;
 
         return obj;
     }
@@ -140,9 +150,7 @@ public:
             last(reinterpret_cast<uintptr_t>(&block[pageSize - 1])) {
 
         // Some sanity checks. Page must be aligned
-        assert(((uintptr_t)&block[0] & pointerMask) == 0);
         assert(((uintptr_t)&block[3] & pointerMask) == 0);
-        assert(getIndex(&block[0]) == 0);
         assert(getIndex(&block[3]) == 3);
 
         objSize.fill(0);
@@ -161,10 +169,10 @@ public:
         while (i < pageSize) {
             auto sz = objSize[i];
             if (sz) {
-                if (!getAt(i)->mark) {
+                if (getAt(i)->mark == UNMARKED) {
                     freeBlock(i);
                 } else {
-                    getAt(i)->mark = 0;
+                    getAt(i)->mark = UNMARKED;
                 }
                 i += sz;
             } else {
@@ -201,7 +209,7 @@ private:
 
 #ifdef GC_DEBUG
         RVal* old = getAt(idx);
-        assert(old->mark == 0);
+        assert(old->mark == UNMARKED);
         memset(old, 0xd, sz * blockSize);
 #endif
         freeSpace += sz;
@@ -223,7 +231,7 @@ private:
 class Arena {
 public:
     static constexpr size_t pageBufferSize = sizeof(Page) +
-                                             sizeof(Page::blockSize) + 1;
+                                             2 * sizeof(Page::blockSize);
 
     // The target is to allocate a Page which spans roughly two physical pages
     // Given the block size of 32 this will result in a bit less than 250
@@ -252,7 +260,7 @@ public:
         registerPage(p);
 
         auto n = p->alloc(sz);
-        assert(n);
+        if (!n) throw std::bad_alloc();
         return n;
     }
 
@@ -366,7 +374,7 @@ private:
         }
         // TODO: add a backup allocator for huge objects. Currently allocations
         // bigger than Page::size will fail.
-        assert(res);
+        if (!res) throw std::bad_alloc();
 
         res->type = type;
         return res;
@@ -388,10 +396,10 @@ private:
     void doGc();
 
     void mark(RVal* val) {
-        if (val->mark == 1)
+        if (val->mark == MARKED)
             return;
-        assert(val->mark == 0);
-        val->mark = 1;
+        assert(val->mark == UNMARKED);
+        val->mark = MARKED;
         visitChildren(val);
     }
 
@@ -422,7 +430,7 @@ private:
 
     GarbageCollector(GarbageCollector const &) = delete;
     void operator=(GarbageCollector const &) = delete;
-    friend void scanStack_();
+    friend void ::scanStack_();
 };
 
 } // namespace gc
