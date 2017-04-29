@@ -3,6 +3,9 @@
 
 namespace gc {
 
+static_assert(Page::blockSize >= sizeof(DoubleVector) + sizeof(double), "");
+static_assert(Page::blockSize >= sizeof(Environment), "");
+
 void GarbageCollector::visitChildren(RVal* val) {
     switch (val->type) {
         case Type::Environment: {
@@ -63,7 +66,9 @@ void GarbageCollector::doGc() {
     unsigned memUsage2 = size() - free();
     assert(memUsage2 <= memUsage);
     std::cout << "reclaiming " << memUsage - memUsage2
-              << "b, used " << memUsage2 << "b, total " << size() << "b\n";
+              << "b, used " << memUsage2 << "b, total "
+              << size() << "b in "
+              << arena.page.size() << " pages\n";
 #endif
 }
 
@@ -73,25 +78,24 @@ void GarbageCollector::doGc() {
 void __attribute__((noinline)) scanStack_() {
     GarbageCollector& gc = GarbageCollector::inst();
 
-    void ** p = (void**)__builtin_frame_address(0);
+    void ** top = (void**)__builtin_frame_address(0);
+    void ** p = top;
 
 #ifdef GC_DEBUG
     unsigned found = 0;
 #endif
     while (p < gc.BOTTOM_OF_STACK) {
-        uintptr_t po = (uintptr_t)*p;
-        if (po > 1024 && po % 4 == 0 && gc.arena.find(*p)) {
+        if (*p > (void*)0x1000 && gc.arena.isValidObj(*p)) {
 #ifdef GC_DEBUG
             found++;
 #endif
-            gc.mark((RVal*)*p);
+            gc.mark(reinterpret_cast<RVal*>(*p));
         }
         p++;
     }
 
 #ifdef GC_DEBUG
-    void ** pt = (void**)__builtin_frame_address(0);
-    printf("scanned %lu slots, found %u objs\n", (p-pt)/sizeof(void*), found);
+    printf("scanned %lu slots, found %u objs\n", (p-top)/sizeof(void*), found);
 #endif
 }
 
