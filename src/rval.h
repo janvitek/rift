@@ -4,7 +4,7 @@
 
 enum class Type : uint8_t {
     Invalid,          // Used for debugging uninitialized tags
-    
+
     Double,
     Character,
     Function,
@@ -14,6 +14,9 @@ enum class Type : uint8_t {
 
     End,             // Used to get the max possible value
 };
+
+#pragma pack(push)
+#pragma pack(1)
 
 /*
  * A Rift Value.
@@ -35,5 +38,7 @@ struct RVal {
     /** Prints to given stream.  */
     inline void print(std::ostream & s);
 };
+
+#pragma pack(pop)
 
 #endif // RVAL_H
