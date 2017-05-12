@@ -1,23 +1,62 @@
 #include "rift.h"
 #include "compiler.h"
 #include "types.h"
-#include "module.h"
 #include "pool.h"
 
 
 /** Shorthand for calling runtime functions.  */
-#define RUNTIME_CALL(NAME, ...) b->CreateCall(m->NAME, std::vector<llvm::Value*>({ __VA_ARGS__ }), "")
+#define RUNTIME_CALL(NAME, ...) b->CreateCall(NAME(m.get()), std::vector<llvm::Value*>({ __VA_ARGS__ }), "")
 
+namespace {
+
+    llvm::Function * declareFunction(char const * name, llvm::FunctionType * signature, llvm::Module * m) {
+        return llvm::Function::Create(signature, llvm::Function::ExternalLinkage, name, m);
+    }
+
+
+    llvm::Function * declarePureFunction(char const * name, llvm::FunctionType * signature, llvm::Module * m) {
+        llvm::Function * f = declareFunction(name, signature, m);
+        llvm::AttributeSet as;
+        llvm::AttrBuilder b;
+        b.addAttribute(llvm::Attribute::ReadNone);
+        as = llvm::AttributeSet::get(rift::Compiler::context(),llvm::AttributeSet::FunctionIndex, b);
+        f->setAttributes(as);
+        return f;
+    }
+
+}
 
 namespace rift {
+
+
+
+
 
 Compiler::Compiler():
     result(nullptr),
     env(nullptr),
-    m(new RiftModule()),
+    m(new llvm::Module("module", context())),
     f(nullptr),
     b(nullptr) {
 }
+
+
+#define FUN_PURE(NAME, SIGNATURE) llvm::Function * Compiler::NAME(llvm::Module * m) { \
+    llvm::Function * result = m->getFunction(#NAME); \
+    if (result == nullptr) \
+        result = declarePureFunction(#NAME, SIGNATURE, m); \
+    return result; \
+}
+
+#define FUN(NAME, SIGNATURE) llvm::Function * Compiler::NAME(llvm::Module * m) { \
+    llvm::Function * result = m->getFunction(#NAME); \
+    if (result == nullptr) \
+        result = declareFunction(#NAME, SIGNATURE, m); \
+    return result; \
+}
+RUNTIME_FUNCTIONS
+#undef FUN_PURE
+#undef FUN
 
 int Compiler::compile(ast::Fun * node) {
     // Backup context in case we are creating a nested function
@@ -155,7 +194,7 @@ void Compiler::visit(ast::UserCall * node) {
         args.push_back(result);
     }
 
-    result = b->CreateCall(m->call, args, "");
+    result = b->CreateCall(call(m.get()), args, "");
 }
 
 /** Call length runtime, box the scalar result  */
@@ -185,7 +224,7 @@ void Compiler::visit(ast::CCall * node) {
         arg->accept(this);
         args.push_back(result);
     }
-    result = b->CreateCall(m->c, args, "");
+    result = b->CreateCall(c(m.get()), args, "");
 }
 
 /** Indexed read.  */

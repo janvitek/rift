@@ -2,7 +2,6 @@
 #include "llvm.h"
 #include "ast.h"
 #include "runtime.h"
-#include "module.h"
 
 namespace rift {
 
@@ -25,6 +24,12 @@ public:
     ~Compiler() {
         delete b;
     }
+
+#define FUN_PURE(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
+#define FUN(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
+RUNTIME_FUNCTIONS
+#undef FUN_PURE
+#undef FUN
 
 private:
 
@@ -67,7 +72,7 @@ private:
     llvm::Value * result;
     llvm::Value * env;
 
-    std::unique_ptr<RiftModule> m;
+    std::unique_ptr<llvm::Module> m;
     llvm::Function * f;
     llvm::IRBuilder<>  * b;
 

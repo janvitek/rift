@@ -4,7 +4,9 @@
 
 #include "unboxing.h"
 #include "rift.h"
-#include "compiler/module.h"
+#include "compiler/compiler.h"
+#include "compiler/types.h"
+
 
 using namespace std;
 using namespace llvm;
@@ -12,10 +14,10 @@ using namespace llvm;
 namespace rift {
 char Unboxing::ID = 0;
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 
 void Unboxing::updateDoubleScalar(llvm::Value * newVal) {
-    llvm::Value * box = RUNTIME_CALL(m->doubleVectorLiteral, newVal);
+    llvm::Value * box = RUNTIME_CALL(doubleVectorLiteral, newVal);
     state().update(box, AType::D1, newVal);
     ins->replaceAllUsesWith(box);
 }
@@ -90,7 +92,7 @@ bool Unboxing::genericGetElement() {
         if (idxType->isDoubleScalar()) {
             llvm::Value * i = state().getMetadata(idx);
             if (i) {
-                llvm::Value * res = RUNTIME_CALL(m->doubleGetSingleElement, src, i);
+                llvm::Value * res = RUNTIME_CALL(doubleGetSingleElement, src, i);
                 updateDoubleScalar(res);
                 return true;
             }
@@ -101,7 +103,7 @@ bool Unboxing::genericGetElement() {
 
 bool Unboxing::runOnFunction(llvm::Function & f) {
     //std::cout << "running Unboxing optimization..." << std::endl;
-    m = reinterpret_cast<RiftModule*>(f.getParent());
+    m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
     for (auto & b : f) {
         auto i = b.begin();

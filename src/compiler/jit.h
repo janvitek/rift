@@ -4,7 +4,6 @@
 #include "pool.h"
 #include "compiler.h"
 #include "types.h"
-#include "module.h"
 #include "runtime.h"
 #include "specializedRuntime.h"
 
@@ -26,10 +25,11 @@ private:
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
     typedef std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)> OptimizeFunction;
     typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeFunction> OptimizeLayer;
+    typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
 
 public:
 
-    typedef CompileLayer::ModuleSetHandleT ModuleHandle;
+    typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
 
 
     /** Compiles a function and returns a pointer to the native code.  JIT
@@ -44,6 +44,7 @@ public:
         //optimizeModule(c.m.get());
 
         llvm::Module * m = c.m.release();
+
         singleton().addModule(std::unique_ptr<llvm::Module>(m));
 
         for (; start < Pool::functionsCount(); ++start) {
@@ -55,12 +56,33 @@ public:
 
     JIT():
         targetMachine(llvm::EngineBuilder().selectTarget()),
-        dataLayout(targetMachine->createDataLayout()),
-        compileLayer(objectLayer, llvm::orc::SimpleCompiler(*targetMachine)),
-        optimizeLayer(compileLayer, [this](std::unique_ptr<llvm::Module> m) {
-            optimizeModule(m.get());
-            return m;
-        }) {
+        dataLayout(
+            targetMachine->createDataLayout()
+        ),
+        compileLayer(
+            objectLayer,
+            llvm::orc::SimpleCompiler(*targetMachine)
+        ),
+        optimizeLayer(
+            compileLayer,
+            [this](std::unique_ptr<llvm::Module> m) {
+                optimizeModule(m.get());
+                return m;
+            }
+        ),
+        compileCallbackManager(
+             llvm::orc::createLocalCompileCallbackManager(targetMachine->getTargetTriple(), 0)
+        ),
+        codLayer(
+            optimizeLayer,
+            [this](llvm::Function & f) {
+                return std::set<llvm::Function*>({&f});
+            },
+            *compileCallbackManager,
+            llvm::orc::createLocalIndirectStubsManagerBuilder(
+                targetMachine->getTargetTriple()
+            )
+        ) {
         // this loads the host process itself, making the symbols in it available for execution
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
     }
@@ -69,7 +91,7 @@ public:
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
             [&](std::string const & name) {
-                if (auto s = optimizeLayer.findSymbol(name, false))
+                if (auto s = codLayer.findSymbol(name, false))
                     return s;
                 return llvm::JITSymbol(nullptr);
             },
@@ -89,7 +111,7 @@ public:
 
         // Add the set to the JIT with the resolver we created above and a newly
         // created SectionMemoryManager.
-        return optimizeLayer.addModuleSet(std::move(ms),
+        return codLayer.addModuleSet(std::move(ms),
             llvm::make_unique<llvm::SectionMemoryManager>(),
             std::move(resolver));
     }
@@ -98,11 +120,11 @@ public:
         std::string mangled;
         llvm::raw_string_ostream mangledStream(mangled);
         llvm::Mangler::getNameWithPrefix(mangledStream, name, dataLayout);
-        return compileLayer.findSymbol(mangledStream.str(), true);
+        return codLayer.findSymbol(mangledStream.str(), true);
     }
 
     void removeModule(ModuleHandle m) {
-        optimizeLayer.removeModuleSet(m);
+        codLayer.removeModuleSet(m);
     }
 
 
@@ -193,6 +215,8 @@ private:
     ObjectLayer objectLayer;
     CompileLayer compileLayer;
     OptimizeLayer optimizeLayer;
+    std::unique_ptr<llvm::orc::JITCompileCallbackManager> compileCallbackManager;
+    CompileOnDemandLayer codLayer;
 
 
 };

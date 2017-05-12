@@ -5,7 +5,7 @@
 #include "specialize.h"
 #include "rift.h"
 #include "compiler/compiler.h"
-#include "compiler/module.h"
+#include "compiler/types.h"
 
 using namespace std;
 using namespace llvm;
@@ -13,11 +13,12 @@ using namespace llvm;
 namespace rift {
 char Specialize::ID = 0;
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 #define CAST(val, t) CastInst::CreatePointerCast(val, type::t, "", ins)
 
 void Specialize::updateDoubleScalar(llvm::Value * newVal) {
-    llvm::Value * box = RUNTIME_CALL(m->doubleVectorLiteral, newVal);
+    llvm::Value * box = RUNTIME_CALL(doubleVectorLiteral, newVal);
     state().update(box, AType::D1, newVal);
     ins->replaceAllUsesWith(box);
 }
@@ -27,7 +28,7 @@ void Specialize::updateDoubleOp(llvm::Function * fun,
                               AType * resType) {
     llvm::Value * l = CAST(lhs, ptrDoubleVector); 
     llvm::Value * r = CAST(rhs, ptrDoubleVector); 
-    llvm::Value * res = RUNTIME_CALL(fun, l, r);
+    llvm::Value * res = CALL(fun, l, r);
     state().update(res, resType);
     ins->replaceAllUsesWith(res);
 }
@@ -37,7 +38,7 @@ void Specialize::updateCharOp(llvm::Function * fun,
                             AType * resType) {
     llvm::Value * l = CAST(lhs, ptrCharacterVector); 
     llvm::Value * r = CAST(rhs, ptrCharacterVector); 
-    llvm::Value * res = RUNTIME_CALL(fun, l, r);
+    llvm::Value * res = CALL(fun, l, r);
     state().update(res, resType);
     ins->replaceAllUsesWith(res);
 }
@@ -49,12 +50,12 @@ bool Specialize::genericAdd() {
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        updateDoubleOp(m->doubleAdd, lhs, rhs, lhsType->merge(rhsType));
+        updateDoubleOp(Compiler::doubleAdd(m), lhs, rhs, lhsType->merge(rhsType));
         return true;
     } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
         llvm::Value * l = CAST(lhs, ptrCharacterVector); 
         llvm::Value * r = CAST(rhs, ptrCharacterVector); 
-        llvm::Value * res = RUNTIME_CALL(m->characterAdd, l, r);
+        llvm::Value * res = RUNTIME_CALL(characterAdd, l, r);
         state().update(res, AType::CV);
         ins->replaceAllUsesWith(res);
         return true;
@@ -114,7 +115,7 @@ bool Specialize::genericNeq() {
     }
 
     return genericComparison(lhs, rhs, lhsType, lhsType,
-            m->doubleNeq, m->characterNeq);
+            Compiler::doubleNeq(m), Compiler::characterNeq(m));
 }
 
 
@@ -131,7 +132,7 @@ bool Specialize::genericEq() {
     }
 
     return genericComparison(lhs, rhs, lhsType, lhsType,
-            m->doubleEq, m->characterEq);
+            Compiler::doubleEq(m), Compiler::characterEq(m));
 }
 
 bool Specialize::genericGetElement() {
@@ -141,12 +142,12 @@ bool Specialize::genericGetElement() {
     AType * idxType = state().get(idx);
 
     if (srcType->isDouble() && idxType->isDouble()) {
-        updateDoubleOp(m->doubleGetElement, src, idx, AType::DV);
+        updateDoubleOp(Compiler::doubleGetElement(m), src, idx, AType::DV);
         return true;
     } else if (srcType->isCharacter() and idxType->isDouble()) {
         src = CAST(src, ptrCharacterVector);
         idx = CAST(idx, ptrDoubleVector);
-        llvm::Value * res = RUNTIME_CALL(m->characterGetElement, src, idx);
+        llvm::Value * res = RUNTIME_CALL(characterGetElement, src, idx);
         state().update(res, AType::CV);
         ins->replaceAllUsesWith(res);
         return true;
@@ -175,11 +176,11 @@ bool Specialize::genericC() {
     }
     llvm::Value * res;
     if (canBeDV) {
-        res = CallInst::Create(m->doublec, args, "", ins);
+        res = CallInst::Create(Compiler::doublec(m), args, "", ins);
         state().update(res, AType::DV);
     } else {
         assert (canBeCV);
-        res = CallInst::Create(m->characterc, args, "", ins);
+        res = CallInst::Create(Compiler::characterc(m), args, "", ins);
         state().update(res, AType::CV);
     }
     ins->replaceAllUsesWith(res);
@@ -191,7 +192,7 @@ bool Specialize::genericEval() {
     AType * argType = state().get(arg);
     if (argType->isCharacter()) {
         arg = CAST(arg, ptrCharacterVector);
-        llvm::Value * res = RUNTIME_CALL(m->characterEval, ins->getOperand(0), arg);
+        llvm::Value * res = RUNTIME_CALL(characterEval, ins->getOperand(0), arg);
         state().update(res, AType::T);
         ins->replaceAllUsesWith(res);
         return true;
@@ -201,7 +202,7 @@ bool Specialize::genericEval() {
 
 bool Specialize::runOnFunction(llvm::Function & f) {
     //std::cout << "running Specialize optimization..." << std::endl;
-    m = reinterpret_cast<RiftModule*>(f.getParent());
+    m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
     for (auto & b : f) {
         auto i = b.begin();
@@ -213,15 +214,15 @@ bool Specialize::runOnFunction(llvm::Function & f) {
                 if (s == "genericAdd") {
                     erase = genericAdd();
                 } else if (s == "genericSub") {
-                    erase = genericArithmetic(m->doubleSub);
+                    erase = genericArithmetic(Compiler::doubleSub(m));
                 } else if (s == "genericMul") {
-                    erase = genericArithmetic(m->doubleMul);
+                    erase = genericArithmetic(Compiler::doubleMul(m));
                 } else if (s == "genericDiv") {
-                    erase = genericArithmetic(m->doubleDiv);
+                    erase = genericArithmetic(Compiler::doubleDiv(m));
                 } else if (s == "genericLt") {
-                    erase = genericRelational(m->doubleLt);
+                    erase = genericRelational(Compiler::doubleLt(m));
                 } else if (s == "genericGt") {
-                    erase = genericRelational(m->doubleGt);
+                    erase = genericRelational(Compiler::doubleGt(m));
                 } else if (s == "genericEq") {
                     erase = genericEq();
                 } else if (s == "genericNeq") {

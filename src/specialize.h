@@ -69,7 +69,7 @@ protected:
 
       The module is used for the declarations of the runtime functions. 
       */
-    RiftModule * m;
+    llvm::Module * m;
 
     /** Preexisting type analysis that is queried to obtain the type & shape information as well as the boxing chains. */
     TypeAnalysis * ta;
