@@ -29,9 +29,6 @@ namespace {
 namespace rift {
 
 
-
-
-
 Compiler::Compiler():
     result(nullptr),
     env(nullptr),

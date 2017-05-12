@@ -45,13 +45,20 @@ public:
 
         llvm::Module * m = c.m.release();
 
-        singleton().addModule(std::unique_ptr<llvm::Module>(m));
+        lastModule_ = singleton().addModule(std::unique_ptr<llvm::Module>(m));
+        lastModuleDeletable_ = Pool::functionsCount() == start + 1;
+
 
         for (; start < Pool::functionsCount(); ++start) {
             RFun * rec = Pool::getFunction(start);
             rec->code = reinterpret_cast<FunPtr>(singleton().findSymbol(STR(start)).getAddress());
         }
         return Pool::getFunction(result)->code;
+    }
+
+    static void removeLastModule() {
+        if (lastModuleDeletable_)
+            singleton().removeModule(lastModule_);
     }
 
     JIT():
@@ -130,53 +137,16 @@ public:
 
 private:
 
+    static ModuleHandle lastModule_;
+    static bool lastModuleDeletable_;
+
     static llvm::JITSymbol fallbackHostSymbolResolver(std::string const & name) {
-#define NAME_IS(NAME) if (name == #NAME) return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported)
-        NAME_IS(envCreate);
-        NAME_IS(envGet);
-        NAME_IS(envSet);
-        NAME_IS(doubleVectorLiteral);
-        NAME_IS(characterVectorLiteral);
-        NAME_IS(scalarFromVector);
-        NAME_IS(doubleGetSingleElement);
-        NAME_IS(doubleGetElement);
-        NAME_IS(characterGetElement);
-        NAME_IS(genericGetElement);
-        NAME_IS(doubleSetElement);
-        NAME_IS(scalarSetElement);
-        NAME_IS(characterSetElement);
-        NAME_IS(genericSetElement);
-        NAME_IS(doubleAdd);
-        NAME_IS(characterAdd);
-        NAME_IS(genericAdd);
-        NAME_IS(doubleSub);
-        NAME_IS(genericSub);
-        NAME_IS(doubleMul);
-        NAME_IS(genericMul);
-        NAME_IS(doubleDiv);
-        NAME_IS(genericDiv);
-        NAME_IS(doubleEq);
-        NAME_IS(characterEq);
-        NAME_IS(genericEq);
-        NAME_IS(doubleNeq);
-        NAME_IS(characterNeq);
-        NAME_IS(genericNeq);
-        NAME_IS(doubleLt);
-        NAME_IS(genericLt);
-        NAME_IS(doubleGt);
-        NAME_IS(genericGt);
-        NAME_IS(createFunction);
-        NAME_IS(toBoolean);
-        NAME_IS(call);
-        NAME_IS(length);
-        NAME_IS(type);
-        NAME_IS(eval);
-        NAME_IS(characterEval);
-        NAME_IS(genericEval);
-        NAME_IS(doublec);
-        NAME_IS(characterc);
-        NAME_IS(c);
-#undef NAME_IS
+
+#define FUN_PURE(NAME, ...) if (name == #NAME) return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
+#define FUN(NAME, ...) if (name == #NAME) return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
+RUNTIME_FUNCTIONS
+#undef FUN_PURE
+#undef FUN
         return llvm::JITSymbol(nullptr);
     }
 

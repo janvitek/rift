@@ -382,6 +382,7 @@ RVal * eval(Environment * env, char const * value) {
     RVal * result = f(env);
     auto t = chrono::high_resolution_clock::now() - start;
     eval_time = static_cast<double>(t.count()) / chrono::high_resolution_clock::period::den;
+    JIT::removeLastModule();
     delete x;
     return result;
 }
