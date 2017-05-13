@@ -1,4 +1,5 @@
 #pragma once
+#include "rift.h"
 #include "llvm.h"
 #include "runtime.h"
 #include "pool.h"
@@ -16,6 +17,8 @@
 #include "boxing_removal.h"
 
 
+
+
 namespace rift {
 
 class JIT {
@@ -29,7 +32,12 @@ private:
 
 public:
 
+#if OPTIMIZE_ON_DEMAND == 1
     typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
+#else
+    typedef CompileLayer::ModuleSetHandleT ModuleHandle;
+
+#endif
 
 
     /** Compiles a function and returns a pointer to the native code.  JIT
@@ -76,8 +84,9 @@ public:
                 optimizeModule(m.get());
                 return m;
             }
-        ),
-        compileCallbackManager(
+        )
+#if OPTIMIZE_ON_DEMAND == 1
+        ,compileCallbackManager(
              llvm::orc::createLocalCompileCallbackManager(targetMachine->getTargetTriple(), 0)
         ),
         codLayer(
@@ -89,7 +98,9 @@ public:
             llvm::orc::createLocalIndirectStubsManagerBuilder(
                 targetMachine->getTargetTriple()
             )
-        ) {
+        )
+#endif
+        {
         // this loads the host process itself, making the symbols in it available for execution
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
     }
@@ -98,8 +109,14 @@ public:
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
             [&](std::string const & name) {
+#if OPTIMIZE_ON_DEMAND == 1
                 if (auto s = codLayer.findSymbol(name, false))
                     return s;
+#else
+                if (auto s = compileLayer.findSymbol(name, false))
+                    return s;
+#endif
+
                 return llvm::JITSymbol(nullptr);
             },
 
@@ -118,20 +135,35 @@ public:
 
         // Add the set to the JIT with the resolver we created above and a newly
         // created SectionMemoryManager.
+#if OPTIMIZE_ON_DEMAND == 1
         return codLayer.addModuleSet(std::move(ms),
             llvm::make_unique<llvm::SectionMemoryManager>(),
             std::move(resolver));
+#else
+        return compileLayer.addModuleSet(std::move(ms),
+            llvm::make_unique<llvm::SectionMemoryManager>(),
+            std::move(resolver));
+#endif
     }
 
     llvm::JITSymbol findSymbol(const std::string name) {
         std::string mangled;
         llvm::raw_string_ostream mangledStream(mangled);
         llvm::Mangler::getNameWithPrefix(mangledStream, name, dataLayout);
+#if OPTIMIZE_ON_DEMAND == 1
         return codLayer.findSymbol(mangledStream.str(), true);
+#else
+        return compileLayer.findSymbol(mangledStream.str(), true);
+
+#endif
     }
 
     void removeModule(ModuleHandle m) {
+#if OPTIMIZE_ON_DEMAND == 1
         codLayer.removeModuleSet(m);
+#else
+        compileLayer.removeModuleSet(m);
+#endif
     }
 
 
@@ -185,8 +217,10 @@ RUNTIME_FUNCTIONS
     ObjectLayer objectLayer;
     CompileLayer compileLayer;
     OptimizeLayer optimizeLayer;
+#if OPTIMIZE_ON_DEMAND == 1
     std::unique_ptr<llvm::orc::JITCompileCallbackManager> compileCallbackManager;
     CompileOnDemandLayer codLayer;
+#endif
 
 
 };

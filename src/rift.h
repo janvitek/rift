@@ -9,6 +9,9 @@
 #define STR(WHAT) static_cast<std::stringstream&>(std::stringstream() << WHAT).str()
 
 
+
+#define OPTIMIZE_ON_DEMAND 1
+
 extern bool DEBUG;
 
 #endif
