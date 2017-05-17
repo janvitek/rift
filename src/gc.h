@@ -24,14 +24,14 @@ extern "C" void scanStack_();
 namespace gc {
 
 #ifdef GC_DEBUG
-constexpr static uint8_t MARKED = 3;
-constexpr static uint8_t UNMARKED = 7;
+constexpr static Mark MARKED = 3;
+constexpr static Mark UNMARKED = 7;
 #else
-constexpr static uint8_t MARKED = 1;
-constexpr static uint8_t UNMARKED = 0;
+constexpr static Mark MARKED = 1;
+constexpr static Mark UNMARKED = 0;
 #endif
 
-typedef size_t index_t;
+typedef uint8_t BlockIdx;
 
 class Page {
 public:
@@ -43,24 +43,26 @@ public:
     struct Block { uint8_t data[blockSize]; };
 
     static_assert(sizeof(Block) == blockSize, "");
-    static_assert(sizeof(Block) >= sizeof(RVal), "");
+    static_assert(sizeof(Block) > sizeof(RVal), "");
 
     // The number of blocks per page must be adjusted such that the resulting
     // sizeof(Page) makes good use of a physicl memory page (usually 4k)
-    static constexpr index_t pageSize = 245;
+    static constexpr BlockIdx pageSize = 245;
     static constexpr size_t size = pageSize * blockSize;
+
+    static_assert(pageSize < (1 << 8*sizeof(BlockIdx)), "");
 
     // The memory for objects is partitinoned in addressable blocks
     std::array<Block, pageSize> block;
     // The index of the first block of an object is used to store the obj size
     // in blocks. All subsequent objSize[i] blocks belong to the object at i.
-    std::array<uint8_t, pageSize> objSize;
+    std::array<BlockIdx, pageSize> objSize;
 
     // Freelist entry.
     // When a block is unused (ie. objSize[i] == 0) then we store a Free struct
     // in the block and add it to the freelist linked list.
     struct Free {
-        uint8_t blocks;
+        BlockIdx blocks;
         Free* next;
     };
     static_assert(sizeof(Block) >= sizeof(Free), "");
@@ -73,7 +75,7 @@ public:
     // Total free space in blocks
     size_t freeSpace;
 
-    size_t size2blocks(size_t size) {
+    BlockIdx size2blocks(size_t size) {
         if (size % blockSize == 0)
             return size / blockSize;
         return 1 + (size / blockSize);
@@ -95,12 +97,16 @@ public:
         return objSize[idx];
     }
 
-    index_t getIndex(void* ptr) const {
+    BlockIdx getIndex(void* ptr) const {
         uintptr_t p = reinterpret_cast<uintptr_t>(ptr);
-        return (p-first) >> blockBits;
+        size_t idx = (p-first) >> blockBits;
+#ifdef GC_DEBUG
+        assert(idx < pageSize); 
+#endif
+        return idx;
     }
 
-    inline RVal* free2rval(Free* cur, Free* prev, uint8_t sz) {
+    inline RVal* free2rval(Free* cur, Free* prev, BlockIdx sz) {
         auto idx = getIndex(cur);
         if (cur->blocks > sz) {
             // In case not all blocks are needed we create a new
@@ -165,23 +171,23 @@ public:
     }
 
     void sweep() {
-        index_t i = 0;
+        BlockIdx i = 0;
         while (i < pageSize) {
             auto sz = objSize[i];
-            if (sz) {
-                if (getAt(i)->mark == UNMARKED) {
-                    freeBlock(i);
-                } else {
-                    getAt(i)->mark = UNMARKED;
-                }
-                i += sz;
-            } else {
+            if (sz == 0) {
                 ++i;
+                continue;
             }
+
+            if (getAt(i)->mark == UNMARKED)
+                freeBlock(i);
+
+            getAt(i)->mark = UNMARKED;
+            i += sz;
         }
     }
 
-    index_t free() const {
+    size_t free() const {
         return freeSpace;
     }
 
@@ -194,7 +200,7 @@ public:
     Page(Page const &) = delete;
     void operator= (Page const &) = delete;
 
-    // Address of the memory base of this page. Use this to free [] the page!
+    // Address of the memory base of this page. Use this to free the page!
     uint8_t* store;
 
     // Address of the first and last block.
@@ -202,10 +208,10 @@ public:
 
 private:
     // Freeing an object
-    void freeBlock(index_t idx) {
+    void freeBlock(BlockIdx idx) {
         // TODO destructor??
 
-        size_t sz = objSize[idx];
+        BlockIdx sz = objSize[idx];
 
 #ifdef GC_DEBUG
         RVal* old = getAt(idx);
@@ -222,7 +228,7 @@ private:
         objSize[idx] = 0;
     }
 
-    RVal* getAt(index_t idx) {
+    RVal* getAt(BlockIdx idx) {
         return reinterpret_cast<RVal*>(&block[idx]);
     }
 };
@@ -235,20 +241,21 @@ public:
 
     // The target is to allocate a Page which spans roughly two physical pages
     // Given the block size of 32 this will result in a bit less than 250
-    // blocks per Page which makes good use of the uint8_t objSize map.
+    // blocks per Page which makes good use of the BlockSize (uint8_t) objSize
+    // map.
     static_assert(pageBufferSize <= 2*4096, "");
     static_assert(pageBufferSize > 1.95*4096, "");
 
     // Allocate an RVal of size sz in bytes. If grow is true we are allowed to
     // grow the arena (ie. allocate a new page).
     RVal* alloc(size_t sz, bool grow) {
-        for (auto p : page) {
+        for (auto p : pageList) {
             auto res = p->alloc(sz);
             if (res)
               return res;
         }
 
-        if (page.size() > 0 && !grow)
+        if (pageList.size() > 0 && !grow)
             return nullptr;
 
         // Allocate a new page. Page must be block aligned.
@@ -256,6 +263,9 @@ public:
         uintptr_t pn = reinterpret_cast<uintptr_t>(store);
         uintptr_t aligned = (pn + Page::blockSize - 1) & - Page::blockSize;
         void* place = reinterpret_cast<void*>(aligned);
+        assert(place >= store &&
+                reinterpret_cast<uintptr_t>(store) + pageBufferSize >= 
+                reinterpret_cast<uintptr_t>(place) + sizeof(Page));
         auto p = new (place) Page(store);
         registerPage(p);
 
@@ -264,7 +274,7 @@ public:
         return n;
     }
 
-    inline bool isValidObj(void* ptr) {
+    inline bool isValidObj(void* ptr) const {
         uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
 
         // quickly discard implausible pointers
@@ -277,8 +287,8 @@ public:
         if (addr < minAddr || addr > maxAddr)
             return false;
 
-        for (index_t i = 0; i < page.size(); i++) {
-            if (page[i]->isValidObj(ptr)) {
+        for (size_t i = 0; i < pageList.size(); i++) {
+            if (pageList[i]->isValidObj(ptr)) {
                 return true;
             }
         }
@@ -287,7 +297,7 @@ public:
     }
 
     void sweep() {
-        for (auto pi = page.begin(); pi != page.end(); ) {
+        for (auto pi = pageList.begin(); pi != pageList.end(); ) {
             auto p = *pi;
             p->sweep();
             // If a page is completely empty we release it
@@ -296,7 +306,7 @@ public:
                 std::cout << "Released a Page\n";
 #endif
                 delete [] p->store;
-                pi = page.erase(pi);
+                pi = pageList.erase(pi);
             } else {
                 pi++;
             }
@@ -305,33 +315,33 @@ public:
 
     size_t free() const {
         size_t f = 0;
-        for (auto p : page)
+        for (auto p : pageList)
             f += p->free();
         return f;
     }
 
     size_t size() const {
-        return page.size() * Page::size;
+        return pageList.size() * Page::size;
     }
 
     void verify() const {
-        for (auto p : page)
+        for (auto p : pageList)
             p->verify();
     }
 
     Arena() : minAddr(-1), maxAddr(0) {}
 
     ~Arena() {
-        for (auto p : page) {
+        for (auto p : pageList) {
             delete [] p->store;
         }
-        page.clear();
+        pageList.clear();
     }
 
     Arena(Arena const &) = delete;
     void operator= (Arena const &) = delete;
 
-    std::deque<Page*> page;
+    std::deque<Page*> pageList;
 
 private:
     void registerPage(Page * p) {
@@ -339,7 +349,7 @@ private:
       std::cout << "Allocated a new Page\n";
 #endif
         // TODO: we never update the boundaries if we remove a page
-        page.push_front(p);
+        pageList.push_front(p);
         if (p->first < minAddr)
             minAddr = p->first;
         if (p->last > maxAddr)
@@ -395,7 +405,14 @@ private:
 
     void doGc();
 
+    inline bool isValidObj(void* ptr) const {
+        return arena.isValidObj(ptr);
+    }
+
     void mark(RVal* val) {
+#ifdef GC_DEBUG 
+        assert(isValidObj(val));
+#endif
         if (val->mark == MARKED)
             return;
         assert(val->mark == UNMARKED);

@@ -68,7 +68,7 @@ void GarbageCollector::doGc() {
     std::cout << "reclaiming " << memUsage - memUsage2
               << "b, used " << memUsage2 << "b, total "
               << size() << "b in "
-              << arena.page.size() << " pages\n";
+              << arena.pageList.size() << " pages\n";
 #endif
 }
 
@@ -101,7 +101,7 @@ void Page::verify() {
     }
     assert(foundFree == freeSpace);
 
-    for (index_t i = 0; i < pageSize; ++i) {
+    for (BlockIdx i = 0; i < pageSize; ++i) {
         if (objSize[i]) {
             for (auto c = i+1; c < i+objSize[i]; c++)
                 assert(!objSize[c]);
@@ -127,7 +127,7 @@ extern "C" void __attribute__((noinline)) scanStack_() {
     unsigned found = 0;
 #endif
     while (p < gc.BOTTOM_OF_STACK) {
-        if (*p > (void*)0x1000 && gc.arena.isValidObj(*p)) {
+        if (*p > (void*)0x1000 && gc.isValidObj(*p)) {
 #ifdef GC_DEBUG
             found++;
 #endif

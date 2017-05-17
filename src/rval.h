@@ -15,8 +15,7 @@ enum class Type : uint8_t {
     End,             // Used to get the max possible value
 };
 
-#pragma pack(push)
-#pragma pack(1)
+typedef uint8_t Mark;
 
 /*
  * A Rift Value.
@@ -25,7 +24,7 @@ enum class Type : uint8_t {
  */
 struct RVal {
     Type type;
-    uint8_t mark;
+    Mark mark;
 
     // deleting new makes sure memory is allocated through the GC
     void* operator new(size_t sz) = delete;
@@ -38,7 +37,5 @@ struct RVal {
     /** Prints to given stream.  */
     inline void print(std::ostream & s);
 };
-
-#pragma pack(pop)
 
 #endif // RVAL_H
