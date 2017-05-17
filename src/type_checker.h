@@ -48,7 +48,7 @@ private:
 
 inline bool operator < (TypeChecker::Type t1, TypeChecker::Type t2) {
     if (t1 == TypeChecker::Type::T) return false;
-    if (t1 == TypeChecker::Type::B) return !t2 == TypeChecker::Type::B;
+    if (t1 == TypeChecker::Type::B) return !(t2 == TypeChecker::Type::B);
 
     if (t2 == TypeChecker::Type::B) return false;
     if (t2 == TypeChecker::Type::T) return true;
