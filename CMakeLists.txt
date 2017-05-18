@@ -12,6 +12,11 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/local/cmake.cmake OPTIONAL)
 
+# if we did not include the cmake local settings, use the defaults
+if(NOT LOCAL_CONFIG)
+    include(${CMAKE_SOURCE_DIR}/local/cmake.cmake.default)
+endif()
+
 # setup LLVM
 
 find_package(LLVM REQUIRED CONFIG)
