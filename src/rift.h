@@ -4,14 +4,13 @@
 #include <string>
 #include <sstream>
 
-/** Shorthand for converting different types to string as long as they support the std::ostream << operator.
- */
-#define STR(WHAT) static_cast<std::stringstream&>(std::stringstream() << WHAT).str()
+/** Shorthand for converting values to string as long as they support the ostream << operator.  */
+#define STR(WHAT) static_cast<std::stringstream&&>(std::stringstream() << WHAT).str()
 
-
-
+/** TBD */
 #define OPTIMIZE_ON_DEMAND 1
 
+/** Set to true for additional debug print. */
 extern bool DEBUG;
 
 #endif
