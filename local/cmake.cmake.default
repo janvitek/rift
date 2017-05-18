@@ -4,7 +4,7 @@ message(STATUS "Loading local configuration")
 set(LLVM_COMPILE_DIR "${CMAKE_SOURCE_DIR}/llvm")
 
 # Specify whether to link against debug, or release version of LLVM
-set(LLVM_LINK_AGAINST ${CMAKE_BUILD_TYPE})
+set(LLVM_LINK_AGAINST "Release")
 
 # unless your setup deviates from the README.md you do not have to touch the next lines
 
