@@ -47,7 +47,7 @@ def crawl(f)
         print = [true]
         File.readlines(src).each do |line|
             if line =~ /#if (VERSION (<=|>=|<|>|==) \d+)/
-                print << eval($1)
+                print << (eval($1) && print.last)
             elsif line =~ /#endif .*VERSION/
                 if (print.size == 1)
                     puts "Unbalanced endif in #{src}"
