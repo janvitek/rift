@@ -1,6 +1,8 @@
 # Installation
 
-The following guide assumes Linux machine (Ubuntu 16.04 LTS). For Windows, enable the "Windows Subsystem for Linux" and then run the commands below. 
+The following guide assumes Linux machine (Ubuntu 16.04 LTS). For Windows, enable the "Windows Subsystem for Linux" and then run the commands below.
+
+> If you have opted for the virtual machine, you do not have to do the LLVM setup as the `pliss\llvm` directory has been created for you, and LLVM in release and debug versions has been already built so you can follow win the *rift* chapter. 
 
 ## Prerequisites
 
