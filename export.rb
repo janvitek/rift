@@ -37,7 +37,7 @@ def crawl(f)
         output = ""
         print = [true]
         File.readlines(src).each do |line|
-            if line =~ /#if (VERSION .*)/
+            if line =~ /#if (VERSION (<=|>=|<|>|=) \d+)/
                 print << eval($1)
             elsif line =~ /#endif .*VERSION/
                 if (print.size == 1)
