@@ -1,6 +1,4 @@
 #pragma once
-#ifndef H_LEX
-#define H_LEX
 
 #include <ciso646>
 #include <sstream>
@@ -310,4 +308,3 @@ private:
 
 } // namespace rift
 
-#endif

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef SPECIALIZED_RUNTIME_H
-#define SPECIALIZED_RUNTIME_H
 
 #include "runtime.h"
 
@@ -92,4 +90,3 @@ extern "C" {
 
 } // extern "C"
 
-#endif // SPECIALIZED_RUNTIME_H

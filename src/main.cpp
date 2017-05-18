@@ -18,7 +18,7 @@ using namespace rift;
 
 extern double eval_time;
 
-bool DEBUG = true;
+bool DEBUG = false;
 
 void interactive() {
     cout << "rift console - type exit to quit" << endl;

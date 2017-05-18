@@ -1,6 +1,4 @@
 #pragma once
-#ifndef POOL_H
-#define POOL_H
 
 #include "runtime.h"
 
@@ -50,5 +48,4 @@ private:
 };
 
 }
-#endif // POOL_H
 
