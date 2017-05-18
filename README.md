@@ -41,7 +41,7 @@ And finally, return back to the `pliss` directory to install rift;
 
 Now download rift:
 
-    git clone WHERE IS RIFT LOCATED
+    git clone https://github.com/PRL-PRG/pliss-rift.git
     cd rift
     mkdir build
     cd build
