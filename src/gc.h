@@ -47,7 +47,7 @@ public:
 
     // The number of blocks per page must be adjusted such that the resulting
     // sizeof(Page) makes good use of a physicl memory page (usually 4k)
-    static constexpr BlockIdx pageSize = 245;
+    static constexpr BlockIdx pageSize = 120;
     static constexpr size_t size = pageSize * blockSize;
 
     static_assert(pageSize < (1 << 8*sizeof(BlockIdx)), "");
@@ -188,7 +188,7 @@ public:
     }
 
     size_t free() const {
-        return freeSpace;
+        return freeSpace * blockSize;
     }
 
     void verify();
@@ -239,20 +239,22 @@ public:
     static constexpr size_t pageBufferSize = sizeof(Page) +
                                              2 * sizeof(Page::blockSize);
 
-    // The target is to allocate a Page which spans roughly two physical pages
+    // The target is to allocate a Page which spans one physical pages
     // Given the block size of 32 this will result in a bit less than 250
     // blocks per Page which makes good use of the BlockSize (uint8_t) objSize
     // map.
-    static_assert(pageBufferSize <= 2*4096, "");
-    static_assert(pageBufferSize > 1.95*4096, "");
+    static_assert(pageBufferSize <= 4096, "");
+    static_assert(pageBufferSize > 0.98*4096, "");
 
     // Allocate an RVal of size sz in bytes. If grow is true we are allowed to
     // grow the arena (ie. allocate a new page).
     RVal* alloc(size_t sz, bool grow) {
         for (auto p : pageList) {
+            if (p->free() < sz)
+                continue;
             auto res = p->alloc(sz);
             if (res)
-              return res;
+                return res;
         }
 
         if (pageList.size() > 0 && !grow)
@@ -287,8 +289,8 @@ public:
         if (addr < minAddr || addr > maxAddr)
             return false;
 
-        for (size_t i = 0; i < pageList.size(); i++) {
-            if (pageList[i]->isValidObj(ptr)) {
+        for (auto p : pageList) {
+            if (p->isValidObj(ptr)) {
                 return true;
             }
         }
@@ -362,9 +364,6 @@ private:
 
 class GarbageCollector {
 public:
-    constexpr static size_t INITIAL_HEAP_SIZE = 4096;
-    constexpr static double GC_GROW_RATE = 1.3f;
-
     // Interface to request memory from the GC
     static RVal* alloc(size_t sz, Type type) {
         return inst().doAlloc(sz, type);
@@ -375,13 +374,35 @@ private:
     // have different arenas for different size buckets.
     Arena arena;
 
+    constexpr static size_t INITIAL_HEAP_SIZE = 4*Page::size;
+    constexpr static size_t MIN_HEAP_SIZE = 4*Page::size;
+    static_assert (INITIAL_HEAP_SIZE >= MIN_HEAP_SIZE, "");
+
+    size_t heapLimit = INITIAL_HEAP_SIZE;
+    constexpr static double HEAP_MIN_FREE = 0.1f;
+    constexpr static double HEAP_MAX_FREE = 0.4f;
+    constexpr static double HEAP_GROW_RATIO = 1.2f;
+    constexpr static double HEAP_SHRINK_RATIO = 0.8f;
+
     RVal* doAlloc(size_t sz, Type type) {
-        RVal* res = arena.alloc(sz, false);
+        RVal* res = arena.alloc(sz, arena.size() < heapLimit);
+
+        //  Allocation failed
         if (!res) {
             doGc();
-            if (!res)
-                res = arena.alloc(sz, true);
+
+            if ((float)free() / (float)size() < HEAP_MIN_FREE) {
+                heapLimit *= HEAP_GROW_RATIO;
+            } else if ((float)free() / (float)size() > HEAP_MAX_FREE &&
+                    heapLimit > MIN_HEAP_SIZE) {
+                heapLimit *= HEAP_SHRINK_RATIO;
+                heapLimit =
+                    heapLimit < MIN_HEAP_SIZE ? MIN_HEAP_SIZE : heapLimit;
+            }
+
+            res = arena.alloc(sz, true);
         }
+
         // TODO: add a backup allocator for huge objects. Currently allocations
         // bigger than Page::size will fail.
         if (!res) throw std::bad_alloc();
