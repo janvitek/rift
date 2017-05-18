@@ -5,9 +5,9 @@ f1 <- function() { 1 }
 
 f2 <- function(x) { f1()  }
 
-y <- 1
+y <- c(1,2,3)
 
-x <- if ( f1() < 0 ) { y <-0  c( 1, 2, 4) } else {  c(4, 2, 1) }
+x <- function() {c(33,1,2,3)}
 
 x()+x()
 
