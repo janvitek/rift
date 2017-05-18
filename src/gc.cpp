@@ -77,7 +77,11 @@ void GarbageCollector::scanStack() {
     // -> force all variables currently hold in registers to be spilled
     //    to the stack where our stackScan can find them.
     __asm__ __volatile__(
+        #ifdef __APPLE__
+        "push %%rbp \n\t call _scanStack_ \n\t pop %%rbp"
+        #else
         "push %%rbp \n\t call scanStack_ \n\t pop %%rbp"
+        #endif
         : :
         : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
         "%r8", "%r9", "%r10", "%r11", "%r12",
