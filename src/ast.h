@@ -158,7 +158,7 @@ namespace ast {
     /** Conditional   */
     class IfElse : public Exp {
     public:
-        IfElse(Exp * guard): guard(guard), ifClause(nullptr), elseClause(nullptr){ }
+        IfElse(Exp * guard): guard(guard), ifClause(nullptr), elseClause(nullptr) { }
         ~IfElse() {
             delete guard;
             delete ifClause;
@@ -181,7 +181,8 @@ namespace ast {
         Exp * guard;
         Seq * body;
     };
-} // namespace ast
+
+} // namespace ast
 
 class Visitor {
 public:
