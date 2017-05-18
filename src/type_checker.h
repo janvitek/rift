@@ -1,3 +1,4 @@
+#if VERSION > 10
 #pragma once
 
 #include "llvm.h"
@@ -59,3 +60,4 @@ inline bool operator < (TypeChecker::Type t1, TypeChecker::Type t2) {
 
 
 } // namespace rift
+#endif //VERSION

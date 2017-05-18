@@ -34,9 +34,9 @@ add_definitions(${LLVM_DEFINITIONS})
 
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions(-std=c++11 -g -DVERSION 1000)
+    add_definitions(-std=c++11 -g -DVERSION=1000)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_definitions(-std=c++11 -O2 -DVERSION 1000)
+    add_definitions(-std=c++11 -O2 -DVERSION=1000)
 else()
     message(FATAL_ERROR "Unknown build type: ${CMAKE_BUILD_TYPE}")
 endif()

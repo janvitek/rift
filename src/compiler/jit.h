@@ -6,15 +6,17 @@
 #include "compiler.h"
 #include "types.h"
 #include "runtime.h"
-#include "specializedRuntime.h"
-
 #include "rift.h"
+
+#if VERSION > 10
+#include "specializedRuntime.h"
 
 #include "type_checker.h"
 #include "type_analysis.h"
 #include "unboxing.h"
 #include "specialize.h"
 #include "boxing_removal.h"
+#endif //VERSION
 
 
 
@@ -191,6 +193,7 @@ RUNTIME_FUNCTIONS
       from LLVM.
       */
     static void optimizeModule(llvm::Module * m) {
+#if VERSION > 10
         auto pm = std::unique_ptr<llvm::legacy::FunctionPassManager>(new llvm::legacy::FunctionPassManager(m));
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
@@ -212,6 +215,7 @@ RUNTIME_FUNCTIONS
                 }
             }
         }
+#endif //VERSION
     }
 
     static JIT & singleton();
@@ -225,7 +229,6 @@ RUNTIME_FUNCTIONS
     std::unique_ptr<llvm::orc::JITCompileCallbackManager> compileCallbackManager;
     CompileOnDemandLayer codLayer;
 #endif
-
 
 };
 

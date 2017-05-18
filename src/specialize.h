@@ -1,3 +1,4 @@
+#if VERSION > 10
 
 #pragma once
 
@@ -80,3 +81,4 @@ protected:
 } // namespace rift
 
 
+#endif //VERSION

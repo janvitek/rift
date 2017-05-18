@@ -61,3 +61,5 @@ FILES.each do |f|
     puts "Cannot export #{f}: does not exist" unless File.exists? f
     crawl f
 end
+
+File.open(File.join(EXPORT_DIR, '.version'), 'w') { |file| file.write(VERSION) }
