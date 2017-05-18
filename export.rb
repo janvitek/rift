@@ -9,7 +9,8 @@ end
 
 usage if ARGV.size != 2
 
-FILES = ['CMakeLists.txt', 'LICENSE', 'local', 'src', 'README.md', 'tests']
+FILES = ['CMakeLists.txt', 'LICENSE', 'local', 'src', 'README.md', 'tests',
+         '.gitignore']
 
 EXPORT_DIR = ARGV[1]
 VERSION = Integer(ARGV[0])
@@ -17,8 +18,16 @@ VERSION = Integer(ARGV[0])
 HOME = File.dirname(__FILE__)
 
 if Dir.exists? EXPORT_DIR
-    puts "#{EXPORT_DIR} already exists"
-    exit 1
+    puts "#{EXPORT_DIR} already exists. Overwriting? (y/n)"
+    res = STDIN.gets.strip
+    unless res == "y"
+        puts "abort"
+        exit 1
+    end
+    FILES.each do |f|
+        trg = File.join(EXPORT_DIR, f)
+        FileUtils.rm_rf(trg)
+    end
 end
 
 FileUtils.mkdir_p(EXPORT_DIR)

@@ -67,10 +67,11 @@ namespace rift {
 
 
     void tests() {
-#if VERSION == 0
+#if VERSION < 3
         // TODO implement a compiler
         return;
 #endif //VERSION
+
         cout << "Running tests..." << endl;
         TEST("1", 1);
         TEST("1 + 2", 3);
@@ -125,6 +126,11 @@ namespace rift {
         TEST("length(1)", 1);
         TEST("length(\"aba\")", 3);
         TEST("length(\"\")", 0);
+
+#if VERSION < 3
+        // TODO implement if
+        return;
+#endif //VERSION
 
         TEST("a = 1 if (a) { 1 } else { 2 }", 1);
         TEST("a = 1 b = 1 if (a) { b = 2 } b", 2);
