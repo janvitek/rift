@@ -93,10 +93,17 @@ int main(int argc, char * argv[]) {
         tests();
         interactive();
     } else {
-        if (argc > argPos+1)
+        if (argc > argPos+1) {
             cerr << "Only one script can be loaded at a time" << endl;
-        else
-            runScript(argv[argPos]);
+        } else {
+            try {
+                runScript(argv[argPos]);
+            } catch (char const * error) {
+                std::cerr << error << std::endl;
+                std::cout << std::endl;
+                exit(1);
+            }
+        }
     }
 }
 
