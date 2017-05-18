@@ -400,7 +400,7 @@ RVal * eval(Environment * env, char const * value) {
 
     if (DEBUG) {
         std::cout << "AST:" << std::endl;
-        Printer::print(x);
+        ast::Printer::print(x);
         std::cout << std::endl;
     }
 
