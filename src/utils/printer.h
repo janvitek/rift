@@ -1,139 +1,155 @@
 #pragma once
 
 #include "ast.h"
+#include <iostream>
+
 
 namespace rift {
+namespace ast {
 
+/** Printer is a visitor over the abstract syntax tree.
+    The vist methods perform actions for the corresponding
+    nodes.
+ 
+    Usage:  Printer::print(exp);
+ */
 class Printer: public Visitor {
 public:
-    static void print(ast::Exp * exp, std::ostream & s);
-    static void print(ast::Exp * exp);
-
-    void visit(ast::Exp * node) override {
+    void visit(Exp * n) override {
         s << "???";
     }
-    void visit(ast::Num * node) override {
-        s << node->value;
+    void visit(Num * n) override {
+        s << n->value;
     }
-    void visit(ast::Str * node) override {
-        s << '"' << node->value() << '"';
+    void visit(Str * n) override {
+        s << '"' << n->value() << '"';
     }
-    void visit(ast::Var * node) override {
-        s << node->value();
+    void visit(Var * n) override {
+        s << n->value();
     }
-    void visit(ast::Seq * node) override {
-        for (ast::Exp * e : node->body) {
+    void visit(Seq * n) override {
+        for (Exp * e : n->body) {
             e->accept(this);
             s << "\n";
         }
     }
-    void visit(ast::Fun * node) override {
+    void visit(Fun * n) override {
         s << "function(" ;
-        for (ast::Var * v : node->args) {
+        for (Var * v : n->args) {
             v->accept(this);
             s << ", ";
         }
         s << ") {\n";
-        node->body->accept(this);
+        n->body->accept(this);
         s << "}";
     }
-    void visit(ast::BinExp * node) override {
-        node->lhs->accept(this);
+    void visit(BinExp * n) override {
+        n->lhs->accept(this);
         s << " ";
-        switch (node->type) {
-        case ast::BinExp::Type::add:   s << "+"; break;
-        case ast::BinExp::Type::sub:   s << "-"; break;
-        case ast::BinExp::Type::mul:   s << "*"; break;
-        case ast::BinExp::Type::div:   s << "/"; break;
-        case ast::BinExp::Type::eq:    s << "=="; break;
-        case ast::BinExp::Type::neq:   s << "!="; break;
-        case ast::BinExp::Type::lt:    s << "<"; break;
-        case ast::BinExp::Type::gt:    s << ">";  break;
-        default:                       s << "?";
+        switch (n->type) {
+        case BinExp::Type::add: s << "+"; break;
+        case BinExp::Type::sub: s << "-"; break;
+        case BinExp::Type::mul: s << "*"; break;
+        case BinExp::Type::div: s << "/"; break;
+        case BinExp::Type::eq:  s << "=="; break;
+        case BinExp::Type::neq: s << "!="; break;
+        case BinExp::Type::lt:  s << "<"; break;
+        case BinExp::Type::gt:  s << ">";  break;
+        default:                     s << "?";
         }
         s << " ";
-        node->rhs->accept(this);
+        n->rhs->accept(this);
     }
-    void printArgs(ast::Call * node) {
+    void printArgs(Call * n) {
 #if VERSION <= 1
         // TODO
         assert(false);
 #endif //VERSION
 #if VERSION > 1
         s << "(";
-        for (ast::Exp * v : node->args) {
+        for (Exp * v : n->args) {
             v->accept(this);
             s << ", ";
         }
         s << ")";
 #endif //VERSION
     }
-    void visit(ast::UserCall * node) override {
+    void visit(UserCall * n) override {
 #if VERSION <= 1
         // TODO
         assert(false);
 #endif //VERSION
 #if VERSION > 1
-        node->name->accept(this);
-        printArgs(node);
+        n->name->accept(this);
+        printArgs(n);
 #endif //VERSION
     }
-    void visit(ast::CCall * node) override {
+    void visit(CCall * n) override {
         s << "c";
-        printArgs(node);
+        printArgs(n);
     }
-    void visit(ast::EvalCall * node) override {
+    void visit(EvalCall * n) override {
         s << "eval";
-        printArgs(node);
+        printArgs(n);
     }
-    void visit(ast::TypeCall * node) override {
+    void visit(TypeCall * n) override {
         s << "type";
-        printArgs(node);
+        printArgs(n);
     }
-    void visit(ast::LengthCall * node) override {
+    void visit(LengthCall * n) override {
         s << "length";
-        printArgs(node);
+        printArgs(n);
     }
-    void visit(ast::Index * node) override {
-        node->name->accept(this);
+    void visit(Index * n) override {
+        n->name->accept(this);
         s << "[";
-        node->index->accept(this);
+        n->index->accept(this);
         s << "]";
     }
-    void visit(ast::SimpleAssignment * node) override {
-        node->name->accept(this);
+    void visit(SimpleAssignment * n) override {
+        n->name->accept(this);
         s << " <- ";
-        node->rhs->accept(this);
+        n->rhs->accept(this);
     }
-    void visit(ast::IndexAssignment * node) override {
-        node->index->accept(this);
+    void visit(IndexAssignment * n) override {
+        n->index->accept(this);
         s << " <- ";
-        node->rhs->accept(this);
+        n->rhs->accept(this);
     }
-    void visit(ast::IfElse * node) override {
+    void visit(IfElse * n) override {
         s << "if (";
-        node->guard->accept(this);
+        n->guard->accept(this);
         s << ") ";
-        node->ifClause->accept(this);
-        if (node->elseClause != nullptr) {
+        n->ifClause->accept(this);
+        if (n->elseClause != nullptr) {
             s << " else ";
-            node->elseClause ->accept(this);
+            n->elseClause ->accept(this);
         }
     }
-    void visit(ast::WhileLoop * node) override {
+    void visit(WhileLoop * n) override {
         s << "while (";
-        node->guard->accept(this);
+        n->guard->accept(this);
         s << ") ";
-        node->body->accept(this);
+        n->body->accept(this);
+    }
+
+    /** Print the expression to stdout. */
+    static void print(Exp * exp) {
+        return print(exp, std::cout);
     }
 
 private:
-    Printer(std::ostream & s):
-        s(s) {
-    }
+    Printer(std::ostream & s): s(s) { }
 
     std::ostream & s;
 
-};
+    /** Print the expression on the outputstream.   */
+    static void print(Exp * exp, std::ostream & s) {
+        Printer p(s);
+        exp->accept(&p);
+    }
 
+
+};
+}
 }

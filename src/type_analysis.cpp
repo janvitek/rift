@@ -1,6 +1,5 @@
 #if VERSION > 10
 #include <iostream>
-#include <ciso646>
 
 #include "type_analysis.h"
 #include "rift.h"

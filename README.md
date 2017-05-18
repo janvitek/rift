@@ -2,11 +2,11 @@
 
 The following guide assumes Linux machine (Ubuntu 16.04 LTS). For Windows, enable the "Windows Subsystem for Linux" and then run the commands below.
 
-> If you have opted for the virtual machine, you do not have to do the LLVM setup as the `pliss\llvm` directory has been created for you, and LLVM in release and debug versions has been already built so you can continue with the *rift* chapter. 
+> If you have opted for the virtual machine, you do not have to do the LLVM setup as the `pliss/llvm` directory has been created for you, and LLVM in release and debug versions has been already built so you can continue with the *rift* chapter. 
 
 ## Prerequisites
 
-    sudo apt-get install cmake g++ git  ninja-build subversion
+    sudo apt-get install cmake g++ git subversion
     mkdir pliss
     cd pliss
     mkdir llvm
@@ -41,15 +41,14 @@ And finally, return back to the `pliss` directory to install rift;
 
 Now download rift:
 
-    git clone WHERE IS RIFT LOCATED
+    git clone https://github.com/PRL-PRG/pliss-rift.git
     cd rift
     mkdir build
     cd build
     cmake ..
     make
 
-
-When make finishes, you can run rift by typing:
+When make finishes, you are good for the lecture. As you will be fixing rift throghout the class, you will be able to run it using:
 
     ./rift
     
