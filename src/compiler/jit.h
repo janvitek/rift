@@ -89,8 +89,8 @@ public:
     ModuleHandle addModule(std::unique_ptr<llvm::Module> m) {
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
-            [&](std::string const & name) {
-                if (auto s = codLayer.findSymbol(name, false))
+            [this](std::string const & name) {
+                if (auto s = this->codLayer.findSymbol(name, false))
                     return s;
                 return llvm::JITSymbol(nullptr);
             },
