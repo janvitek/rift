@@ -6,7 +6,7 @@ The following guide assumes Linux machine (Ubuntu 16.04 LTS). For Windows, enabl
 
 ## Prerequisites
 
-    sudo apt-get install cmake g++ git  ninja-build subversion
+    sudo apt-get install cmake g++ git subversion
     mkdir pliss
     cd pliss
     mkdir llvm
