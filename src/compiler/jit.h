@@ -65,8 +65,12 @@ public:
     }
 
     static void removeLastModule() {
-        if (lastModuleDeletable_)
+        // TODO: llvm bug: removing a module corrupts the eh section and
+        // subsequent C++ exception crash while unwinding the stack. Therefore
+        // we disable deleting modules for now.
+        if (false && lastModuleDeletable_) {
             singleton().removeModule(lastModule_);
+        }
     }
 
     JIT():
