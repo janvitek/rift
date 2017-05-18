@@ -1,6 +1,4 @@
 #pragma once
-#ifndef TYPE_CHECKER_H
-#define TYPE_CHECKER_H
 
 #include "llvm.h"
 #include "abstract_state.h"
@@ -61,7 +59,3 @@ inline bool operator < (TypeChecker::Type t1, TypeChecker::Type t2) {
 
 
 } // namespace rift
-
-
-
-#endif // TYPE_CHECKER_H

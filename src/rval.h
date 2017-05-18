@@ -1,6 +1,4 @@
 #pragma once
-#ifndef RVAL_H
-#define RVAL_H
 
 enum class Type : uint8_t {
     Invalid,          // Used for debugging uninitialized tags
@@ -37,5 +35,3 @@ struct RVal {
     /** Prints to given stream.  */
     inline void print(std::ostream & s);
 };
-
-#endif // RVAL_H

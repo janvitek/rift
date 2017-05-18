@@ -10,6 +10,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "pool.h"
+#include "utils/printer.h"
 
 #include "compiler/jit.h"
 
@@ -377,6 +378,13 @@ RVal * eval(Environment * env, char const * value) {
     ast::Fun * x = new ast::Fun(p.parse(s));
     if (x->body->body.empty())
         return DoubleVector::New({0});
+
+    if (DEBUG) {
+        std::cout << "AST:" << std::endl;
+        Printer::print(x);
+        std::cout << std::endl;
+    }
+
     FunPtr f = JIT::compile(x);
     auto start = chrono::high_resolution_clock::now();
     RVal * result = f(env);

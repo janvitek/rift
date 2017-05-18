@@ -1,7 +1,5 @@
 
 #pragma once
-#ifndef SPECIALIZE_H
-#define SPECIALIZE_H
 
 #include "llvm.h"
 #include "type_analysis.h"
@@ -80,7 +78,5 @@ protected:
 };
 
 } // namespace rift
-
-#endif // SPECIALIZE_H
 
 

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "llvm.h"
 
 namespace rift {

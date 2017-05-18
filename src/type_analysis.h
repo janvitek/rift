@@ -1,6 +1,4 @@
 #pragma once
-#ifndef TYPE_ANALYSIS_H
-#define TYPE_ANALYSIS_H
 
 #include "llvm.h"
 #include "abstract_state.h"
@@ -142,4 +140,3 @@ private:
 
 } // namespace rift
 
-#endif // TYPE_ANALYSIS_H

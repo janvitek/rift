@@ -1,6 +1,4 @@
 #pragma once
-#ifndef TESTS_H
-#define TESTS_H
 
 namespace rift {
 
@@ -8,5 +6,4 @@ namespace rift {
 
 } // namespace rift
 
-#endif // TESTS_H
 

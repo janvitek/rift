@@ -1,6 +1,4 @@
 #pragma once
-#ifndef AST_H
-#define AST_H
 #include <iostream>
 #include <ciso646>
 
@@ -18,7 +16,6 @@ namespace ast {
     public:
         virtual ~Exp() {}
         virtual void accept(Visitor * v) = 0;
-        void print(std::ostream & s);
     };
 
     /** Double scalar literal.  */
@@ -258,6 +255,5 @@ public:
     virtual void visit(ast::WhileLoop * n)   { visit(static_cast<ast::Exp*>(n)); }
 };
 
-} // namespace rift2
-#endif // AST_H
+} // namespace rift
 

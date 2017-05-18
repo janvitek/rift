@@ -1,6 +1,4 @@
 #pragma once
-#ifndef LLVM_H
-#define LLVM_H
 
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -39,5 +37,3 @@
 
 #undef DEBUG
 
-
-#endif // LLVM_H

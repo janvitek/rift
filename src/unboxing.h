@@ -1,7 +1,4 @@
-
 #pragma once
-#ifndef UNBOXING_H
-#define UNBOXING_H
 
 #include "llvm.h"
 #include "type_analysis.h"
@@ -68,10 +65,5 @@ protected:
 
 
 } // namespace rift
-
-
-
-
-#endif // UNBOXING_H
 
 

@@ -1,5 +1,4 @@
-#ifndef GC_H
-#define GC_H
+#pragma once
 
 #include <array>
 #include <deque>
@@ -473,5 +472,3 @@ private:
 
 } // namespace gc
 
-
-#endif
