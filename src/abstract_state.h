@@ -110,10 +110,9 @@ public:
             pos->printAsOperand(ss, false);
             ss << ": ";
             if (metadata.count(pos)) {
-                ss << getMetadata(pos);
+                ss << * getMetadata(pos) << " ";
             }
             ss.flush();
-
             s << *st;
             s << std::endl;
         }
