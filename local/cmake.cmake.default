@@ -1,7 +1,7 @@
 message(STATUS "Loading local configuration")
 
 # if you are using the provided VM, you can leave this untouched. Otherwise the LLVM_COMPILE_DIR must point to the folder which contains the `src`, `debug` and `release` folders for LLVM sources and builds as specified in the README.md
-set(LLVM_COMPILE_DIR "/opt/llvm/4.0.0")
+set(LLVM_COMPILE_DIR "${CMAKE_SOURCE_DIR}/llvm")
 
 # Specify whether to link against debug, or release version of LLVM
 set(LLVM_LINK_AGAINST ${CMAKE_BUILD_TYPE})
