@@ -6,7 +6,10 @@
 
 namespace rift {
 
-typedef int Symbol;
+/** Symbol is the type of all constant pool entries.
+    It is used for variables and strings.
+ */
+typedef unsigned Symbol;
 
 class Visitor;
 
