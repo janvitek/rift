@@ -114,7 +114,7 @@ public:
             }
             ss.flush();
 
-            s << st;
+            s << *st;
             s << std::endl;
         }
     }

@@ -246,7 +246,7 @@ bool Specialize::runOnFunction(llvm::Function & f) {
         }
     }
     if (DEBUG) {
-        cout << "After unboxing optimization: --------------------------------" << endl;
+        cout << "After specialize optimization: --------------------------------" << endl;
         f.dump();
         state().print(cout);
     }
