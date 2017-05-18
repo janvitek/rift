@@ -18,7 +18,6 @@ namespace ast {
     public:
         virtual ~Exp() {}
         virtual void accept(Visitor * v) = 0;
-        void print(std::ostream & s);
     };
 
     /** Double scalar literal.  */
