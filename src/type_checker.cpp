@@ -1,3 +1,4 @@
+#if VERSION > 10
 #include <ciso646>
 #include "type_checker.h"
 
@@ -81,3 +82,4 @@ bool TypeChecker::runOnFunction(llvm::Function & f) {
 }
 
 }
+#endif //VERSION

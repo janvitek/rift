@@ -1,3 +1,4 @@
+#if VERSION > 10
 #pragma once
 
 #include "runtime.h"
@@ -90,3 +91,4 @@ extern "C" {
 
 } // extern "C"
 
+#endif //VERSION

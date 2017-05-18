@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 
-/** Shorthand for converting values to string as long as they support the ostream << operator.  */
+/** Convert values to string as long as they support the ostream << operator.  */
 #define STR(WHAT) static_cast<std::stringstream&&>(std::stringstream() << WHAT).str()
 
 /** TBD */
