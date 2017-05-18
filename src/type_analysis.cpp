@@ -1,3 +1,4 @@
+#if VERSION > 10
 #include <iostream>
 #include <ciso646>
 
@@ -135,3 +136,4 @@ std::ostream & operator << (std::ostream & s, AType & t) {
 
 } // namespace rift
 
+#endif //VERSION

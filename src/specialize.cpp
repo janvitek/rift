@@ -1,3 +1,4 @@
+#if VERSION > 10
 
 #include <iostream>
 #include <ciso646>
@@ -256,3 +257,4 @@ bool Specialize::runOnFunction(llvm::Function & f) {
 
 } // namespace rift
 
+#endif //VERSION

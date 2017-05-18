@@ -1,3 +1,4 @@
+#if VERSION > 10
 #pragma once
 
 #include "llvm.h"
@@ -67,3 +68,4 @@ protected:
 } // namespace rift
 
 
+#endif //VERSION

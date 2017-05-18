@@ -8,53 +8,58 @@
 
 #include "gc.h"
 
-
-#define RUNTIME_FUNCTIONS \
+#define GENERIC_RUNTIME_FUNCTIONS \
     FUN_PURE(doubleVectorLiteral, type::v_d) \
     FUN_PURE(characterVectorLiteral, type::v_i) \
-    FUN_PURE(scalarFromVector, type::d_dv) \
-    FUN_PURE(doubleGetSingleElement, type::d_dvd) \
-    FUN_PURE(doubleGetElement, type::v_dvdv) \
-    FUN_PURE(characterGetElement, type::v_cvdv) \
     FUN_PURE(genericGetElement, type::v_vv) \
-    FUN(doubleSetElement, type::void_dvdvdv) \
-    FUN(scalarSetElement, type::void_dvdd) \
-    FUN(characterSetElement, type::void_cvdvcv) \
     FUN(genericSetElement, type::void_vvv) \
     FUN(envGet, type::v_ei) \
     FUN(envSet, type::void_eiv) \
-    FUN_PURE(doubleAdd, type::v_dvdv) \
-    FUN_PURE(characterAdd, type::v_cvcv) \
     FUN_PURE(genericAdd, type::v_vv) \
-    FUN_PURE(doubleSub, type::v_dvdv) \
     FUN_PURE(genericSub, type::v_vv) \
-    FUN_PURE(doubleMul, type::v_dvdv) \
     FUN_PURE(genericMul, type::v_vv) \
-    FUN_PURE(doubleDiv, type::v_dvdv) \
     FUN_PURE(genericDiv, type::v_vv) \
-    FUN_PURE(doubleEq, type::v_dvdv) \
-    FUN_PURE(characterEq, type::v_cvcv) \
     FUN_PURE(genericEq, type::v_vv) \
-    FUN_PURE(doubleNeq, type::v_dvdv) \
-    FUN_PURE(characterNeq, type::v_cvcv) \
     FUN_PURE(genericNeq, type::v_vv) \
-    FUN_PURE(doubleLt, type::v_dvdv) \
     FUN_PURE(genericLt, type::v_vv) \
-    FUN_PURE(doubleGt, type::v_dvdv) \
     FUN_PURE(genericGt, type::v_vv) \
     FUN_PURE(createFunction, type::v_ie) \
     FUN_PURE(toBoolean, type::b_v) \
     FUN(call, type::v_viVA) \
     FUN_PURE(length, type::d_v) \
     FUN_PURE(type, type::v_v) \
-    FUN(characterEval, type::v_ecv) \
     FUN(genericEval, type::v_ev) \
-    FUN_PURE(doublec, type::v_iVA) \
-    FUN_PURE(characterc, type::v_iVA) \
     FUN_PURE(c, type::v_iVA)
 
+#if VERSION <= 10
+#define RUNTIME_FUNCTIONS GENERIC_RUNTIME_FUNCTIONS
+#endif //VERSION
 
-
+#if VERSION > 10
+#define RUNTIME_FUNCTIONS \
+    GENERIC_RUNTIME_FUNCTIONS \
+    FUN_PURE(doubleGetSingleElement, type::d_dvd) \
+    FUN_PURE(doubleGetElement, type::v_dvdv) \
+    FUN_PURE(characterGetElement, type::v_cvdv) \
+    FUN(doubleSetElement, type::void_dvdvdv) \
+    FUN(scalarSetElement, type::void_dvdd) \
+    FUN(characterSetElement, type::void_cvdvcv) \
+    FUN_PURE(doubleAdd, type::v_dvdv) \
+    FUN_PURE(characterAdd, type::v_cvcv) \
+    FUN_PURE(doubleSub, type::v_dvdv) \
+    FUN_PURE(doubleMul, type::v_dvdv) \
+    FUN_PURE(doubleDiv, type::v_dvdv) \
+    FUN_PURE(doubleEq, type::v_dvdv) \
+    FUN_PURE(doubleNeq, type::v_dvdv) \
+    FUN_PURE(characterEq, type::v_cvcv) \
+    FUN_PURE(characterNeq, type::v_cvcv) \
+    FUN_PURE(doubleLt, type::v_dvdv) \
+    FUN_PURE(doubleGt, type::v_dvdv) \
+    FUN_PURE(doublec, type::v_iVA) \
+    FUN_PURE(characterc, type::v_iVA) \
+    FUN(characterEval, type::v_ecv) \
+    FUN_PURE(scalarFromVector, type::d_dv)
+#endif //VERSION
 
 template <typename T>
 struct RValOps {

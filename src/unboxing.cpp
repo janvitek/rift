@@ -1,3 +1,4 @@
+#if VERSION > 10
 
 #include <iostream>
 #include <ciso646>
@@ -153,3 +154,4 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
 
 } // namespace rift
 
+#endif //VERSION

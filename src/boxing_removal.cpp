@@ -1,3 +1,4 @@
+#if VERSION > 10
 
 #include <iostream>
 #include <ciso646>
@@ -59,3 +60,4 @@ bool BoxingRemoval::runOnFunction(llvm::Function & f) {
 
 } // namespace rift
 
+#endif //VERSION

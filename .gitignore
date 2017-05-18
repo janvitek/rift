@@ -65,3 +65,5 @@ perf.data
 
 local/cmake.cmake
 .vscode/*
+
+export

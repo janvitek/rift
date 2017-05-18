@@ -1,3 +1,4 @@
+#if VERSION > 10
 #pragma once
 #ifndef ABSTRACT_STATE_H
 #define ABSTRACT_STATE_H
@@ -131,3 +132,4 @@ private:
 } // namespace rift
 
 #endif // ABSTRACT_STATE_H
+#endif //VERSION
