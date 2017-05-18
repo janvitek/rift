@@ -55,7 +55,7 @@ public:
         s << " ";
         node->rhs->accept(this);
     }
-    void visit(ast::Call * node) override {
+    void printArgs(ast::Call * node) {
         s << "(";
         for (ast::Exp * v : node->args) {
             v->accept(this);
@@ -65,26 +65,23 @@ public:
     }
     void visit(ast::UserCall * node) override {
         node->name->accept(this);
-        visit(static_cast<ast::Call*>(node));
-    }
-    void visit(ast::SpecialCall * node) override {
-        visit(static_cast<ast::Call*>(node));
+        printArgs(node);
     }
     void visit(ast::CCall * node) override {
         s << "c";
-        visit(static_cast<ast::SpecialCall*>(node));
+        printArgs(node);
     }
     void visit(ast::EvalCall * node) override {
         s << "eval";
-        visit(static_cast<ast::SpecialCall*>(node));
+        printArgs(node);
     }
     void visit(ast::TypeCall * node) override {
         s << "type";
-        visit(static_cast<ast::SpecialCall*>(node));
+        printArgs(node);
     }
     void visit(ast::LengthCall * node) override {
         s << "length";
-        visit(static_cast<ast::SpecialCall*>(node));
+        printArgs(node);
     }
     void visit(ast::Index * node) override {
         node->name->accept(this);
