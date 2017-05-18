@@ -2,6 +2,10 @@
 
 #include "gc.h"
 
+/*
+ * Class Mixin for the different object types
+ * imports cast and allocation helper functions for each object type.
+ */
 template <typename T>
 struct RValOps {
   public:
