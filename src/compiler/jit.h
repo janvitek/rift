@@ -18,14 +18,11 @@
 #include "boxing_removal.h"
 #endif //VERSION
 
-
-
-
 namespace rift {
 
 class JIT {
-private:
 
+private:
     typedef llvm::orc::ObjectLinkingLayer<> ObjectLayer;
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
     typedef std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)> OptimizeFunction;
@@ -33,14 +30,7 @@ private:
     typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
 
 public:
-
-#if OPTIMIZE_ON_DEMAND == 1
     typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
-#else
-    typedef CompileLayer::ModuleSetHandleT ModuleHandle;
-
-#endif
-
 
     /** Compiles a function and returns a pointer to the native code.  JIT
       compilation in LLVM finalizes the module, this function can only be
@@ -50,14 +40,9 @@ public:
         Compiler c;
         unsigned start = Pool::functionsCount();
         int result = c.compile(f);
-
-        //optimizeModule(c.m.get());
-
         llvm::Module * m = c.m.release();
-
         lastModule_ = singleton().addModule(std::unique_ptr<llvm::Module>(m));
         lastModuleDeletable_ = Pool::functionsCount() == start + 1;
-
 
         for (; start < Pool::functionsCount(); ++start) {
             RFun * rec = Pool::getFunction(start);
@@ -77,52 +62,36 @@ public:
 
     JIT():
         targetMachine(llvm::EngineBuilder().selectTarget()),
-        dataLayout(
-            targetMachine->createDataLayout()
-        ),
-        compileLayer(
-            objectLayer,
-            llvm::orc::SimpleCompiler(*targetMachine)
-        ),
-        optimizeLayer(
-            compileLayer,
+        dataLayout(targetMachine->createDataLayout()),
+        compileLayer(objectLayer, llvm::orc::SimpleCompiler(*targetMachine)),
+        optimizeLayer(compileLayer,
             [this](std::unique_ptr<llvm::Module> m) {
                 optimizeModule(m.get());
                 return m;
             }
         )
-#if OPTIMIZE_ON_DEMAND == 1
         ,compileCallbackManager(
              llvm::orc::createLocalCompileCallbackManager(targetMachine->getTargetTriple(), 0)
         ),
-        codLayer(
-            optimizeLayer,
+        codLayer(optimizeLayer,
             [this](llvm::Function & f) {
                 return std::set<llvm::Function*>({&f});
             },
             *compileCallbackManager,
             llvm::orc::createLocalIndirectStubsManagerBuilder(
-                targetMachine->getTargetTriple()
-            )
-        )
-#endif
+                targetMachine->getTargetTriple()))
         {
-        // this loads the host process itself, making the symbols in it available for execution
-        llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
-    }
+            // this loads the host process itself, making
+            // the symbols in it available for execution
+            llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+        }
 
     ModuleHandle addModule(std::unique_ptr<llvm::Module> m) {
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
             [&](std::string const & name) {
-#if OPTIMIZE_ON_DEMAND == 1
                 if (auto s = codLayer.findSymbol(name, false))
                     return s;
-#else
-                if (auto s = compileLayer.findSymbol(name, false))
-                    return s;
-#endif
-
                 return llvm::JITSymbol(nullptr);
             },
 
@@ -141,35 +110,20 @@ public:
 
         // Add the set to the JIT with the resolver we created above and a newly
         // created SectionMemoryManager.
-#if OPTIMIZE_ON_DEMAND == 1
         return codLayer.addModuleSet(std::move(ms),
             llvm::make_unique<llvm::SectionMemoryManager>(),
             std::move(resolver));
-#else
-        return compileLayer.addModuleSet(std::move(ms),
-            llvm::make_unique<llvm::SectionMemoryManager>(),
-            std::move(resolver));
-#endif
     }
 
     llvm::JITSymbol findSymbol(const std::string name) {
         std::string mangled;
         llvm::raw_string_ostream mangledStream(mangled);
         llvm::Mangler::getNameWithPrefix(mangledStream, name, dataLayout);
-#if OPTIMIZE_ON_DEMAND == 1
         return codLayer.findSymbol(mangledStream.str(), true);
-#else
-        return compileLayer.findSymbol(mangledStream.str(), true);
-
-#endif
     }
 
     void removeModule(ModuleHandle m) {
-#if OPTIMIZE_ON_DEMAND == 1
         codLayer.removeModuleSet(m);
-#else
-        compileLayer.removeModuleSet(m);
-#endif
     }
 
 
@@ -180,8 +134,10 @@ private:
 
     static llvm::JITSymbol fallbackHostSymbolResolver(std::string const & name) {
 
-#define FUN_PURE(NAME, ...) if (name == #NAME) return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
-#define FUN(NAME, ...) if (name == #NAME) return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
+#define FUN_PURE(NAME, ...) if (name == #NAME) \
+    return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
+#define FUN(NAME, ...) if (name == #NAME) \
+    return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
 RUNTIME_FUNCTIONS
 #undef FUN_PURE
 #undef FUN
@@ -219,19 +175,13 @@ RUNTIME_FUNCTIONS
     }
 
     static JIT & singleton();
-
     std::unique_ptr<llvm::TargetMachine> targetMachine;
     const llvm::DataLayout dataLayout;
     ObjectLayer objectLayer;
     CompileLayer compileLayer;
     OptimizeLayer optimizeLayer;
-#if OPTIMIZE_ON_DEMAND == 1
     std::unique_ptr<llvm::orc::JITCompileCallbackManager> compileCallbackManager;
     CompileOnDemandLayer codLayer;
-#endif
-
 };
-
-
 
 }
