@@ -19,7 +19,6 @@ using namespace rift;
 
 double eval_time;
 
-
 extern "C" {
 
 Environment * envCreate(Environment * parent) {
@@ -57,6 +56,7 @@ double doubleGetSingleElement(DoubleVector * from, double index) {
 }
 
 RVal * doubleGetElement(DoubleVector * from, DoubleVector * index) {
+#if VERSION >= 3 
     unsigned resultSize = index->size;
     DoubleVector* result = DoubleVector::New(resultSize);
     for (unsigned i = 0; i < resultSize; ++i) {
@@ -66,6 +66,11 @@ RVal * doubleGetElement(DoubleVector * from, DoubleVector * index) {
         (*result)[i] = (*from)[static_cast<int>(idx)];
     }
     return result;
+#endif //VERSION
+#if VERSION < 3
+    // TODO
+    assert(false);
+#endif //VERSION
 }
 
 RVal * characterGetElement(CharacterVector * from, DoubleVector * index) {
@@ -162,21 +167,35 @@ RVal * genericAdd(RVal * lhs, RVal * rhs) {
 }
 
 RVal * doubleSub(DoubleVector * lhs, DoubleVector * rhs) {
+#if VERSION >= 3
     int resultSize = max(lhs->size, rhs->size);
     DoubleVector* result = DoubleVector::New(resultSize);
     for (int i = 0; i < resultSize; ++i)
         (*result)[i] = (*lhs)[i % lhs->size] - (*rhs)[i % rhs->size];
     return result;
+#endif //VERSION
+#if VERSION < 3
+    // TODO
+    assert(false);
+    return nullptr;
+#endif //VERSION
 }
 
 
 
 RVal * genericSub(RVal * lhs, RVal * rhs) {
+#if VERSION >= 3
     auto l = DoubleVector::Cast(lhs);
     auto r = DoubleVector::Cast(rhs);
     if (!(l && r))
         throw "Invalid types for binary sub";
     return doubleSub(l, r);
+#endif //VERSION
+#if VERSION < 3
+    // TODO
+    assert(false);
+    return nullptr;
+#endif //VERSION
 }
 
 RVal * doubleMul(DoubleVector * lhs, DoubleVector * rhs) {

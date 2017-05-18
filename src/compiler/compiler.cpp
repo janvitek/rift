@@ -37,7 +37,48 @@ Compiler::Compiler():
     b(nullptr) {
 }
 
+#if VERSION == 0
+int Compiler::compile(ast::Fun * node) {
+    // Backup context in case we are creating a nested function
+    llvm::Function * oldF = f;
+    llvm::IRBuilder<> * oldB = b;
+    llvm::Value * oldEnv = env;
 
+    // Create the function and its first BB
+    f = llvm::Function::Create(type::NativeCode, llvm::Function::ExternalLinkage, "riftFunction", m.get());
+    llvm::BasicBlock * entry = llvm::BasicBlock::Create(context(), "entry", f, nullptr);
+    b = new llvm::IRBuilder<>(entry);
+
+    // Get the (single) argument of the function and store is as the
+    // environment
+    llvm::Function::arg_iterator args = f->arg_begin();
+    env = &*args;
+    env->setName("env");
+
+    llvm::Function * doubleVectorLiteral =
+        declarePureFunction("doubleVectorLiteral", type::v_d, m.get());
+
+    // TODO: return something else than returning 0
+    result = b->CreateCall(doubleVectorLiteral,
+            std::vector<llvm::Value*>(
+                {llvm::ConstantFP::get(context(), llvm::APFloat(0.0f))}), "");
+
+    // Append return instruction of the last used value
+    b->CreateRet(result);
+
+    // Register and get index
+    int result = Pool::addFunction(node, f);
+    f->setName(STR(result));
+    // Restore context
+    f = oldF;
+    delete b;
+    b = oldB;
+    env = oldEnv;
+    return result;
+}
+#endif //VERSION
+
+#if VERSION > 0
 #define FUN_PURE(NAME, SIGNATURE) llvm::Function * Compiler::NAME(llvm::Module * m) { \
     llvm::Function * result = m->getFunction(#NAME); \
     if (result == nullptr) \
@@ -180,6 +221,7 @@ void Compiler::visit(ast::BinExp * node) {
 
 /** Rift Function Call. First obtain the function pointer, then arguments. */
 void Compiler::visit(ast::UserCall * node) {
+#if VERSION >= 5
     node->name->accept(this);
 
     std::vector<llvm::Value *> args;
@@ -192,6 +234,11 @@ void Compiler::visit(ast::UserCall * node) {
     }
 
     result = b->CreateCall(call(m.get()), args, "");
+#endif //VERSION
+#if VERSION < 5
+    //TODO
+    assert(false);
+#endif //VERSION
 }
 
 /** Call length runtime, box the scalar result  */
@@ -235,8 +282,13 @@ void Compiler::visit(ast::Index * node) {
 /** Assign a variable.
 */
 void Compiler::visit(ast::SimpleAssignment * node) {
+#if VERSION >= 5
     node->rhs->accept(this);
     RUNTIME_CALL(envSet, env, fromInt(node->name->symbol), result);
+#endif //VERSION
+#if VERSION < 5
+    assert(false);
+#endif //VERSION
 }
 
 /** Assign into a vector at an index.
@@ -256,6 +308,7 @@ void Compiler::visit(ast::IndexAssignment * node) {
    merges after the conditional.
   */
 void Compiler::visit(ast::IfElse * node) {
+#if VERSION >= 5
     // Create the basic blocks we will need
     llvm::BasicBlock * ifTrue = llvm::BasicBlock::Create(context(), "trueCase", f, nullptr);
     llvm::BasicBlock * ifFalse = llvm::BasicBlock::Create(context(), "falseCase", f, nullptr);
@@ -288,6 +341,11 @@ void Compiler::visit(ast::IfElse * node) {
 
     // return the result of the phi node
     result = phi;
+#endif //VERSION
+#if VERSION < 5
+    //TODO
+    assert(false);
+#endif //VERSION
 }
 
 /** While. The loop is simple enough that we don't have to worry about
@@ -330,5 +388,7 @@ void Compiler::visit(ast::WhileLoop * node) {
     b->SetInsertPoint(cont);
     result = phi;
 }
+
+#endif //VERSION
 
 }

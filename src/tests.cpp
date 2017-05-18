@@ -67,6 +67,10 @@ namespace rift {
 
 
     void tests() {
+#if VERSION == 0
+        // TODO implement a compiler
+        return;
+#endif //VERSION
         cout << "Running tests..." << endl;
         TEST("1", 1);
         TEST("1 + 2", 3);

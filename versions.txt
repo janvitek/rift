@@ -1,4 +1,11 @@
-   0 : ast printer exercise
-   1 : ast printer solution
+   0 : beforehand     : minimal skeleton
 
-> 10 : adds specialiced runtime, analysis and optimizations
+   1 : day 1          : baseline
+
+   2 : ex 1           : ast printer solution
+
+   3 : ex 2           : runtime function solution
+
+   5 : ex 3           : compiler solution
+
+  11 : day 2          : adds specialiced runtime, analysis and optimizations

@@ -25,6 +25,8 @@ public:
         delete b;
     }
 
+#if VERSION > 0
+
 #define FUN_PURE(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
 #define FUN(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
 RUNTIME_FUNCTIONS
@@ -65,6 +67,8 @@ public:
     void visit(ast::IfElse * node) override;
     void visit(ast::WhileLoop * node) override;
 
+#endif //VERSION
+
 private:
 
     friend class JIT;
@@ -75,7 +79,6 @@ private:
     std::unique_ptr<llvm::Module> m;
     llvm::Function * f;
     llvm::IRBuilder<>  * b;
-
 };
 
 
