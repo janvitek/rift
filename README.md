@@ -48,8 +48,7 @@ Now download rift:
     cmake ..
     make
 
-
-When make finishes, you can run rift by typing:
+When make finishes, you are good for the lecture. As you will be fixing rift throghout the class, you will be able to run it using:
 
     ./rift
     
