@@ -36,7 +36,6 @@ public:
         s << ") {\n";
         node->body->accept(this);
         s << "}";
-
     }
     void visit(ast::BinExp * node) override {
         node->lhs->accept(this);
@@ -56,16 +55,28 @@ public:
         node->rhs->accept(this);
     }
     void printArgs(ast::Call * node) {
+#if VERSION <= 1
+        // TODO
+        assert(false);
+#endif //VERSION
+#if VERSION > 1
         s << "(";
         for (ast::Exp * v : node->args) {
             v->accept(this);
             s << ", ";
         }
         s << ")";
+#endif //VERSION
     }
     void visit(ast::UserCall * node) override {
+#if VERSION <= 1
+        // TODO
+        assert(false);
+#endif //VERSION
+#if VERSION > 1
         node->name->accept(this);
         printArgs(node);
+#endif //VERSION
     }
     void visit(ast::CCall * node) override {
         s << "c";

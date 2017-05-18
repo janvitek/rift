@@ -1,1 +1,4 @@
+   0 : ast printer exercise
+   1 : ast printer solution
+
 > 10 : adds specialiced runtime, analysis and optimizations
