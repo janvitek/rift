@@ -15,7 +15,9 @@ For Windows user, enable the Windows Subsystem for Linux and then run the comman
 
 ## LLVM Setup
 
-We now have to download LLVM and build at least *release* version of LLVM we can link rift against. The following commands download LLVM into the `src` and create a directory for the release build. Inside that directory, we run `cmake` to build LLVM in the release configuration:    
+We now have to download LLVM and build at least *release* version of LLVM we can link rift against. The following commands download LLVM into the `src` and create a directory for the release build. Inside that directory, we run `cmake` to build LLVM in the release configuration:   
+
+> To make llvm build faster, you can use `make --jobs NUM` where num is number cores. Note that ~1.5GB RAM / thread is required for the build so too many cores might run out of memory.
 
     cd llvm
     svn co http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_400/final/ src
