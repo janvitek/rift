@@ -142,8 +142,7 @@ void Compiler::visit(ast::Str * n) {
     result = RUNTIME_CALL(characterVectorLiteral, fromInt(n->index));
 }
 
-/** Variable translates into reading from environment.
-*/
+/** Variable translates into reading from environment. */
 void Compiler::visit(ast::Var * n) {
     result = RUNTIME_CALL(envGet, cur.env, fromInt(n->symbol));
 }
@@ -283,8 +282,7 @@ void Compiler::visit(ast::IndexAssignment * n) {
 
 /** Conditional.  Compile the guard, convert the result to a boolean,
    and branch on that. PHI ns have to be inserted when control flow
-   merges after the conditional.
-  */
+   merges after the conditional. */
 void Compiler::visit(ast::IfElse * n) {
 #if VERSION >= 5
     // Create the basic blocks we will need
@@ -335,9 +333,7 @@ void Compiler::visit(ast::IfElse * n) {
 #endif //VERSION
 }
 
-/** While. The loop is simple enough that we don't have to worry about
-PHI ns.
-  */
+/** While. A loop always returns zero, so no need to worry about PHI nodes. */
 void Compiler::visit(ast::WhileLoop * n) {
     // create BB for loop start (evaluation of the guard), loop body, and exit
 
