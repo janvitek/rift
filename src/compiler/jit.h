@@ -29,12 +29,12 @@ namespace rift {
 class JIT {
 
 private:
+    // shorter names...
     typedef llvm::orc::ObjectLinkingLayer<> ObjectLayer;
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
     typedef function<unique_ptr<llvm::Module>(unique_ptr<llvm::Module>)> OptimizeModule;
     typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeModule> OptimizeLayer;
     typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
-
 public:
     typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
 
