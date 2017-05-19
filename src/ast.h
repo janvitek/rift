@@ -66,13 +66,13 @@ namespace ast {
     /** Binary expressions. */
     class BinExp : public Exp {
     public:
-        enum class Type { add, sub, mul, div, eq, neq, lt, gt };
-        BinExp(Exp * lhs, Exp * rhs, Type t): lhs(lhs), rhs(rhs), type(t) { }
+        enum class Op { add, sub, mul, div, eq, neq, lt, gt };
+        BinExp(Exp * lhs, Exp * rhs, Op o): lhs(lhs), rhs(rhs), op(o) { }
         ~BinExp() {   delete lhs; delete rhs; }
         void accept(Visitor * v) override;
         Exp * lhs;
         Exp * rhs;
-        Type type;
+        Op op;
     };
     /** Function call. Stores a vector of argument exps.  */
     class Call: public Exp {

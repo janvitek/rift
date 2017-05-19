@@ -28,14 +28,12 @@ namespace rift {
  */
 class JIT {
 private:
-    /* Shorthands for the long LLVM types. 
-     */
+    // shorter names...
     typedef llvm::orc::ObjectLinkingLayer<> ObjectLayer;
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
     typedef function<unique_ptr<llvm::Module>(unique_ptr<llvm::Module>)> OptimizeModule;
     typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeModule> OptimizeLayer;
     typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
-
 public:
     /** Externally, the JIT uses this type to refer to a module that has been passed to it. 
      */
