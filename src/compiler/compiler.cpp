@@ -1,13 +1,13 @@
 #include "rift.h"
 #include "compiler.h"
-#include "types.h"
 #include "pool.h"
 
 
 /** Shorthand for calling runtime functions.  */
-#define RUNTIME_CALL(NAME, ...) b->CreateCall(NAME(m.get()), vector<Value*>({ __VA_ARGS__ }), "")
 
 using namespace llvm;
+#define RUNTIME_CALL(NAME, ...) cur.b->CreateCall(                 \
+        NAME(m.get()), vector<Value*>({ __VA_ARGS__ }), "")
 
 namespace {
 
@@ -30,28 +30,21 @@ namespace rift {
 
 Compiler::Compiler():
     result(nullptr),
-    env(nullptr),
-    m(new Module("module", context())),
-    f(nullptr),
-    b(nullptr) {
+    m(new Module("module", context())) {
 }
 
 #if VERSION == 0
 int Compiler::compile(ast::Fun * n) {
-    // Backup context in case we are creating a nested function
-    Function * oldF = f;
-    IRBuilder<> * oldB = b;
-    Value * oldEnv = env;
-
     // Create the function and its first BB
-    f = Function::Create(type::NativeCode, Function::ExternalLinkage, "riftFunction", m.get());
+    cur.f = Function::Create(type::NativeCode, Function::ExternalLinkage, "riftFunction", m.get());
+
     BasicBlock * entry = BasicBlock::Create(context(), "entry", f, nullptr);
-    b = new IRBuilder<>(entry);
+    cur.b = new IRBuilder<>(entry);
 
     // Get the (single) argument of the function and store is as the
     // environment
     Function::arg_iterator args = f->arg_begin();
-    env = &*args;
+    cur.env = &*args;
     env->setName("env");
 
     Function * doubleVectorLiteral =
@@ -64,14 +57,9 @@ int Compiler::compile(ast::Fun * n) {
     b->CreateRet(result);
 
     // Register and get index
-    int result = Pool::addFunction(n, f);
-    f->setName(STR(result));
-    // Restore context
-    f = oldF;
-    delete b;
-    b = oldB;
-    env = oldEnv;
-    return result;
+    int idx = Pool::addFunction(n, f);
+    f->setName(STR(idx));
+    return idx;
 }
 #endif //VERSION
 
@@ -93,49 +81,50 @@ RUNTIME_FUNCTIONS
 #undef FUN_PURE
 #undef FUN
 
-int Compiler::compile(ast::Fun * n) {
-    // Backup context in case we are creating a nested function
-    Function * oldF = f;
-    IRBuilder<> * oldB = b;
-    Value * oldEnv = env;
 
-    // Create the function and its first BB
-    f = Function::Create(type::NativeCode,
-            Function::ExternalLinkage,
-            "riftFunction",
-            m.get());
-    BasicBlock * entry = BasicBlock::Create(context(),
-            "entry",
-            f,
-            nullptr);
+Compiler::FunctionContext::FunctionContext(string name, Module* m) {
+    // Create the function
+    f = Function::Create(
+            type::NativeCode, Function::ExternalLinkage,
+            name, m);
+    // Create the first BB and a builder
+    BasicBlock * entry = BasicBlock::Create(
+            context(), "entry", f, nullptr);
     b = new IRBuilder<>(entry);
-
-    // Get the (single) argument of the function and store is as the
-    // environment
+    // Rift ABI specifies the initial environment as only argument.
+    // All function args are bound in there.
     Function::arg_iterator args = f->arg_begin();
     env = &*args;
     env->setName("env");
+}
+
+int Compiler::compile(ast::Fun * n) {
+    // Backup context in case we are creating a nested function
+    FunctionContext oldContext(cur);
+
+    // Create a new function context
+    cur = FunctionContext("riftFunction", m.get());
 
     // if the function is empty, return 0 as default return value
     if (n->body->body.empty()) {
         result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
     // otherwise compile the function
     } else {
+        result = nullptr;
         n->body->accept(this);
+        assert(result);
     }
 
     // Append return instruction of the last used value
-    b->CreateRet(result);
+    cur.b->CreateRet(result);
 
     // Register and get index
-    int result = Pool::addFunction(n, f);
-    f->setName(STR(result));
+    int idx = Pool::addFunction(n, cur.f);
+    cur.f->setName(STR(idx));
+
     // Restore context
-    f = oldF;
-    delete b;
-    b = oldB;
-    env = oldEnv;
-    return result;
+    cur.restore(oldContext);
+    return idx;
 }
 
 /** Safeguard against forgotten  visitor methods.   */
@@ -153,21 +142,27 @@ void Compiler::visit(ast::Str * n) {
     result = RUNTIME_CALL(characterVectorLiteral, fromInt(n->index));
 }
 
-/** Read variable from environment. */
+/** Variable translates into reading from environment.
+*/
 void Compiler::visit(ast::Var * n) {
-    result = RUNTIME_CALL(envGet, env, fromInt(n->symbol));
+    result = RUNTIME_CALL(envGet, cur.env, fromInt(n->symbol));
 }
 
-/** Compile each of statement. The last one is the result. */
+/** Sequence is compilation of each of its elements. The last one will stay
+ * in the result.
+*/
 void Compiler::visit(ast::Seq * n) {
-    for (ast::Exp * e : n->body) e->accept(this);
+    for (ast::Exp * e : n->body)
+        e->accept(this);
 }
 
 /** Function declaration.  Compiles function, use its id as a constant
-    for createFunction() which binds the function code to the environment. 
-    Box result into a value.  */
+    for createFunction() which binding the function code to the
+    environment. Box result into a value.
+  */
 void Compiler::visit(ast::Fun * n) {
-    result = RUNTIME_CALL(createFunction, fromInt(compile(n)), env);
+    int fi = compile(n);
+    result = RUNTIME_CALL(createFunction, fromInt(fi), cur.env);
 }
 
 /** Binary expression. First compile arguments and then call respective
@@ -218,7 +213,7 @@ void Compiler::visit(ast::UserCall * n) {
         arg->accept(this);
         args.push_back(result);
     }
-    result = b->CreateCall(call(m.get()), args, "");
+    result = cur.b->CreateCall(call(m.get()), args, "");
 #endif //VERSION
 #if VERSION < 5
     //TODO
@@ -242,7 +237,7 @@ void Compiler::visit(ast::TypeCall * n) {
 /** Eval.  */
 void Compiler::visit(ast::EvalCall * n) {
     n->args[0]->accept(this);
-    result = RUNTIME_CALL(genericEval, env, result);
+    result = RUNTIME_CALL(genericEval, cur.env, result);
 }
 
 /** Concatenate.  */
@@ -253,7 +248,7 @@ void Compiler::visit(ast::CCall * n) {
         arg->accept(this);
         args.push_back(result);
     }
-    result = b->CreateCall(c(m.get()), args, "");
+    result = cur.b->CreateCall(c(m.get()), args, "");
 }
 
 /** Indexed read.  */
@@ -268,7 +263,7 @@ void Compiler::visit(ast::Index * n) {
 void Compiler::visit(ast::SimpleAssignment * n) {
 #if VERSION >= 5
     n->rhs->accept(this);
-    RUNTIME_CALL(envSet, env, fromInt(n->name->symbol), result);
+    RUNTIME_CALL(envSet, cur.env, fromInt(n->name->symbol), result);
 #endif //VERSION
 #if VERSION < 5
     assert(false);
@@ -293,32 +288,39 @@ void Compiler::visit(ast::IndexAssignment * n) {
 void Compiler::visit(ast::IfElse * n) {
 #if VERSION >= 5
     // Create the basic blocks we will need
-    BasicBlock * ifTrue = BasicBlock::Create(context(), "trueCase", f, nullptr);
-    BasicBlock * ifFalse = BasicBlock::Create(context(), "falseCase", f, nullptr);
-    BasicBlock * merge = BasicBlock::Create(context(), "afterIf", f, nullptr);
+
+    BasicBlock * ifTrue = BasicBlock::Create(
+            context(), "trueCase", cur.f, nullptr);
+    BasicBlock * ifFalse = BasicBlock::Create(
+            context(), "falseCase", cur.f, nullptr);
+    BasicBlock * merge = BasicBlock::Create(
+            context(), "afterIf", cur.f, nullptr);
 
     // compile the condition
     n->guard->accept(this);
     Value * guard = RUNTIME_CALL(toBoolean, result);
 
     // do the conditional jump
-    b->CreateCondBr(guard, ifTrue, ifFalse);
+    cur.b->CreateCondBr(guard, ifTrue, ifFalse);
 
-    // flip the basic block to ifTrue, compile the true case and jump to the merge block at the end
-    b->SetInsertPoint(ifTrue);
+
+    // flip the basic block to ifTrue, compile the true case and jump to
+    // the merge block at the end
+    cur.b->SetInsertPoint(ifTrue);
     n->ifClause->accept(this);
     Value * trueResult = result;
-    b->CreateBr(merge);
+    cur.b->CreateBr(merge);
 
-    // flip the basic block to ifFalse, compile the else case and jump to the merge block at the end
-    b->SetInsertPoint(ifFalse);
+    // flip the basic block to ifFalse, compile the else case and jump to
+    // the merge block at the end
+    cur.b->SetInsertPoint(ifFalse);
     n->elseClause->accept(this);
     Value * falseResult = result;
-    b->CreateBr(merge);
+    cur.b->CreateBr(merge);
 
     // Set BB to merge point and emit a phi n for the then-else results
-    b->SetInsertPoint(merge);
-    PHIn * phi = b->CreatePHI(type::ptrValue, 2, "ifPhi");
+    cur.b->SetInsertPoint(merge);
+    auto phi = cur.b->CreatePHI(type::ptrValue, 2, "ifPhi");
     phi->addIncoming(trueResult, ifTrue);
     phi->addIncoming(falseResult, ifFalse);
 
@@ -336,39 +338,44 @@ PHI ns.
   */
 void Compiler::visit(ast::WhileLoop * n) {
     // create BB for loop start (evaluation of the guard), loop body, and exit
-    BasicBlock * guard = BasicBlock::Create(context(), "guard", f, nullptr);
-    BasicBlock * body = BasicBlock::Create(context(), "body", f, nullptr);
-    BasicBlock * cont = BasicBlock::Create(context(), "cont", f, nullptr);
+
+    BasicBlock * guard = BasicBlock::Create(
+            context(), "guard", cur.f, nullptr);
+    BasicBlock * body = BasicBlock::Create(
+            context(), "body", cur.f, nullptr);
+    BasicBlock * cont = BasicBlock::Create(
+            context(), "cont", cur.f, nullptr);
 
     // we need a default value for the loop to evaluate to
-    BasicBlock * entry = b->GetInsertBlock();
+    BasicBlock * entry = cur.b->GetInsertBlock();
     auto zero = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
 
     // jump to start
-    b->CreateBr(guard);
+    cur.b->CreateBr(guard);
 
     // compile start as the evaluation of the guard and conditional branch
-    b->SetInsertPoint(guard);
-    PHIn * phi= b->CreatePHI(type::ptrValue, 2, "whilePhi");
+    cur.b->SetInsertPoint(guard);
+    auto phi= cur.b->CreatePHI(type::ptrValue, 2, "whilePhi");
     phi->addIncoming(zero, entry);
 
     // compile the guard condition
     n->guard->accept(this);
     Value * test = RUNTIME_CALL(toBoolean, result);
 
-    b->CreateCondBr(test, body, cont);
+    cur.b->CreateCondBr(test, body, cont);
 
     // compile loop body, at the end of the loop body, branch to start
-    b->SetInsertPoint(body);
+
+    cur.b->SetInsertPoint(body);
     n->body->accept(this);
-    b->CreateBr(guard);
+    cur.b->CreateBr(guard);
 
     // the value of the loop expression should be the last statement executed
-    phi->addIncoming(result, b->GetInsertBlock());
+    phi->addIncoming(result, cur.b->GetInsertBlock());
 
     // set the current BB to the one after the loop, the result is the
     // value of the last instruction
-    b->SetInsertPoint(cont);
+    cur.b->SetInsertPoint(cont);
     result = phi;
 }
 

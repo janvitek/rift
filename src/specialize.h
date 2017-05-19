@@ -11,7 +11,7 @@ class RiftModule;
 
 /** Given the type & shape analysis, replaces generic calls with their type specific variants where the information is available. 
 
-  As the optimization progresses, the type analysis results are refined and updated with the newly inserted values and unoxing chains. 
+  As the optimization progresses, the type analysis results are refined and updated with the newly inserted values and unboxing chains. 
 
   Note that the algorithm does not make use of all possible optimizations. For instance, while unboxed functions are defined in the type analysis, the optimization does not specialize on them yet. 
   */

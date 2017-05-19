@@ -10,7 +10,6 @@
 
 #if VERSION > 10
 #include "specializedRuntime.h"
-#include "type_checker.h"
 #include "type_analysis.h"
 #include "unboxing.h"
 #include "specialize.h"
@@ -177,7 +176,6 @@ RUNTIME_FUNCTIONS
 #if VERSION > 10
         auto pm = unique_ptr<llvm::legacy::FunctionPassManager>
                            (new llvm::legacy::FunctionPassManager(m));
-        pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
         pm->add(new Specialize());

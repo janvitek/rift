@@ -2,6 +2,7 @@
 #include "llvm.h"
 #include "ast.h"
 #include "runtime.h"
+#include "types.h"
 
 namespace rift {
 
@@ -19,7 +20,10 @@ public:
 
     Compiler();
 
-    ~Compiler() { delete b; }
+    ~Compiler() {
+        if (cur.b)
+            delete cur.b;
+    }
 
 #if VERSION > 0
 #define FUN_PURE(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
@@ -58,17 +62,31 @@ public:
     void visit(ast::IndexAssignment * node) override;
     void visit(ast::IfElse * node) override;
     void visit(ast::WhileLoop * node) override;
-
 #endif //VERSION
 
 private:
     friend class JIT;
     llvm::Value * result;
-    llvm::Value * env;
 
     unique_ptr<llvm::Module> m;
-    llvm::Function * f;
-    llvm::IRBuilder<>  * b;
+
+    struct FunctionContext {
+        FunctionContext() : f(nullptr), env(nullptr), b(nullptr) {}
+        FunctionContext(string name, llvm::Module* m);
+
+        llvm::Function * f;
+        llvm::Value * env;
+        llvm::IRBuilder<> * b;
+
+        void restore(const FunctionContext& other) {
+            if (b) delete b;
+            f = other.f;
+            env = other.env;
+            b = other.b;
+        }
+    };
+
+    FunctionContext cur;
 };
 
 }
