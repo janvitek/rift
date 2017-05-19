@@ -18,7 +18,7 @@ namespace rift {
   is not part of the abstract state, but merely associated information for
   later use, e.g. for the optimization.
   */
-template <typename AType, typename Metadata = void *>
+template <typename AType>
 class AbstractState {
 public:
     AType get(llvm::Value * v) {
@@ -29,19 +29,9 @@ public:
         return n;
     }
     
-    Metadata getMetadata(llvm::Value * v) {
-        if (!metadata.count(v)) return nullptr;
-        return metadata.at(v);
-    }
-
     AType initialize(llvm::Value * v, AType t) {
         type[v] = t;
         return t;
-    }
-
-    AType update(llvm::Value * v, AType t, Metadata m) {
-        metadata[v] = m;
-        return update(v, t);
     }
 
     AType update(llvm::Value * v, AType t) {
@@ -56,11 +46,9 @@ public:
 
     void clear() {
         type.clear();
-        metadata.clear();
     }
      
     void erase(llvm::Value * v) {
-        metadata.erase(v);
         type.erase(v);
     }
 
@@ -110,10 +98,6 @@ public:
 
             llvm::raw_os_ostream ss(s);
             pos->printAsOperand(ss, false);
-            ss << ": ";
-            if (metadata.count(pos)) {
-                ss << * getMetadata(pos) << " ";
-            }
             ss.flush();
             s << *st;
             s << endl;
@@ -127,7 +111,6 @@ private:
 
     bool changed;
     map<llvm::Value*, AType> type;
-    map<llvm::Value*, Metadata> metadata;
 };
 
 } // namespace rift

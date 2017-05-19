@@ -63,8 +63,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     if (s == "doubleVectorLiteral") {
                         // when creating literal from a double, it is
                         // always double scalar
-                        llvm::Value * op = ci->getOperand(0);
-                        state.update(ci, AType::D1, op);
+                        state.update(ci, AType::D1);
                     } else if (s == "characterVectorLiteral") {
                         state.update(ci, AType::CV);
                     } else if (s == "genericGetElement") {
