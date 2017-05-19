@@ -4,7 +4,6 @@
 #include "type_analysis.h"
 #include "rift.h"
 
-using namespace std;
 using namespace llvm;
 
 namespace rift {
@@ -56,7 +55,6 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     if (DEBUG) cout << "runnning TypeAnalysis..." << endl;
     // for all basic blocks, for all instructions
     do {
-        // cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
         state.iterationStart();
         for (auto & b : f) {
             for (auto & i : b) {
@@ -110,6 +108,11 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     } else if (s == "genericEval") {
                         state.update(ci, AType::T);
                     } else if (s == "envGet") {
+                        // TODO keep track of the type across stores and loads.
+                        // Involves to include the environment to the
+                        // abstract state and update the variable state on
+                        // envSet. This would allow us to read out potentially
+                        // much more precise type information here.
                         state.update(ci, AType::T);
                     }
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
