@@ -135,16 +135,16 @@ public:
 
     /** Print the expression to stdout. */
     static void print(Exp * exp) {
-        return print(exp, std::cout);
+        return print(exp, cout);
     }
 
 private:
-    Printer(std::ostream & s): s(s) { }
+    Printer(ostream & s): s(s) { }
 
-    std::ostream & s;
+    ostream & s;
 
     /** Print the expression on the outputstream.   */
-    static void print(Exp * exp, std::ostream & s) {
+    static void print(Exp * exp, ostream & s) {
         Printer p(s);
         exp->accept(&p);
     }

@@ -17,8 +17,6 @@
 #include "boxing_removal.h"
 #endif //VERSION
 
-using namespace std;
-
 namespace rift {
 
 /** A just in time compiler using LLVM. The main entry point is

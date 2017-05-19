@@ -26,9 +26,9 @@ void interactive() {
     while (not cin.eof()) {
         try {
             cout << "> ";
-            std::string in;
+            string in;
             while (true) {
-                std::string i;
+                string i;
                 getline(cin, i);
                 if (i.empty()) break;
                 if (i.at(i.length() - 1) == '\\') {
@@ -53,16 +53,16 @@ void interactive() {
             cout << "Evaluation & compilation: " << total_t << endl;
             cout << "Compilation:              " << (1 - eval_time/total_t)*100 << "[%]" << endl;
         } catch (char const * error) {
-            std::cerr << error << std::endl;
-            std::cout << std::endl;
+            cerr << error << endl;
+            cout << endl;
         }
     }
 }
 
 void runScript(char const * filename) {
-    std::ifstream s(filename);
+    ifstream s(filename);
     if (not s.is_open()) {
-        std::cerr << "Unable to open file " << filename << endl;
+        cerr << "Unable to open file " << filename << endl;
     } else {
         Parser p;
         ast::Fun * x = new ast::Fun(p.parse(s));
@@ -99,8 +99,8 @@ int main(int argc, char * argv[]) {
             try {
                 runScript(argv[argPos]);
             } catch (char const * error) {
-                std::cerr << error << std::endl;
-                std::cout << std::endl;
+                cerr << error << endl;
+                cout << endl;
                 exit(1);
             }
         }

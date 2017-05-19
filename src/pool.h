@@ -26,12 +26,12 @@ public:
     }
 
     /** Returns string at index.  */
-    static std::string const & getPoolObject(unsigned index) {
+    static string const & getPoolObject(unsigned index) {
         return pool_[index];
     }
 
     /** Adds string to the constant pool.  */
-    static int addToPool(std::string const & s) {
+    static int addToPool(string const & s) {
         for (unsigned i = 0; i < pool_.size(); ++i)
             if (pool_[i] == s)
                 return i;
@@ -41,10 +41,10 @@ public:
 
 private:
     /** Compiled functions.   */
-    static std::vector<RFun *> f_;
+    static vector<RFun *> f_;
 
     /** Strings.  */
-    static std::vector<std::string> pool_;
+    static vector<string> pool_;
 };
 
 }

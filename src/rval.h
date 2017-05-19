@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rift.h"
+
 enum class Type : uint8_t {
     Invalid,          // Used for debugging uninitialized tags
 
@@ -33,5 +35,5 @@ struct RVal {
     RVal(RVal const&) = delete;
 
     /** Prints to given stream.  */
-    inline void print(std::ostream & s);
+    inline void print(ostream & s);
 };

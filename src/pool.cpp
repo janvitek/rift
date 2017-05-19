@@ -2,7 +2,7 @@
 
 namespace rift {
 
-std::vector<RFun *> Pool::f_;
-std::vector<std::string> Pool::pool_;
+vector<RFun *> Pool::f_;
+vector<string> Pool::pool_;
 
 }

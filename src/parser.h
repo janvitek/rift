@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ciso646>
+
 #include <vector>
 #include <iostream>
 #include <unordered_map>
@@ -12,16 +12,16 @@ namespace rift {
 
     class Parser {
     public:
-        ast::Exp * parse(std::string const & str) {
+        ast::Exp * parse(string const & str) {
             l_.scan(str);
-            std::unique_ptr<ast::Seq> seq(new ast::Seq());
+            unique_ptr<ast::Seq> seq(new ast::Seq());
             parseSequenceBody(seq.get());
             return seq.release();
         }
 
-        ast::Exp * parse(std::istream & s) {
+        ast::Exp * parse(istream & s) {
             l_.scan(s);
-            std::unique_ptr<ast::Seq> seq(new ast::Seq());
+            unique_ptr<ast::Seq> seq(new ast::Seq());
             parseSequenceBody(seq.get());
             return seq.release();
         }
@@ -73,7 +73,7 @@ namespace rift {
 
 
         ast::Call * parseCall(ast::Exp * variable) {
-            std::unique_ptr<ast::UserCall> call(new ast::UserCall(variable));
+            unique_ptr<ast::UserCall> call(new ast::UserCall(variable));
             pop(Token::Type::opar);
             while (top() != Token::Type::cpar) {
                 call->args.push_back(parseExpression());
@@ -84,24 +84,24 @@ namespace rift {
             return call.release();
         }
 
-        ast::SimpleAssignment * parseAssignment(std::unique_ptr<ast::Exp> variable) {
+        ast::SimpleAssignment * parseAssignment(unique_ptr<ast::Exp> variable) {
             pop(Token::Type::assign);
             ast::Var * v = dynamic_cast<ast::Var*>(variable.get());
             if (v == nullptr)
                 throw "Assignment is only possible into variables";
-            std::unique_ptr<ast::SimpleAssignment> assign(new ast::SimpleAssignment(v));
+            unique_ptr<ast::SimpleAssignment> assign(new ast::SimpleAssignment(v));
             variable.release();
             assign->rhs = parseExpression();
             return assign.release();
         }
 
         ast::Exp * parseIndex(ast::Exp * variable) {
-            std::unique_ptr<ast::Index> index(new ast::Index(variable));
+            unique_ptr<ast::Index> index(new ast::Index(variable));
             pop(Token::Type::osbr);
             index->index = parseExpression();
             pop(Token::Type::csbr);
             if (condPop(Token::Type::assign)) {
-                std::unique_ptr<ast::IndexAssignment> ia(new ast::IndexAssignment(index.release()));
+                unique_ptr<ast::IndexAssignment> ia(new ast::IndexAssignment(index.release()));
                 ia->rhs = parseExpression();
                 return ia.release();
             } else {
@@ -112,7 +112,7 @@ namespace rift {
         ast::Exp * parseEval() {
             pop(Token::Type::kwEval);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::Exp> arg(parseExpression());
+            unique_ptr<ast::Exp> arg(parseExpression());
             pop(Token::Type::cpar);
             return new ast::EvalCall(arg.release());
         }
@@ -120,7 +120,7 @@ namespace rift {
         ast::Exp * parseLength() {
             pop(Token::Type::kwLength);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::Exp> arg(parseExpression());
+            unique_ptr<ast::Exp> arg(parseExpression());
             pop(Token::Type::cpar);
             return new ast::LengthCall(arg.release());
         }
@@ -128,7 +128,7 @@ namespace rift {
         ast::Exp * parseType() {
             pop(Token::Type::kwType);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::Exp> arg(parseExpression());
+            unique_ptr<ast::Exp> arg(parseExpression());
             pop(Token::Type::cpar);
             return new ast::TypeCall(arg.release());
         }
@@ -136,7 +136,7 @@ namespace rift {
         ast::Exp * parseC() {
             pop(Token::Type::kwC);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::CCall> result(new ast::CCall());
+            unique_ptr<ast::CCall> result(new ast::CCall());
             do {
                 result->args.push_back(parseExpression());
             } while (condPop(Token::Type::comma));
@@ -154,7 +154,7 @@ namespace rift {
                     return new ast::Str(pop().c);
                 case Token::Type::opar: {
                     pop();
-                    std::unique_ptr<ast::Exp> result(parseExpression());
+                    unique_ptr<ast::Exp> result(parseExpression());
                     pop(Token::Type::cpar);
                     return result.release();
                 }
@@ -174,7 +174,7 @@ namespace rift {
         }
 
         ast::Exp * parseE3() {
-            std::unique_ptr<ast::Exp> f(parseF());
+            unique_ptr<ast::Exp> f(parseF());
             while (true) {
                 switch (top().type) {
                     case Token::Type::osbr:
@@ -184,7 +184,7 @@ namespace rift {
                         f.reset(parseCall(f.release()));
                         break;
                     case Token::Type::assign:
-                        f.reset(parseAssignment(std::move(f)));
+                        f.reset(parseAssignment(move(f)));
                         break;
                     default:
                         return f.release();
@@ -193,7 +193,7 @@ namespace rift {
         }
 
         ast::Exp * parseE2() {
-            std::unique_ptr<ast::Exp> x(parseE3());
+            unique_ptr<ast::Exp> x(parseE3());
             while (true) {
                 switch (top().type) {
                 case Token::Type::mul:
@@ -219,7 +219,7 @@ namespace rift {
         }
 
         ast::Exp * parseE1() {
-            std::unique_ptr<ast::Exp> x(parseE2());
+            unique_ptr<ast::Exp> x(parseE2());
             while (true) {
                 switch (top().type) {
                 case Token::Type::add:
@@ -245,7 +245,7 @@ namespace rift {
         }
 
         ast::Exp * parseExpression() {
-            std::unique_ptr<ast::Exp> x(parseE1());
+            unique_ptr<ast::Exp> x(parseE1());
             while (true) {
                 switch (top().type) {
                 case Token::Type::eq:
@@ -281,7 +281,7 @@ namespace rift {
         ast::IfElse * parseIf() {
             pop(Token::Type::kwIf);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::IfElse> result(new ast::IfElse(parseExpression()));
+            unique_ptr<ast::IfElse> result(new ast::IfElse(parseExpression()));
             pop(Token::Type::cpar);
             result->ifClause = parseSequence();
             if (condPop(Token::Type::kwElse))
@@ -294,7 +294,7 @@ namespace rift {
         ast::WhileLoop * parseWhile() {
             pop(Token::Type::kwWhile);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::WhileLoop> result(new ast::WhileLoop(parseExpression()));
+            unique_ptr<ast::WhileLoop> result(new ast::WhileLoop(parseExpression()));
             pop(Token::Type::cpar);
             result->body = parseSequence();
             return result.release();
@@ -303,7 +303,7 @@ namespace rift {
         ast::Fun * parseFunction() {
             pop(Token::Type::kwFunction);
             pop(Token::Type::opar);
-            std::unique_ptr<ast::Fun> result(new ast::Fun());
+            unique_ptr<ast::Fun> result(new ast::Fun());
             while (top() != Token::Type::cpar) {
                 result->args.push_back(new ast::Var(pop(Token::Type::ident).c));
                 if (not condPop(Token::Type::comma))
@@ -334,7 +334,7 @@ namespace rift {
         }
 
         ast::Seq * parseSequence() {
-            std::unique_ptr<ast::Seq> result(new ast::Seq());
+            unique_ptr<ast::Seq> result(new ast::Seq());
             pop(Token::Type::ocbr);
             parseSequenceBody(result.get());
             pop(Token::Type::ccbr);

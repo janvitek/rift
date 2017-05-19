@@ -1,5 +1,5 @@
 #if VERSION > 10
-#include <ciso646>
+
 #include "type_checker.h"
 
 using namespace llvm;

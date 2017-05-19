@@ -1,9 +1,10 @@
 #pragma once
 
-#include <ciso646>
+
 #include <sstream>
 
 #include "llvm.h"
+#include "rift.h"
 
 namespace rift {
 
@@ -42,7 +43,7 @@ struct Token {
 
     };
 
-    static std::string typeToStr(Type t) {
+    static string typeToStr(Type t) {
         switch(t) {
         case Type::add:
             return "+";
@@ -145,12 +146,12 @@ class Lexer {
 public:
 
 
-    void scan(std::string const & input) {
-        std::stringstream ss(input);
+    void scan(string const & input) {
+        stringstream ss(input);
         scan(ss);
     }
 
-    void scan(std::istream & input) {
+    void scan(istream & input) {
         while (not input.eof())
             tokens_.push_back(readToken(input));
         if (tokens_.back() != Token::Type::eof)
@@ -174,7 +175,7 @@ public:
 
 
 private:
-    Token readToken(std::istream & input) {
+    Token readToken(istream & input) {
         char c = input.get();
         // skip the whitespace and comments
         bool skip = false;
@@ -258,7 +259,7 @@ private:
         return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or c == '_';
     }
 
-    Token number(double n, std::istream & input) {
+    Token number(double n, istream & input) {
         while (true) {
             char c = input.peek();
             if (isNumber(c)) {
@@ -273,7 +274,7 @@ private:
         }
     }
 
-    Token fractionNumber(double n, std::istream & input) {
+    Token fractionNumber(double n, istream & input) {
         double d = 10;
         while (true) {
             char c = input.peek();
@@ -290,13 +291,13 @@ private:
     }
 
 
-    Token identOrKeyword(char start, std::istream & input);
+    Token identOrKeyword(char start, istream & input);
 
-    Token stringLiteral(std::istream & input);
+    Token stringLiteral(istream & input);
 
 
 
-    std::vector<Token> tokens_;
+    vector<Token> tokens_;
 
     unsigned tidx_ = 0;
 

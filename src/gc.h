@@ -52,10 +52,10 @@ public:
     static_assert(pageSize < (1 << 8*sizeof(BlockIdx)), "");
 
     // The memory for objects is partitinoned in addressable blocks
-    std::array<Block, pageSize> block;
+    array<Block, pageSize> block;
     // The index of the first block of an object is used to store the obj size
     // in blocks. All subsequent objSize[i] blocks belong to the object at i.
-    std::array<BlockIdx, pageSize> objSize;
+    array<BlockIdx, pageSize> objSize;
 
     // Freelist entry.
     // When a block is unused (ie. objSize[i] == 0) then we store a Free struct
@@ -271,7 +271,7 @@ public:
         registerPage(p);
 
         auto n = p->alloc(sz);
-        if (!n) throw std::bad_alloc();
+        if (!n) throw bad_alloc();
         return n;
     }
 
@@ -304,7 +304,7 @@ public:
             // If a page is completely empty we release it
             if (p->empty()) {
 #ifdef GC_DEBUG
-                std::cout << "Released a Page\n";
+                cout << "Released a Page\n";
 #endif
                 delete [] p->store;
                 pi = pageList.erase(pi);
@@ -342,12 +342,12 @@ public:
     Arena(Arena const &) = delete;
     void operator= (Arena const &) = delete;
 
-    std::deque<Page*> pageList;
+    deque<Page*> pageList;
 
 private:
     void registerPage(Page * p) {
 #ifdef GC_DEBUG
-      std::cout << "Allocated a new Page\n";
+      cout << "Allocated a new Page\n";
 #endif
         // TODO: we never update the boundaries if we remove a page
         pageList.push_front(p);
@@ -404,7 +404,7 @@ private:
 
         // TODO: add a backup allocator for huge objects. Currently allocations
         // bigger than Page::size will fail.
-        if (!res) throw std::bad_alloc();
+        if (!res) throw bad_alloc();
 
         res->type = type;
         return res;
