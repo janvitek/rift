@@ -145,6 +145,13 @@ namespace rift {
         TESTC("a = \"aba\" a[c(0,2)]", "aa");
         TEST("a = c(1,2,3) a[c(0,1)] = 56 a", 56, 56, 3);
 
+#if VERSION < 5
+        // TODO implement if
+        return;
+#endif //VERSION
+
+        TEST("if (1) { if (1) {1} else {2} } else {2}", 1);
+
         cout << endl; // end of tests
     }
 
