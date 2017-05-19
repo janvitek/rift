@@ -16,26 +16,26 @@ extern llvm::PointerType * ptrInt;
 extern llvm::PointerType * ptrCharacter;
 extern llvm::PointerType * ptrDouble;
 
-extern llvm::StructType * DoubleVector;
-extern llvm::StructType * CharacterVector;
+extern llvm::StructType *  DoubleVector;
+extern llvm::StructType *  CharacterVector;
 extern llvm::PointerType * ptrDoubleVector;
 extern llvm::PointerType * ptrCharacterVector;
 
 /** Unions in llvm are represented by the longest members, all others are
     obtained by casting.
 */
-extern llvm::StructType * Value;
+extern llvm::StructType *  Value;
 extern llvm::PointerType * ptrValue;
 
-extern llvm::StructType * Binding;
+extern llvm::StructType *  Binding;
 extern llvm::PointerType * ptrBinding;
 
 extern llvm::PointerType * ptrEnvironment;
-extern llvm::StructType * Environment;
+extern llvm::StructType *  Environment;
 
 extern llvm::FunctionType * NativeCode;
 
-extern llvm::StructType * Function;
+extern llvm::StructType *  Function;
 extern llvm::PointerType * ptrFunction;
 
 
@@ -80,7 +80,5 @@ extern llvm::FunctionType * d_v;
 extern llvm::FunctionType * v_iVA;
 extern llvm::FunctionType * d_dv;
 extern llvm::FunctionType * f_v;
-
 }
-
 }

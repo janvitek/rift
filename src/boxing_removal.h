@@ -5,26 +5,21 @@
 #include "unboxing.h"
 #include "specialize.h"
 
-
 namespace rift {
 
-/** Boxing removal optimization deletes all pure (readnone in llvm's terminology) functions. As the unboxing pass makes many boxing statements dead and creates more boxing statements which might be dead, this pass is essential in removing this code. */
+/** Boxing removal optimization deletes all pure (readnone in llvm's terminology)
+    functions. As the unboxing pass makes many boxing statements dead and creates 
+    more boxing statements which might be dead, this pass is essential in removing 
+    this code. */
 class BoxingRemoval : public llvm::FunctionPass {
 public:
     static char ID;
     BoxingRemoval() : llvm::FunctionPass(ID) {}
 
-    llvm::StringRef getPassName() const override {
-        return "BoxingRemoval";
-    }
+    llvm::StringRef getPassName() const override { return "BoxingRemoval"; }
 
     bool runOnFunction(llvm::Function & f) override;
 };
-
-
-
-
 } // namespace rift
-
 
 #endif //VERSION

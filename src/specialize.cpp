@@ -8,55 +8,56 @@
 #include "compiler/compiler.h"
 #include "compiler/types.h"
 
-using namespace std;
 using namespace llvm;
 
 namespace rift {
 char Specialize::ID = 0;
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), vector<llvm::Value*>({__VA_ARGS__}), "", ins)
-#define CALL(name, ...) CallInst::Create(name, vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), \
+                                                 vector<Value*>({__VA_ARGS__}),\
+                                                 "", ins)
+#define CALL(name, ...) CallInst::Create(name, vector<Value*>({__VA_ARGS__}), "", ins)
 #define CAST(val, t) CastInst::CreatePointerCast(val, type::t, "", ins)
 
-void Specialize::updateDoubleScalar(llvm::Value * newVal) {
-    llvm::Value * box = RUNTIME_CALL(doubleVectorLiteral, newVal);
-    state().update(box, AType::D1, newVal);
+void Specialize::updateDoubleScalar(Value * v) {
+    Value * box = RUNTIME_CALL(doubleVectorLiteral, v);
+    state().update(box, AType::D1, v);
     ins->replaceAllUsesWith(box);
 }
 
-void Specialize::updateDoubleOp(llvm::Function * fun,
-                              llvm::Value * lhs, llvm::Value * rhs,
-                              AType * resType) {
-    llvm::Value * l = CAST(lhs, ptrDoubleVector); 
-    llvm::Value * r = CAST(rhs, ptrDoubleVector); 
-    llvm::Value * res = CALL(fun, l, r);
+void Specialize::updateDoubleOp(Function * fun,
+                                Value * lhs, Value * rhs,
+                                AType * resType) {
+    Value * l = CAST(lhs, ptrDoubleVector); 
+    Value * r = CAST(rhs, ptrDoubleVector); 
+    Value * res = CALL(fun, l, r);
     state().update(res, resType);
     ins->replaceAllUsesWith(res);
 }
 
-void Specialize::updateCharOp(llvm::Function * fun,
-                            llvm::Value * lhs, llvm::Value * rhs,
-                            AType * resType) {
-    llvm::Value * l = CAST(lhs, ptrCharacterVector); 
-    llvm::Value * r = CAST(rhs, ptrCharacterVector); 
-    llvm::Value * res = CALL(fun, l, r);
+void Specialize::updateCharOp(Function * fun,
+                              Value * lhs, Value * rhs,
+                              AType * resType) {
+    Value * l = CAST(lhs, ptrCharacterVector); 
+    Value * r = CAST(rhs, ptrCharacterVector); 
+    Value * res = CALL(fun, l, r);
     state().update(res, resType);
     ins->replaceAllUsesWith(res);
 }
 
 bool Specialize::genericAdd() {
     // first check if we are dealing with character add
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
         updateDoubleOp(Compiler::doubleAdd(m), lhs, rhs, lhsType->merge(rhsType));
         return true;
     } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
-        llvm::Value * l = CAST(lhs, ptrCharacterVector); 
-        llvm::Value * r = CAST(rhs, ptrCharacterVector); 
-        llvm::Value * res = RUNTIME_CALL(characterAdd, l, r);
+        Value * l = CAST(lhs, ptrCharacterVector); 
+        Value * r = CAST(rhs, ptrCharacterVector); 
+        Value * res = RUNTIME_CALL(characterAdd, l, r);
         state().update(res, AType::CV);
         ins->replaceAllUsesWith(res);
         return true;
@@ -64,9 +65,9 @@ bool Specialize::genericAdd() {
     return false;
 }
  
-bool Specialize::genericArithmetic(llvm::Function * fop) {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+bool Specialize::genericArithmetic(Function * fop) {
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
@@ -76,9 +77,9 @@ bool Specialize::genericArithmetic(llvm::Function * fop) {
     return false;
 }
 
-bool Specialize::genericRelational(llvm::Function * fop) {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+bool Specialize::genericRelational(Function * fop) {
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
@@ -89,9 +90,9 @@ bool Specialize::genericRelational(llvm::Function * fop) {
     return false;
 }
 
-bool Specialize::genericComparison(llvm::Value * lhs, llvm::Value * rhs,
-                                 AType * lhsType, AType * rhsType,
-                                 llvm::Function * dop, llvm::Function * cop) {
+bool Specialize::genericComparison(Value * lhs, Value * rhs,
+                                   AType * lhsType, AType * rhsType,
+                                   Function * dop, Function * cop) {
     if (lhsType->isDouble() and rhsType->isDouble()) {
         updateDoubleOp(dop, lhs, rhs, lhsType->merge(rhsType));
         return true;
@@ -104,41 +105,39 @@ bool Specialize::genericComparison(llvm::Value * lhs, llvm::Value * rhs,
 }
 
 bool Specialize::genericNeq() {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
 
     if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(Compiler::context(), APFloat(1.0));
+        Value * res = ConstantFP::get(Compiler::context(), APFloat(1.0));
         updateDoubleScalar(res);
         return true;
     }
-
     return genericComparison(lhs, rhs, lhsType, lhsType,
             Compiler::doubleNeq(m), Compiler::characterNeq(m));
 }
 
 
 bool Specialize::genericEq() {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
 
     if (not lhsType->isSimilar(rhsType)) {
-        llvm::Value * res = ConstantFP::get(Compiler::context(), APFloat(0.0));
+        Value * res = ConstantFP::get(Compiler::context(), APFloat(0.0));
         updateDoubleScalar(res);
         return true;
     }
-
     return genericComparison(lhs, rhs, lhsType, lhsType,
             Compiler::doubleEq(m), Compiler::characterEq(m));
 }
 
 bool Specialize::genericGetElement() {
-    llvm::Value * src = ins->getOperand(0);
-    llvm::Value * idx = ins->getOperand(1);
+    Value * src = ins->getOperand(0);
+    Value * idx = ins->getOperand(1);
     AType * srcType = state().get(src);
     AType * idxType = state().get(idx);
 
@@ -148,7 +147,7 @@ bool Specialize::genericGetElement() {
     } else if (srcType->isCharacter() and idxType->isDouble()) {
         src = CAST(src, ptrCharacterVector);
         idx = CAST(idx, ptrDoubleVector);
-        llvm::Value * res = RUNTIME_CALL(characterGetElement, src, idx);
+        Value * res = RUNTIME_CALL(characterGetElement, src, idx);
         state().update(res, AType::CV);
         ins->replaceAllUsesWith(res);
         return true;
@@ -168,14 +167,14 @@ bool Specialize::genericC() {
         if (not canBeDV and not canBeCV)
             return false;
     }
-    vector<llvm::Value *> args;
+    vector<Value *> args;
     args.push_back(ci->getArgOperand(0)); // size
     for (unsigned i = 1; i < ci->getNumArgOperands(); ++i) {
-        llvm::Value * a = ci->getOperand(i);
+        Value * a = ci->getOperand(i);
         args.push_back(canBeDV ? CAST(a, ptrDoubleVector) :
                                  CAST(a, ptrCharacterVector));
     }
-    llvm::Value * res;
+    Value * res;
     if (canBeDV) {
         res = CallInst::Create(Compiler::doublec(m), args, "", ins);
         state().update(res, AType::DV);
@@ -189,11 +188,11 @@ bool Specialize::genericC() {
 }
 
 bool Specialize::genericEval() {
-    llvm::Value * arg = ins->getOperand(1);
+    Value * arg = ins->getOperand(1);
     AType * argType = state().get(arg);
     if (argType->isCharacter()) {
         arg = CAST(arg, ptrCharacterVector);
-        llvm::Value * res = RUNTIME_CALL(characterEval, ins->getOperand(0), arg);
+        Value * res = RUNTIME_CALL(characterEval, ins->getOperand(0), arg);
         state().update(res, AType::T);
         ins->replaceAllUsesWith(res);
         return true;
@@ -201,8 +200,7 @@ bool Specialize::genericEval() {
     return false;
 }
 
-bool Specialize::runOnFunction(llvm::Function & f) {
-    //cout << "running Specialize optimization..." << endl;
+bool Specialize::runOnFunction(Function & f) {
     m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
     for (auto & b : f) {
@@ -237,7 +235,7 @@ bool Specialize::runOnFunction(llvm::Function & f) {
                 }
             }
             if (erase) {
-                llvm::Instruction * v = &*i;
+                Instruction * v = &*i;
                 ++i;
                 state().erase(v);
                 v->eraseFromParent();

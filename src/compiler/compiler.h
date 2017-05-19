@@ -10,9 +10,7 @@ class RiftModule;
 
 class Compiler : public Visitor {
 public:
-
-    /** Returns the llvm's context for the compiler.
-     */
+    /** Returns llvm's context for the compiler.  */
     static llvm::LLVMContext & context() {
         static llvm::LLVMContext context;
         return context;
@@ -28,7 +26,6 @@ public:
     }
 
 #if VERSION > 0
-
 #define FUN_PURE(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
 #define FUN(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
 RUNTIME_FUNCTIONS
@@ -47,9 +44,7 @@ private:
         return llvm::ConstantInt::get(context(), llvm::APInt(32, value));
     }
 
-// TODO this should be private when we are done with the old compiler
 public:
-
     void visit(ast::Exp * node) override;
     void visit(ast::Num * node) override;
     void visit(ast::Str * node) override;
@@ -70,9 +65,7 @@ public:
 #endif //VERSION
 
 private:
-
     friend class JIT;
-
     llvm::Value * result;
 
     unique_ptr<llvm::Module> m;
@@ -95,10 +88,5 @@ private:
 
     FunctionContext cur;
 };
-
-
-
-
-
 
 }
