@@ -36,6 +36,19 @@ void interactive() {
                     in.append("\n");
                 } else {
                     in.append(i);
+                    {
+                        // Hackish way of supporting multi line input. As long
+                        // as the parser cannot parse the input we keep on
+                        // reading lines.
+                        Parser p;
+                        try { p.parse(in.c_str()); }
+                        catch (const char * s) {
+                            if (string("Syntax error").compare(s) == 0) {
+                                in.append("\n");
+                                continue;
+                            }
+                        }
+                    }
                     break;
                 }
             }
