@@ -59,6 +59,8 @@ file(GLOB SRC
     "local/*"
 )
 
+set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
+
 add_executable(${PROJECT_NAME} ${SRC})
 
 # Find the libraries that correspond to the LLVM components
