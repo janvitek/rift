@@ -5,13 +5,13 @@ namespace rift {
 namespace ast {
 /* A Str object holds an index in the constant pool,
    this returns the corresponding string. */
-std::string const & Str::value() const {
+string const & Str::value() const {
     return Pool::getPoolObject(index);
 }
 
 /* A Var object holds an index in the constant pool,
    this returns the corresponding string. */
-std::string const & Var::value() const {
+string const & Var::value() const {
     return Pool::getPoolObject(symbol);
 }
 

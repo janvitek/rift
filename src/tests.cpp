@@ -52,14 +52,14 @@ namespace rift {
         }
     }
 
-    void doTest(int line, const char * code, std::initializer_list<double> expected) {
+    void doTest(int line, const char * code, initializer_list<double> expected) {
         test(line, code, DoubleVector::New(expected));
-        std::cout << "." << std::flush;
+        cout << "." << flush;
     }
 
     void doTestC(int line, const char * code, const char * expected) {
         test(line, code, CharacterVector::New(expected));
-        std::cout << "." << std::flush;
+        cout << "." << flush;
     }
 
 #define TEST(code, ...) doTest(__LINE__, code, {__VA_ARGS__})
@@ -145,7 +145,7 @@ namespace rift {
         TESTC("a = \"aba\" a[c(0,2)]", "aa");
         TEST("a = c(1,2,3) a[c(0,1)] = 56 a", 56, 56, 3);
 
-        std::cout << std::endl; // end of tests
+        cout << endl; // end of tests
     }
 
 } // namespace rift

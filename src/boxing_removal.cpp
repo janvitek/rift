@@ -1,7 +1,7 @@
 #if VERSION > 10
 
 #include <iostream>
-#include <ciso646>
+
 #include <iostream>
 
 
@@ -17,7 +17,7 @@ namespace rift {
 char BoxingRemoval::ID = 0;
 
 bool BoxingRemoval::runOnFunction(llvm::Function & f) {
-    //        std::cout << "running boxing removal optimization..." << std::endl;
+    //        cout << "running boxing removal optimization..." << endl;
     bool changed = false;
     while (true) {
         bool c = false;

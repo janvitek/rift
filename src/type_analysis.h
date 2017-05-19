@@ -113,10 +113,10 @@ public:
     }
 
 private:
-    friend std::ostream & operator << (std::ostream & s, AType & m);
+    friend ostream & operator << (ostream & s, AType & m);
 
-    AType(const std::string name) : name(name) {}
-    const std::string name;
+    AType(const string name) : name(name) {}
+    const string name;
 };
 
 /** Type analysis.  */

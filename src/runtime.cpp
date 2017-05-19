@@ -38,7 +38,7 @@ RVal * doubleVectorLiteral(double RVal) {
 }
 
 RVal * characterVectorLiteral(int cpIndex) {
-    std::string const & original = Pool::getPoolObject(cpIndex);
+    string const & original = Pool::getPoolObject(cpIndex);
     return CharacterVector::New(original.c_str());
 
 }
@@ -392,16 +392,16 @@ RVal * type(RVal * v) {
 }
 
 RVal * eval(Environment * env, char const * value) {
-    std::string s(value);
+    string s(value);
     Parser p;
     ast::Fun * x = new ast::Fun(p.parse(s));
     if (x->body->body.empty())
         return DoubleVector::New({0});
 
     if (DEBUG) {
-        std::cout << "AST:" << std::endl;
+        cout << "AST:" << endl;
         ast::Printer::print(x);
-        std::cout << std::endl;
+        cout << endl;
     }
 
     FunPtr f = JIT::compile(x);
@@ -428,7 +428,7 @@ RVal * genericEval(Environment * env, RVal * arg) {
 }
 
 RVal * doublec(int size, ...) {
-    std::vector<DoubleVector *> args;
+    vector<DoubleVector *> args;
     va_list ap;
     va_start(ap, size);
     for (int i = 0; i < size; ++i)
@@ -447,7 +447,7 @@ RVal * doublec(int size, ...) {
 }
 
 RVal * characterc(int size, ...) {
-    std::vector<CharacterVector *> args;
+    vector<CharacterVector *> args;
     va_list ap;
     va_start(ap, size);
     for (int i = 0; i < size; ++i)
@@ -468,7 +468,7 @@ RVal * characterc(int size, ...) {
 RVal * c(int size, ...) {
     if (size == 0)
         return DoubleVector::New({});
-    std::vector<RVal *> args;
+    vector<RVal *> args;
     va_list ap;
     va_start(ap, size);
     for (int i = 0; i < size; ++i)

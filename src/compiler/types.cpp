@@ -11,9 +11,9 @@ namespace type {
 #define STRUCT(name, ...) \
     llvm::StructType::create(name, __VA_ARGS__, nullptr)
 #define FUN_TYPE(result, ...) \
-    llvm::FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), false)
+    llvm::FunctionType::get(result, vector<llvm::Type*>({ __VA_ARGS__}), false)
 #define FUN_TYPE_VARARG(result, ...) \
-    llvm::FunctionType::get(result, std::vector<llvm::Type*>({ __VA_ARGS__}), true)
+    llvm::FunctionType::get(result, vector<llvm::Type*>({ __VA_ARGS__}), true)
 
 llvm::StructType * environmentType();
 

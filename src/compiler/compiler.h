@@ -76,7 +76,7 @@ private:
     llvm::Value * result;
     llvm::Value * env;
 
-    std::unique_ptr<llvm::Module> m;
+    unique_ptr<llvm::Module> m;
     llvm::Function * f;
     llvm::IRBuilder<>  * b;
 };

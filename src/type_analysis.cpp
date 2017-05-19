@@ -53,7 +53,7 @@ void TypeAnalysis::genericGetElement(CallInst * ci) {
 
 bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     state.clear();
-    if (DEBUG) std::cout << "runnning TypeAnalysis..." << std::endl;
+    if (DEBUG) cout << "runnning TypeAnalysis..." << endl;
     // for all basic blocks, for all instructions
     do {
         // cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
@@ -128,7 +128,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     return false;
 }
 
-std::ostream & operator << (std::ostream & s, AType & t) {
+ostream & operator << (ostream & s, AType & t) {
     s << t.name;
     return s;
 }

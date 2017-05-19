@@ -9,8 +9,8 @@
 
 namespace rift {
 
-Token Lexer::identOrKeyword(char start, std::istream & input) {
-    std::string x(1, start);
+Token Lexer::identOrKeyword(char start, istream & input) {
+    string x(1, start);
     while (isNumber(input.peek()) or isLetter(input.peek()))
         x += input.get();
     if (x == "function")
@@ -33,8 +33,8 @@ Token Lexer::identOrKeyword(char start, std::istream & input) {
         return Token(Token::Type::ident, Pool::addToPool(x));
 }
 
-Token Lexer::stringLiteral(std::istream & input) {
-    std::string x;
+Token Lexer::stringLiteral(istream & input) {
+    string x;
     while (input.peek() != '"')
         x += input.get();
     input.get(); // closing "

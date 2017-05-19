@@ -5,7 +5,7 @@
 
 
 /** Shorthand for calling runtime functions.  */
-#define RUNTIME_CALL(NAME, ...) b->CreateCall(NAME(m.get()), std::vector<llvm::Value*>({ __VA_ARGS__ }), "")
+#define RUNTIME_CALL(NAME, ...) b->CreateCall(NAME(m.get()), vector<llvm::Value*>({ __VA_ARGS__ }), "")
 
 namespace {
 
@@ -60,7 +60,7 @@ int Compiler::compile(ast::Fun * node) {
 
     // TODO: return something else than returning 0
     result = b->CreateCall(doubleVectorLiteral,
-            std::vector<llvm::Value*>(
+            vector<llvm::Value*>(
                 {llvm::ConstantFP::get(context(), llvm::APFloat(0.0f))}), "");
 
     // Append return instruction of the last used value
@@ -189,29 +189,29 @@ void Compiler::visit(ast::BinExp * node) {
     llvm::Value * lhs = result;
     node->rhs->accept(this);
     llvm::Value * rhs = result;
-    switch (node->type) {
-        case ast::BinExp::Type::add:
+    switch (node->op) {
+        case ast::BinExp::Op::add:
             result = RUNTIME_CALL(genericAdd, lhs, rhs);
             return;
-        case ast::BinExp::Type::sub:
+        case ast::BinExp::Op::sub:
             result = RUNTIME_CALL(genericSub, lhs, rhs);
             return;
-        case ast::BinExp::Type::mul:
+        case ast::BinExp::Op::mul:
             result = RUNTIME_CALL(genericMul, lhs, rhs);
             return;
-        case ast::BinExp::Type::div:
+        case ast::BinExp::Op::div:
             result = RUNTIME_CALL(genericDiv, lhs, rhs);
             return;
-        case ast::BinExp::Type::eq:
+        case ast::BinExp::Op::eq:
             result = RUNTIME_CALL(genericEq, lhs, rhs);
             return;
-        case ast::BinExp::Type::neq:
+        case ast::BinExp::Op::neq:
             result = RUNTIME_CALL(genericNeq, lhs, rhs);
             return;
-        case ast::BinExp::Type::lt:
+        case ast::BinExp::Op::lt:
             result = RUNTIME_CALL(genericLt, lhs, rhs);
             return;
-        case ast::BinExp::Type::gt:
+        case ast::BinExp::Op::gt:
             result = RUNTIME_CALL(genericGt, lhs, rhs);
             return;
         default: // can't happen
@@ -224,7 +224,7 @@ void Compiler::visit(ast::UserCall * node) {
 #if VERSION >= 5
     node->name->accept(this);
 
-    std::vector<llvm::Value *> args;
+    vector<llvm::Value *> args;
     args.push_back(result);
     args.push_back(fromInt(node->args.size()));
 
@@ -262,7 +262,7 @@ void Compiler::visit(ast::EvalCall * node) {
 
 /** Concatenate.  */
 void Compiler::visit(ast::CCall * node) {
-    std::vector<llvm::Value *> args;
+    vector<llvm::Value *> args;
     args.push_back(fromInt(static_cast<int>(node->args.size())));
     for (ast::Exp * arg : node->args) {
         arg->accept(this);

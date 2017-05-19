@@ -82,7 +82,7 @@ struct CharacterVector : RVal, RValOps<CharacterVector> {
     }
 
     /** Prints to given stream. */
-    void print(std::ostream & s) {
+    void print(ostream & s) {
         s << data;
     }
 
@@ -112,7 +112,7 @@ struct DoubleVector : RVal, RValOps<DoubleVector> {
         return obj;
     }
 
-    static DoubleVector* New(std::initializer_list<double> d) {
+    static DoubleVector* New(initializer_list<double> d) {
         DoubleVector* obj = AllocVect()(d.size());
         obj->size = d.size();
         unsigned i = 0;
@@ -123,7 +123,7 @@ struct DoubleVector : RVal, RValOps<DoubleVector> {
 
     /** Prints to given stream. 
      */
-    void print(std::ostream & s) {
+    void print(ostream & s) {
         for (unsigned i = 0; i < size; ++i)
             s << data[i] << " ";
     }
@@ -290,7 +290,7 @@ struct FunctionArgs : RVal, RValOps<FunctionArgs> {
 
     unsigned length;
 
-    static FunctionArgs* New(std::vector<rift::ast::Var*>& args, unsigned length) {
+    static FunctionArgs* New(vector<rift::ast::Var*>& args, unsigned length) {
         FunctionArgs* obj = AllocVect()(length);
         unsigned i = 0;
         obj->length = length;
@@ -360,7 +360,7 @@ struct RFun : RVal, RValOps<RFun> {
     }
   
     /** Prints bitcode to given stream.  */
-    void print(std::ostream & s) {
+    void print(ostream & s) {
         llvm::raw_os_ostream ss(s);
         bitcode->print(ss);
     }
@@ -368,7 +368,7 @@ struct RFun : RVal, RValOps<RFun> {
 };
 
 /** Prints to given stream.  */
-void RVal::print(std::ostream & s) {
+void RVal::print(ostream & s) {
          if (auto d = DoubleVector::Cast(this))    d->print(s);
     else if (auto c = CharacterVector::Cast(this)) c->print(s);
     else if (auto f = RFun::Cast(this))            f->print(s);
@@ -376,7 +376,7 @@ void RVal::print(std::ostream & s) {
 }
 
 /** Standard C++ printing support. */
-inline std::ostream & operator << (std::ostream & s, RVal & value) {
+inline ostream & operator << (ostream & s, RVal & value) {
     value.print(s);
     return s;
 }

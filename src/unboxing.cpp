@@ -1,7 +1,7 @@
 #if VERSION > 10
 
 #include <iostream>
-#include <ciso646>
+
 
 #include "unboxing.h"
 #include "rift.h"
@@ -15,7 +15,7 @@ using namespace llvm;
 namespace rift {
 char Unboxing::ID = 0;
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 
 void Unboxing::updateDoubleScalar(llvm::Value * newVal) {
     llvm::Value * box = RUNTIME_CALL(doubleVectorLiteral, newVal);
@@ -103,7 +103,7 @@ bool Unboxing::genericGetElement() {
 }
 
 bool Unboxing::runOnFunction(llvm::Function & f) {
-    //std::cout << "running Unboxing optimization..." << std::endl;
+    //cout << "running Unboxing optimization..." << endl;
     m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
     for (auto & b : f) {

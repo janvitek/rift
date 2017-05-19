@@ -2,7 +2,7 @@
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
-#include <ciso646>
+
 #include "llvm.h"
 #include "ast.h"
 #include "objects.h"

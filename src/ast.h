@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-#include <ciso646>
+
 
 #include "lexer.h"
 
@@ -32,7 +32,7 @@ namespace ast {
     public:
         Str(unsigned index): index(index) {}
         void accept(Visitor * v) override;
-        std::string const & value() const;
+        string const & value() const;
         unsigned index;
     };
     /** Variable read.  */
@@ -40,7 +40,7 @@ namespace ast {
     public:
         Var(Symbol symbol): symbol(symbol) {}
         void accept(Visitor * v) override;
-        std::string const & value() const;
+        string const & value() const;
         unsigned symbol;
     };
     /** Block of statements.  */
@@ -48,7 +48,7 @@ namespace ast {
     public:
         ~Seq() override  { for (Exp * e:body) delete e; }
         void accept(Visitor * v) override;
-        std::vector<Exp*> body;
+        vector<Exp*> body;
     };
     /** Function definition.  */
     class Fun: public Exp {
@@ -61,25 +61,25 @@ namespace ast {
         }
         void accept(Visitor * v) override;
         Seq * body;
-        std::vector<Var *> args;
+        vector<Var *> args;
     };
     /** Binary expressions. */
     class BinExp : public Exp {
     public:
-        enum class Type { add, sub, mul, div, eq, neq, lt, gt };
-        BinExp(Exp * lhs, Exp * rhs, Type t): lhs(lhs), rhs(rhs), type(t) { }
+        enum class Op { add, sub, mul, div, eq, neq, lt, gt };
+        BinExp(Exp * lhs, Exp * rhs, Op o): lhs(lhs), rhs(rhs), op(o) { }
         ~BinExp() {   delete lhs; delete rhs; }
         void accept(Visitor * v) override;
         Exp * lhs;
         Exp * rhs;
-        Type type;
+        Op op;
     };
     /** Function call. Stores a vector of argument exps.  */
     class Call: public Exp {
     public:
         ~Call() {  for (Exp * e : args) delete e; }
         void accept(Visitor * v) override;
-	std::vector<Exp*> args;
+	vector<Exp*> args;
     };
     /** Call to user defined function */
     class UserCall : public Call {

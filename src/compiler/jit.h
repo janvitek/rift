@@ -10,7 +10,6 @@
 
 #if VERSION > 10
 #include "specializedRuntime.h"
-
 #include "type_checker.h"
 #include "type_analysis.h"
 #include "unboxing.h"
@@ -20,28 +19,36 @@
 
 namespace rift {
 
+/** A just in time compiler using LLVM. The main entry point is
+ the compile() static function which takes a reference to an AST
+ node representing a function definition, and returns a pointer.
+ 
+ This use the LLVM ORC JIT interface.
+ 
+ */
 class JIT {
-
 private:
+    // shorter names...
     typedef llvm::orc::ObjectLinkingLayer<> ObjectLayer;
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
-    typedef std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)> OptimizeFunction;
-    typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeFunction> OptimizeLayer;
+    typedef function<unique_ptr<llvm::Module>(unique_ptr<llvm::Module>)> OptimizeModule;
+    typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeModule> OptimizeLayer;
     typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
-
 public:
+    /** Externally, the JIT uses this type to refer to a module that has been passed to it. 
+     */
     typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
 
     /** Compiles a function and returns a pointer to the native code.  JIT
       compilation in LLVM finalizes the module, this function can only be
       called once.
-      */
+     */
     static FunPtr compile(ast::Fun * f) {
         Compiler c;
         unsigned start = Pool::functionsCount();
         int result = c.compile(f);
         llvm::Module * m = c.m.release();
-        lastModule_ = singleton().addModule(std::unique_ptr<llvm::Module>(m));
+        lastModule_ = singleton().addModule(unique_ptr<llvm::Module>(m));
         lastModuleDeletable_ = Pool::functionsCount() == start + 1;
 
         for (; start < Pool::functionsCount(); ++start) {
@@ -51,6 +58,10 @@ public:
         return Pool::getFunction(result)->code;
     }
 
+    /** If the last module is no longer needed, i.e. if it only contains a top-level expression, deletes the module and frees up the resources. 
+
+    Does nothing if the last module also defines functions that are still callable. 
+     */
     static void removeLastModule() {
         // TODO: llvm bug: removing a module corrupts the eh section and
         // subsequent C++ exception crash while unwinding the stack. Therefore
@@ -60,79 +71,93 @@ public:
         }
     }
 
+private:
+
+    /* Last module handle so that we can delete it later */
+    static ModuleHandle lastModule_;
+    /* Determines whether the last added module can be deleted after it executes. 
+     */
+    static bool lastModuleDeletable_;
+
+    /* Creates the jit object and initializes the JIT layers. 
+     */
     JIT():
-        targetMachine(llvm::EngineBuilder().selectTarget()),
-        dataLayout(targetMachine->createDataLayout()),
-        compileLayer(objectLayer, llvm::orc::SimpleCompiler(*targetMachine)),
-        optimizeLayer(compileLayer,
-            [this](std::unique_ptr<llvm::Module> m) {
+        arch(llvm::EngineBuilder().selectTarget()),
+        layout(arch->createDataLayout()),
+        compiler(linker, llvm::orc::SimpleCompiler(*arch)),
+        optimizer(compiler,
+            [this](unique_ptr<llvm::Module> m) {
                 optimizeModule(m.get());
                 return m;
             }
         )
-        ,compileCallbackManager(
-             llvm::orc::createLocalCompileCallbackManager(targetMachine->getTargetTriple(), 0)
+        ,callbackManager(
+             llvm::orc::createLocalCompileCallbackManager(arch->getTargetTriple(), 0)
         ),
-        codLayer(optimizeLayer,
+        cod(optimizer,
             [this](llvm::Function & f) {
-                return std::set<llvm::Function*>({&f});
+                return set<llvm::Function*>({&f});
             },
-            *compileCallbackManager,
+            *callbackManager,
             llvm::orc::createLocalIndirectStubsManagerBuilder(
-                targetMachine->getTargetTriple()))
+                arch->getTargetTriple()))
         {
             // this loads the host process itself, making
             // the symbols in it available for execution
             llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
-        }
+    }
 
-    ModuleHandle addModule(std::unique_ptr<llvm::Module> m) {
+    /* Submits the llvm module to the JIT. 
+
+    The module is consumed by the JIT and ModuleHandle is reuturned for future reference. 
+     */
+    ModuleHandle addModule(unique_ptr<llvm::Module> m) {
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
-            [&](std::string const & name) {
-                if (auto s = codLayer.findSymbol(name, false))
+            [this](string const & name) {
+                if (auto s = this->cod.findSymbol(name, false))
                     return s;
                 return llvm::JITSymbol(nullptr);
             },
 
             // the second lamba looks for symbols in the host process
-            [](std::string const & name) {
+            [](string const & name) {
                 if (auto symAddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
                     return llvm::JITSymbol(symAddr, llvm::JITSymbolFlags::Exported);
                 return JIT::fallbackHostSymbolResolver(name);
           });
 
-        m->setDataLayout(dataLayout);
+        m->setDataLayout(layout);
 
         // Build a singleton module set to hold our module.
-        std::vector<std::unique_ptr<llvm::Module>> ms;
-        ms.push_back(std::move(m));
+        vector<unique_ptr<llvm::Module>> ms;
+        ms.push_back(move(m));
 
         // Add the set to the JIT with the resolver we created above and a newly
         // created SectionMemoryManager.
-        return codLayer.addModuleSet(std::move(ms),
+        return cod.addModuleSet(move(ms),
             llvm::make_unique<llvm::SectionMemoryManager>(),
-            std::move(resolver));
+            move(resolver));
     }
 
-    llvm::JITSymbol findSymbol(const std::string name) {
-        std::string mangled;
+    /* Finds the symbol in the dynamically linked code. 
+     */
+    llvm::JITSymbol findSymbol(const string name) {
+        string mangled;
         llvm::raw_string_ostream mangledStream(mangled);
-        llvm::Mangler::getNameWithPrefix(mangledStream, name, dataLayout);
-        return codLayer.findSymbol(mangledStream.str(), true);
+        llvm::Mangler::getNameWithPrefix(mangledStream, name, layout);
+        return cod.findSymbol(mangledStream.str(), true);
     }
 
+    /* Removes the module from memory and releases its resources. 
+     */
     void removeModule(ModuleHandle m) {
-        codLayer.removeModuleSet(m);
+        cod.removeModuleSet(m);
     }
 
-
-private:
-
-    static ModuleHandle lastModule_;
-    static bool lastModuleDeletable_;
-
-    static llvm::JITSymbol fallbackHostSymbolResolver(std::string const & name) {
+    /* Resolves calls to runtime functions to their C functions since these are not part of the dynamically linked space, but are needed by the code. 
+     */
+    static llvm::JITSymbol fallbackHostSymbolResolver(string const & name) {
 
 #define FUN_PURE(NAME, ...) if (name == #NAME) \
     return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
@@ -150,7 +175,8 @@ RUNTIME_FUNCTIONS
       */
     static void optimizeModule(llvm::Module * m) {
 #if VERSION > 10
-        auto pm = std::unique_ptr<llvm::legacy::FunctionPassManager>(new llvm::legacy::FunctionPassManager(m));
+        auto pm = unique_ptr<llvm::legacy::FunctionPassManager>
+                           (new llvm::legacy::FunctionPassManager(m));
         pm->add(new TypeChecker());
         pm->add(new TypeAnalysis());
         pm->add(new Unboxing());
@@ -161,12 +187,12 @@ RUNTIME_FUNCTIONS
         for (llvm::Function & f : *m) {
             if (not f.empty()) {
                 if (DEBUG) {
-                    std::cout << "After translation to bitcode: -------------------------------" << std::endl;
+                    cout << "After translation to bitcode: -------------------------------" << endl;
                     f.dump();
                 }
                 pm->run(f);
                 if (DEBUG) {
-                    std::cout << "After LLVM's constant propagation: --------------------------" << std::endl;
+                    cout << "After LLVM's constant propagation: --------------------------" << endl;
                     f.dump();
                 }
             }
@@ -174,14 +200,24 @@ RUNTIME_FUNCTIONS
 #endif //VERSION
     }
 
+    /** Return the one and only JIT object */
     static JIT & singleton();
-    std::unique_ptr<llvm::TargetMachine> targetMachine;
-    const llvm::DataLayout dataLayout;
-    ObjectLayer objectLayer;
-    CompileLayer compileLayer;
-    OptimizeLayer optimizeLayer;
-    std::unique_ptr<llvm::orc::JITCompileCallbackManager> compileCallbackManager;
-    CompileOnDemandLayer codLayer;
+
+    // arch holds the platform for which we generate code
+    unique_ptr<llvm::TargetMachine> arch;
+    // arch specific data layout
+    const llvm::DataLayout layout;
+    // the dynamic linker
+    ObjectLayer linker;
+    // the dynamic compiler from LLVMIR to arch
+    CompileLayer compiler;
+    // an optimizer from LLVMIR to LLVMIR
+    OptimizeLayer optimizer;
+    // produces stub functions
+    unique_ptr<llvm::orc::JITCompileCallbackManager> callbackManager;
+    /* called by stub functions, extracts the function from its module into a new one and submits it to the lower layers
+     */
+    CompileOnDemandLayer cod;
 };
 
 }

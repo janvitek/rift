@@ -1,12 +1,13 @@
 #if VERSION > 10
 #pragma once
-#ifndef ABSTRACT_STATE_H
-#define ABSTRACT_STATE_H
 
-#include "llvm.h"
 #include <set>
 #include <sstream>
 #include <memory>
+
+
+#include "llvm.h"
+#include "rift.h"
 
 namespace rift {
 /**
@@ -73,21 +74,21 @@ public:
 
     AbstractState() : changed(false) {}
 
-    void print(std::ostream & s) {
+    void print(ostream & s) {
         s << "Abstract State: " << "\n";
 
         struct cmpByName {
             bool operator()(const llvm::Value * a, const llvm::Value * b) const {
                 int aName, bName;
 
-                std::stringstream s;
+                stringstream s;
                 llvm::raw_os_ostream ss(s);
                 a->printAsOperand(ss, false);
                 ss.flush();
                 s.seekg(1);
                 s >> aName;
 
-                std::stringstream s2;
+                stringstream s2;
                 llvm::raw_os_ostream ss2(s2);
                 b->printAsOperand(ss2, false);
                 ss2.flush();
@@ -98,9 +99,9 @@ public:
             }
         };
 
-        std::set<llvm::Value*, cmpByName> sorted;
+        set<llvm::Value*, cmpByName> sorted;
         for (auto const & v : type) {
-            auto pos = std::get<0>(v);
+            auto pos = v.first;
             sorted.insert(pos);
         }
 
@@ -115,21 +116,20 @@ public:
             }
             ss.flush();
             s << *st;
-            s << std::endl;
+            s << endl;
         }
     }
 
 private:
-    typedef typename std::remove_pointer<AType>::type ATypeBase;
+    typedef typename remove_pointer<AType>::type ATypeBase;
     ATypeBase * ptr(ATypeBase & b) { return &b; }
     ATypeBase * ptr(ATypeBase * b) { return b; }
 
     bool changed;
-    std::map<llvm::Value*, AType> type;
-    std::map<llvm::Value*, Metadata> metadata;
+    map<llvm::Value*, AType> type;
+    map<llvm::Value*, Metadata> metadata;
 };
 
 } // namespace rift
 
-#endif // ABSTRACT_STATE_H
 #endif //VERSION

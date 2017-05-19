@@ -1,7 +1,7 @@
 #if VERSION > 10
 
 #include <iostream>
-#include <ciso646>
+
 
 #include "specialize.h"
 #include "rift.h"
@@ -14,8 +14,8 @@ using namespace llvm;
 namespace rift {
 char Specialize::ID = 0;
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
-#define CALL(name, ...) CallInst::Create(name, std::vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define CALL(name, ...) CallInst::Create(name, vector<llvm::Value*>({__VA_ARGS__}), "", ins)
 #define CAST(val, t) CastInst::CreatePointerCast(val, type::t, "", ins)
 
 void Specialize::updateDoubleScalar(llvm::Value * newVal) {
@@ -168,7 +168,7 @@ bool Specialize::genericC() {
         if (not canBeDV and not canBeCV)
             return false;
     }
-    std::vector<llvm::Value *> args;
+    vector<llvm::Value *> args;
     args.push_back(ci->getArgOperand(0)); // size
     for (unsigned i = 1; i < ci->getNumArgOperands(); ++i) {
         llvm::Value * a = ci->getOperand(i);
@@ -202,7 +202,7 @@ bool Specialize::genericEval() {
 }
 
 bool Specialize::runOnFunction(llvm::Function & f) {
-    //std::cout << "running Specialize optimization..." << std::endl;
+    //cout << "running Specialize optimization..." << endl;
     m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
     for (auto & b : f) {

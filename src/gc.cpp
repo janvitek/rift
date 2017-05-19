@@ -65,7 +65,7 @@ void GarbageCollector::doGc() {
     verify();
     unsigned memUsage2 = size() - free();
     assert(memUsage2 <= memUsage);
-    std::cout << "reclaiming " << memUsage - memUsage2
+    cout << "reclaiming " << memUsage - memUsage2
               << "b, used " << memUsage2 << "b, total "
               << size() << "b in "
               << arena.pageList.size() << " pages\n";
