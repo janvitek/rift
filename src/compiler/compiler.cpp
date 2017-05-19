@@ -85,12 +85,11 @@ RUNTIME_FUNCTIONS
 
 Compiler::FunctionContext::FunctionContext(string name, Module* m) {
     // Create the function
-    f = Function::Create(
-            type::NativeCode, Function::ExternalLinkage,
-            name, m);
+    f = Function::Create(type::NativeCode, Function::ExternalLinkage,
+                         name, m);
     // Create the first BB and a builder
-    BasicBlock * entry = BasicBlock::Create(
-            context(), "entry", f, nullptr);
+    BasicBlock * entry =
+        BasicBlock::Create(context(), "entry", f, nullptr);
     b = new IRBuilder<>(entry);
     // Rift ABI specifies the initial environment as only argument.
     // All function args are bound in there.
@@ -102,10 +101,8 @@ Compiler::FunctionContext::FunctionContext(string name, Module* m) {
 int Compiler::compile(ast::Fun * n) {
     // Backup context in case we are creating a nested function
     FunctionContext oldContext(cur);
-
     // Create a new function context
     cur = FunctionContext("riftFunction", m.get());
-
     // if the function is empty, return 0 as default return value
     if (n->body->body.empty()) {
         result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
@@ -115,14 +112,11 @@ int Compiler::compile(ast::Fun * n) {
         n->body->accept(this);
         assert(result);
     }
-
     // Append return instruction of the last used value
     cur.b->CreateRet(result);
-
     // Register and get index
     int idx = Pool::addFunction(n, cur.f);
     cur.f->setName(STR(idx));
-
     // Restore context
     cur.restore(oldContext);
     return idx;
@@ -143,23 +137,19 @@ void Compiler::visit(ast::Str * n) {
     result = RUNTIME_CALL(characterVectorLiteral, fromInt(n->index));
 }
 
-/** Variable translates into reading from environment. */
+/** Read the variable from environment. */
 void Compiler::visit(ast::Var * n) {
     result = RUNTIME_CALL(envGet, cur.env, fromInt(n->symbol));
 }
 
-/** Sequence is compilation of each of its elements. The last one will stay
- * in the result.
-*/
+/** Compile each statement, the last one is the result. */
 void Compiler::visit(ast::Seq * n) {
-    for (ast::Exp * e : n->body)
-        e->accept(this);
+    for (ast::Exp * e : n->body)  e->accept(this);
 }
 
 /** Function declaration.  Compiles function, use its id as a constant
     for createFunction() which binding the function code to the
-    environment. Box result into a value.
-  */
+    environment. Box result into a value. */
 void Compiler::visit(ast::Fun * n) {
     int fi = compile(n);
     result = RUNTIME_CALL(createFunction, fromInt(fi), cur.env);
@@ -287,22 +277,17 @@ void Compiler::visit(ast::IndexAssignment * n) {
 void Compiler::visit(ast::IfElse * n) {
 #if VERSION >= 5
     // Create the basic blocks we will need
-
     BasicBlock * ifTrue = BasicBlock::Create(
             context(), "trueCase", cur.f, nullptr);
     BasicBlock * ifFalse = BasicBlock::Create(
             context(), "falseCase", cur.f, nullptr);
     BasicBlock * merge = BasicBlock::Create(
             context(), "afterIf", cur.f, nullptr);
-
     // compile the condition
     n->guard->accept(this);
     Value * guard = RUNTIME_CALL(toBoolean, result);
-
     // do the conditional jump
     cur.b->CreateCondBr(guard, ifTrue, ifFalse);
-
-
     // flip the basic block to ifTrue, compile the true case and jump to
     // the merge block at the end
     cur.b->SetInsertPoint(ifTrue);
@@ -310,7 +295,6 @@ void Compiler::visit(ast::IfElse * n) {
     Value * trueResult = result;
     ifTrue = cur.b->GetInsertBlock();
     cur.b->CreateBr(merge);
-
     // flip the basic block to ifFalse, compile the else case and jump to
     // the merge block at the end
     cur.b->SetInsertPoint(ifFalse);
@@ -318,13 +302,11 @@ void Compiler::visit(ast::IfElse * n) {
     Value * falseResult = result;
     ifFalse = cur.b->GetInsertBlock();
     cur.b->CreateBr(merge);
-
     // Set BB to merge point and emit a phi n for the then-else results
     cur.b->SetInsertPoint(merge);
     auto phi = cur.b->CreatePHI(type::ptrValue, 2, "ifPhi");
     phi->addIncoming(trueResult, ifTrue);
     phi->addIncoming(falseResult, ifFalse);
-
     // return the result of the phi n
     result = phi;
 #endif //VERSION
@@ -337,40 +319,29 @@ void Compiler::visit(ast::IfElse * n) {
 /** While. A loop always returns zero, so no need to worry about PHI nodes. */
 void Compiler::visit(ast::WhileLoop * n) {
     // create BB for loop start (evaluation of the guard), loop body, and exit
-
     BasicBlock * guard = BasicBlock::Create(
             context(), "guard", cur.f, nullptr);
     BasicBlock * body = BasicBlock::Create(
             context(), "body", cur.f, nullptr);
     BasicBlock * cont = BasicBlock::Create(
             context(), "cont", cur.f, nullptr);
-
     // jump to start
     cur.b->CreateBr(guard);
-
     // compile start as the evaluation of the guard and conditional branch
     cur.b->SetInsertPoint(guard);
-
     // compile the guard condition
     n->guard->accept(this);
     Value * test = RUNTIME_CALL(toBoolean, result);
-
     cur.b->CreateCondBr(test, body, cont);
-
     // compile loop body, at the end of the loop body, branch to start
-
     cur.b->SetInsertPoint(body);
     n->body->accept(this);
     cur.b->CreateBr(guard);
-
     // set the current BB to the one after the loop, the result is the
     // value of the last instruction
     cur.b->SetInsertPoint(cont);
-
     // we need a default value for the loop to evaluate to
     result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
 }
-
 #endif //VERSION
-
 }
