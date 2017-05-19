@@ -25,7 +25,7 @@ typedef uint8_t Mark;
 struct RVal {
     /** Type of this object. */
     Type type;
-    /** GC information. *?
+    /** GC information. */
     Mark mark;
 
     /** Prints to given stream.  */
