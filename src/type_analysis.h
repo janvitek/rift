@@ -46,24 +46,20 @@ public:
     //////////////////// Abstract Operations //////////////////
 
     /** Returns a new AType that is the least upper bound of the this
-      and the argument.
-      */
+        and the argument.   */
     AType * merge(AType * a) {
         if (a == T)        return T;
         if (this == B)     return a;
         if (a == B)        return this;
-    
         if (this == D1) {
             if (a == D1)  return a;
             if (a == DV) return a;
             return T;
         }
-
         if ((this == DV || this == CV || this == F) &&
              this == a) {
             return this;
         }
-
         return T;
     }
 
@@ -97,24 +93,19 @@ public:
                (isDouble() && other->isDouble());
     }
 
-    /** Order on ATypes. 
-      */
+    /** Order on ATypes.  */
     bool operator < (AType const & other) const {
         if(isTop()) return false;
         if(other.isTop()) return true;
         if(isBottom()) return !other.isBottom();
-        
         if (isDoubleScalar()) return !other.isDoubleScalar();
-        
         // The only valid options left
         assert((this == DV && &other == D1) || this == &other);
-
         return false;
     }
 
 private:
     friend ostream & operator << (ostream & s, AType & m);
-
     AType(const string name) : name(name) {}
     const string name;
 };
@@ -124,14 +115,11 @@ class TypeAnalysis : public llvm::FunctionPass {
 public:
     typedef AbstractState<AType*, llvm::Value*> State;
     static char ID;
+    State state;
 
     llvm::StringRef getPassName() const override { return "TypeAnalysis"; }
-
     TypeAnalysis() : llvm::FunctionPass(ID) {}
-
     bool runOnFunction(llvm::Function & f) override;
-
-    State state;
 
 private:
     void genericArithmetic(llvm::CallInst * ci);
