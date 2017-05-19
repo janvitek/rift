@@ -21,8 +21,5 @@ message(STATUS "Linking to LLVM at ${LLVM_DIR} in ${LLVM_LINK_AGAINST} mode")
 # due to problems with llvm makefiles and headers, we are including the correct headers explicitly
 include_directories("${LLVM_COMPILE_DIR}/src/include")
 
-#add_definitions(-std=c++11 -O2)
-add_definitions(-std=c++11 -g)
-
 # flag that local config has been read
 set(LOCAL_CONFIG 1)
