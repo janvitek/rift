@@ -101,7 +101,7 @@ public:
 
         set<llvm::Value*, cmpByName> sorted;
         for (auto const & v : type) {
-            auto pos = std::get<0>(v);
+            auto pos = v.first;
             sorted.insert(pos);
         }
 
