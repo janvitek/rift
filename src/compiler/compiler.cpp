@@ -309,6 +309,7 @@ void Compiler::visit(ast::IfElse * n) {
     cur.b->SetInsertPoint(ifTrue);
     n->ifClause->accept(this);
     Value * trueResult = result;
+    ifTrue = cur.b->GetInsertBlock();
     cur.b->CreateBr(merge);
 
     // flip the basic block to ifFalse, compile the else case and jump to
@@ -316,6 +317,7 @@ void Compiler::visit(ast::IfElse * n) {
     cur.b->SetInsertPoint(ifFalse);
     n->elseClause->accept(this);
     Value * falseResult = result;
+    ifFalse = cur.b->GetInsertBlock();
     cur.b->CreateBr(merge);
 
     // Set BB to merge point and emit a phi n for the then-else results
@@ -346,17 +348,11 @@ void Compiler::visit(ast::WhileLoop * n) {
     BasicBlock * cont = BasicBlock::Create(
             context(), "cont", cur.f, nullptr);
 
-    // we need a default value for the loop to evaluate to
-    BasicBlock * entry = cur.b->GetInsertBlock();
-    auto zero = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
-
     // jump to start
     cur.b->CreateBr(guard);
 
     // compile start as the evaluation of the guard and conditional branch
     cur.b->SetInsertPoint(guard);
-    auto phi= cur.b->CreatePHI(type::ptrValue, 2, "whilePhi");
-    phi->addIncoming(zero, entry);
 
     // compile the guard condition
     n->guard->accept(this);
@@ -370,13 +366,12 @@ void Compiler::visit(ast::WhileLoop * n) {
     n->body->accept(this);
     cur.b->CreateBr(guard);
 
-    // the value of the loop expression should be the last statement executed
-    phi->addIncoming(result, cur.b->GetInsertBlock());
-
     // set the current BB to the one after the loop, the result is the
     // value of the last instruction
     cur.b->SetInsertPoint(cont);
-    result = phi;
+
+    // we need a default value for the loop to evaluate to
+    result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(0));
 }
 
 #endif //VERSION
