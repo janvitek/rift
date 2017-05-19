@@ -27,8 +27,9 @@ namespace rift {
  
  */
 class JIT {
-
 private:
+    /* Shorthands for the long LLVM types. 
+     */
     typedef llvm::orc::ObjectLinkingLayer<> ObjectLayer;
     typedef llvm::orc::IRCompileLayer<ObjectLayer> CompileLayer;
     typedef function<unique_ptr<llvm::Module>(unique_ptr<llvm::Module>)> OptimizeModule;
@@ -36,12 +37,14 @@ private:
     typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
 
 public:
+    /** Externally, the JIT uses this type to refer to a module that has been passed to it. 
+     */
     typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
 
     /** Compiles a function and returns a pointer to the native code.  JIT
       compilation in LLVM finalizes the module, this function can only be
       called once.
-      */
+     */
     static FunPtr compile(ast::Fun * f) {
         Compiler c;
         unsigned start = Pool::functionsCount();
@@ -57,6 +60,10 @@ public:
         return Pool::getFunction(result)->code;
     }
 
+    /** If the last module is no longer needed, i.e. if it only contains a top-level expression, deletes the module and frees up the resources. 
+
+    Does nothing if the last module also defines functions that are still callable. 
+     */
     static void removeLastModule() {
         // TODO: llvm bug: removing a module corrupts the eh section and
         // subsequent C++ exception crash while unwinding the stack. Therefore
@@ -66,6 +73,16 @@ public:
         }
     }
 
+private:
+
+    /* Last module handle so that we can delete it later */
+    static ModuleHandle lastModule_;
+    /* Determines whether the last added module can be deleted after it executes. 
+     */
+    static bool lastModuleDeletable_;
+
+    /* Creates the jit object and initializes the JIT layers. 
+     */
     JIT():
         arch(llvm::EngineBuilder().selectTarget()),
         layout(arch->createDataLayout()),
@@ -90,8 +107,12 @@ public:
             // this loads the host process itself, making
             // the symbols in it available for execution
             llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
-        }
+    }
 
+    /* Submits the llvm module to the JIT. 
+
+    The module is consumed by the JIT and ModuleHandle is reuturned for future reference. 
+     */
     ModuleHandle addModule(unique_ptr<llvm::Module> m) {
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
@@ -121,6 +142,8 @@ public:
             move(resolver));
     }
 
+    /* Finds the symbol in the dynamically linked code. 
+     */
     llvm::JITSymbol findSymbol(const string name) {
         string mangled;
         llvm::raw_string_ostream mangledStream(mangled);
@@ -128,16 +151,14 @@ public:
         return cod.findSymbol(mangledStream.str(), true);
     }
 
+    /* Removes the module from memory and releases its resources. 
+     */
     void removeModule(ModuleHandle m) {
         cod.removeModuleSet(m);
     }
 
-
-private:
-
-    static ModuleHandle lastModule_;
-    static bool lastModuleDeletable_;
-
+    /* Resolves calls to runtime functions to their C functions since these are not part of the dynamically linked space, but are needed by the code. 
+     */
     static llvm::JITSymbol fallbackHostSymbolResolver(string const & name) {
 
 #define FUN_PURE(NAME, ...) if (name == #NAME) \
@@ -196,7 +217,8 @@ RUNTIME_FUNCTIONS
     OptimizeLayer optimizer;
     // produces stub functions
     unique_ptr<llvm::orc::JITCompileCallbackManager> callbackManager;
-    // 
+    /* called by stub functions, extracts the function from its module into a new one and submits it to the lower layers
+     */
     CompileOnDemandLayer cod;
 };
 
