@@ -4,7 +4,6 @@
 #include "type_analysis.h"
 #include "rift.h"
 
-using namespace std;
 using namespace llvm;
 
 namespace rift {
@@ -56,7 +55,6 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     if (DEBUG) cout << "runnning TypeAnalysis..." << endl;
     // for all basic blocks, for all instructions
     do {
-        // cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
         state.iterationStart();
         for (auto & b : f) {
             for (auto & i : b) {
