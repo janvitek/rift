@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gc.h"
+#include "ast.h"
 
 /*
  * Class Mixin for the different object types
