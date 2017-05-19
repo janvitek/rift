@@ -180,7 +180,7 @@ RUNTIME_FUNCTIONS
         pm->add(new Unboxing());
         pm->add(new Specialize());
         pm->add(new BoxingRemoval());
-        pm->add(llvm::createConstantPropagationPass());
+        //pm->add(llvm::createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
             if (not f.empty()) {
