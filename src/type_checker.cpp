@@ -62,9 +62,6 @@ bool TypeChecker::runOnFunction(llvm::Function & f) {
                             default:
                                 assert(false);
                         }
-
-                    //Complete me
-
                     } else {
                         // If we still don't know nothing about the instruction
                         // set it to T, since it could be anything. If we handle

@@ -1,23 +1,15 @@
 #if VERSION > 10
 
 #include <iostream>
-
-#include <iostream>
-
-
-
 #include "boxing_removal.h"
 #include "rift.h"
 
-
 using namespace llvm;
-using namespace std;
 
 namespace rift {
 char BoxingRemoval::ID = 0;
 
 bool BoxingRemoval::runOnFunction(llvm::Function & f) {
-    //        cout << "running boxing removal optimization..." << endl;
     bool changed = false;
     while (true) {
         bool c = false;
@@ -30,11 +22,6 @@ bool BoxingRemoval::runOnFunction(llvm::Function & f) {
                         if (ci->use_empty())
                             erase = true;
                     }
-                    /*                        StringRef s = ci->getCalledFunction()->getName();
-                                              if (s != "call" and s != "genericEval" and s != "characterEval" and s != "envGet" and s != "envSet") {
-                                              if (ci->use_empty())
-                                              erase = true;
-                                              } */
                 }
                 if (erase) {
                     llvm::Instruction * v = &*i;
@@ -56,7 +43,6 @@ bool BoxingRemoval::runOnFunction(llvm::Function & f) {
     }
     return changed;
 }
-
 
 } // namespace rift
 
