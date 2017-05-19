@@ -36,15 +36,16 @@ Compiler::Compiler():
 #if VERSION == 0
 int Compiler::compile(ast::Fun * n) {
     // Create the function and its first BB
-    cur.f = Function::Create(type::NativeCode, Function::ExternalLinkage, "riftFunction", m.get());
+    auto f = Function::Create(
+            type::NativeCode, Function::ExternalLinkage, "riftFunction", m.get());
 
     BasicBlock * entry = BasicBlock::Create(context(), "entry", f, nullptr);
-    cur.b = new IRBuilder<>(entry);
+    auto b = new IRBuilder<>(entry);
 
     // Get the (single) argument of the function and store is as the
     // environment
     Function::arg_iterator args = f->arg_begin();
-    cur.env = &*args;
+    auto env = &*args;
     env->setName("env");
 
     Function * doubleVectorLiteral =

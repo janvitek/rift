@@ -13,7 +13,7 @@ HOME = File.dirname(__FILE__)
 
 FILES = ['CMakeLists.txt', 'LICENSE', 'local', 'src', 'README.md', 'tests',
          '.gitignore']
-IGNORE = [/local\/cmake.cmake$/, /.*swp/]
+IGNORE = [/.*swp/]
 
 EXPORT_DIR = ARGV[1]
 VERSION = Integer(ARGV[0])
