@@ -13,25 +13,28 @@ using namespace std;
 using namespace llvm;
 
 namespace rift {
+
 char Unboxing::ID = 0;
 
-#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), vector<llvm::Value*>({__VA_ARGS__}), "", ins)
+#define RUNTIME_CALL(name, ...) CallInst::Create(Compiler::name(m), \
+                                                 vector<Value*>({__VA_ARGS__}),\
+                                                 "", ins)
 
-void Unboxing::updateDoubleScalar(llvm::Value * newVal) {
-    llvm::Value * box = RUNTIME_CALL(doubleVectorLiteral, newVal);
+void Unboxing::updateDoubleScalar(Value * newVal) {
+    Value * box = RUNTIME_CALL(doubleVectorLiteral, newVal);
     state().update(box, AType::D1, newVal);
     ins->replaceAllUsesWith(box);
 }
 
-bool Unboxing::doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
+bool Unboxing::doubleArithmetic(Value * lhs, Value * rhs,
                                 AType * lhsType, AType * rhsType,
-                                llvm::Instruction::BinaryOps op) {
+                                Instruction::BinaryOps op) {
     assert(lhsType->isDouble() and rhsType->isDouble() and "Doubles expected");
     if (lhsType->isDoubleScalar() and rhsType->isDoubleScalar()) {
-        llvm::Value * l = state().getMetadata(lhs);
-        llvm::Value * r = state().getMetadata(rhs);
+        Value * l = state().getMetadata(lhs);
+        Value * r = state().getMetadata(rhs);
         if (l && r) {
-            llvm::Value * res = BinaryOperator::Create(op, l, r, "", ins);
+            Value * res = BinaryOperator::Create(op, l, r, "", ins);
             updateDoubleScalar(res);
             return true;
         }
@@ -40,9 +43,9 @@ bool Unboxing::doubleArithmetic(llvm::Value * lhs, llvm::Value * rhs,
     return false;
 }
 
-bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op) {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+bool Unboxing::genericArithmetic(Instruction::BinaryOps op) {
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
@@ -51,17 +54,17 @@ bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op) {
     return false;
 }
 
-bool Unboxing::doubleRelational(llvm::Value* lhs, llvm::Value * rhs,
+bool Unboxing::doubleRelational(Value* lhs, Value * rhs,
                                 AType * lhsType, AType * rhsType,
-                                llvm::CmpInst::Predicate op) {
+                                CmpInst::Predicate op) {
     assert(lhsType->isDouble() and rhsType->isDouble() and "Doubles expected");
 
     if (lhsType->isDoubleScalar() and rhsType->isDoubleScalar()) {
-        llvm::Value * l = state().getMetadata(lhs);
-        llvm::Value * r = state().getMetadata(rhs);
+        Value * l = state().getMetadata(lhs);
+        Value * r = state().getMetadata(rhs);
         if (l && r) {
-            llvm::Value * x = new FCmpInst(ins, op, l, r);
-            llvm::Value * res = new UIToFPInst(x, type::Double, "", ins);
+            Value * x = new FCmpInst(ins, op, l, r);
+            Value * res = new UIToFPInst(x, type::Double, "", ins);
             updateDoubleScalar(res);
             return true;
         }
@@ -69,9 +72,9 @@ bool Unboxing::doubleRelational(llvm::Value* lhs, llvm::Value * rhs,
     return false;
 }
 
-bool Unboxing::genericRelational(llvm::CmpInst::Predicate op) {
-    llvm::Value * lhs = ins->getOperand(0);
-    llvm::Value * rhs = ins->getOperand(1);
+bool Unboxing::genericRelational(CmpInst::Predicate op) {
+    Value * lhs = ins->getOperand(0);
+    Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
@@ -83,17 +86,17 @@ bool Unboxing::genericRelational(llvm::CmpInst::Predicate op) {
 
 
 bool Unboxing::genericGetElement() {
-    llvm::Value * src = ins->getOperand(0);
-    llvm::Value * idx = ins->getOperand(1);
+    Value * src = ins->getOperand(0);
+    Value * idx = ins->getOperand(1);
     AType * srcType = state().get(src);
     AType * idxType = state().get(idx);
 
     if (srcType->isDouble()) {
         src = CastInst::CreatePointerCast(src, type::ptrDoubleVector, "", ins); 
         if (idxType->isDoubleScalar()) {
-            llvm::Value * i = state().getMetadata(idx);
+            Value * i = state().getMetadata(idx);
             if (i) {
-                llvm::Value * res = RUNTIME_CALL(doubleGetSingleElement, src, i);
+                Value * res = RUNTIME_CALL(doubleGetSingleElement, src, i);
                 updateDoubleScalar(res);
                 return true;
             }
@@ -102,7 +105,7 @@ bool Unboxing::genericGetElement() {
     return false;
 }
 
-bool Unboxing::runOnFunction(llvm::Function & f) {
+bool Unboxing::runOnFunction(Function & f) {
     //cout << "running Unboxing optimization..." << endl;
     m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
@@ -134,7 +137,7 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
                 }
             }
             if (erase) {
-                llvm::Instruction * v = &*i;
+                Instruction * v = &*i;
                 ++i;
                 state().erase(v);
                 v->eraseFromParent();
