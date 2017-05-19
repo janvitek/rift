@@ -198,13 +198,13 @@ namespace rift {
                 switch (top().type) {
                 case Token::Type::mul:
                 case Token::Type::div: {
-                    ast::BinExp::Type t /* -warn */ = ast::BinExp::Type::mul;
+                    ast::BinExp::Op t /* -warn */ = ast::BinExp::Op::mul;
                     switch (pop().type) {
                     case Token::Type::mul:
-                        t = ast::BinExp::Type::mul;
+                        t = ast::BinExp::Op::mul;
                         break;
                     case Token::Type::div:
-                        t = ast::BinExp::Type::div;
+                        t = ast::BinExp::Op::div;
                         break;
                     default:
                         assert(false and "unreachable");
@@ -224,13 +224,13 @@ namespace rift {
                 switch (top().type) {
                 case Token::Type::add:
                 case Token::Type::sub: {
-                    ast::BinExp::Type t /* -warn */ = ast::BinExp::Type::mul;
+                    ast::BinExp::Op t /* -warn */ = ast::BinExp::Op::mul;
                     switch (pop().type) {
                     case Token::Type::add:
-                        t = ast::BinExp::Type::add;
+                        t = ast::BinExp::Op::add;
                         break;
                     case Token::Type::sub:
-                        t = ast::BinExp::Type::sub;
+                        t = ast::BinExp::Op::sub;
                         break;
                     default:
                         assert(false and "unreachable");
@@ -252,19 +252,19 @@ namespace rift {
                 case Token::Type::neq:
                 case Token::Type::lt:
                 case Token::Type::gt: {
-                    ast::BinExp::Type t /* -warn */ = ast::BinExp::Type::mul;
+                    ast::BinExp::Op t /* -warn */ = ast::BinExp::Op::mul;
                     switch (pop().type) {
                     case Token::Type::eq:
-                        t = ast::BinExp::Type::eq;
+                        t = ast::BinExp::Op::eq;
                         break;
                     case Token::Type::neq:
-                        t = ast::BinExp::Type::neq;
+                        t = ast::BinExp::Op::neq;
                         break;
                     case Token::Type::lt:
-                        t = ast::BinExp::Type::lt;
+                        t = ast::BinExp::Op::lt;
                         break;
                     case Token::Type::gt:
-                        t = ast::BinExp::Type::gt;
+                        t = ast::BinExp::Op::gt;
                         break;
                     default:
                         assert(false and "unreachable");

@@ -46,16 +46,16 @@ public:
     void visit(BinExp * n) override {
         n->lhs->accept(this);
         s << " ";
-        switch (n->type) {
-        case BinExp::Type::add: s << "+"; break;
-        case BinExp::Type::sub: s << "-"; break;
-        case BinExp::Type::mul: s << "*"; break;
-        case BinExp::Type::div: s << "/"; break;
-        case BinExp::Type::eq:  s << "=="; break;
-        case BinExp::Type::neq: s << "!="; break;
-        case BinExp::Type::lt:  s << "<"; break;
-        case BinExp::Type::gt:  s << ">";  break;
-        default:                     s << "?";
+        switch (n->op) {
+        case BinExp::Op::add: s << "+"; break;
+        case BinExp::Op::sub: s << "-"; break;
+        case BinExp::Op::mul: s << "*"; break;
+        case BinExp::Op::div: s << "/"; break;
+        case BinExp::Op::eq:  s << "=="; break;
+        case BinExp::Op::neq: s << "!="; break;
+        case BinExp::Op::lt:  s << "<"; break;
+        case BinExp::Op::gt:  s << ">";  break;
+        default:              s << "?";
         }
         s << " ";
         n->rhs->accept(this);
