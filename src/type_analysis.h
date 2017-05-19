@@ -113,7 +113,7 @@ private:
 /** Type analysis.  */
 class TypeAnalysis : public llvm::FunctionPass {
 public:
-    typedef AbstractState<AType*, llvm::Value*> State;
+    typedef AbstractState<AType*> State;
     static char ID;
     State state;
 

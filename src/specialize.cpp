@@ -21,7 +21,7 @@ char Specialize::ID = 0;
 
 void Specialize::updateDoubleScalar(Value * v) {
     Value * box = RUNTIME_CALL(doubleVectorLiteral, v);
-    state().update(box, AType::D1, v);
+    state().update(box, AType::D1);
     ins->replaceAllUsesWith(box);
 }
 

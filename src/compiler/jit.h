@@ -11,9 +11,7 @@
 #if VERSION > 10
 #include "specializedRuntime.h"
 #include "type_analysis.h"
-#include "unboxing.h"
 #include "specialize.h"
-#include "boxing_removal.h"
 #endif //VERSION
 
 namespace rift {
@@ -177,10 +175,7 @@ RUNTIME_FUNCTIONS
         auto pm = unique_ptr<llvm::legacy::FunctionPassManager>
                            (new llvm::legacy::FunctionPassManager(m));
         pm->add(new TypeAnalysis());
-        pm->add(new Unboxing());
         pm->add(new Specialize());
-        pm->add(new BoxingRemoval());
-        //pm->add(llvm::createConstantPropagationPass());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
             if (not f.empty()) {
