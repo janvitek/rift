@@ -33,7 +33,6 @@ void TypeAnalysis::genericRelational(CallInst * ci) {
     }
 }
 
-
 void TypeAnalysis::genericGetElement(CallInst * ci) {
     AType * from = state.get(ci->getOperand(0));
     AType * index = state.get(ci->getOperand(1));
@@ -107,12 +106,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     } else if (s == "genericEval") {
                         state.update(ci, AType::T);
                     } else if (s == "envGet") {
-                        // TODO keep track of the type across stores and loads.
-                        // Involves to include the environment to the
-                        // abstract state and update the variable state on
-                        // envSet. This would allow us to read out potentially
-                        // much more precise type information here.
-                        state.update(ci, AType::T);
+                        state.update(ci, AType::T);
                     }
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                     AType * first = state.get(phi->getOperand(0));
@@ -123,10 +117,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
             }
         }
     } while (!state.hasReachedFixpoint());
-    if (DEBUG) {
-        f.dump();
-        state.print(cout);
-    }
+    if (DEBUG) { f.dump(); state.print(cout);  }
     return false;
 }
 
