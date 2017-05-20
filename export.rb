@@ -12,7 +12,7 @@ usage if ARGV.size != 2
 HOME = File.dirname(__FILE__)
 
 FILES = ['CMakeLists.txt', 'LICENSE', 'local', 'src', 'README.md', 'tests',
-         '.gitignore']
+         '.gitignore', 'assignments']
 IGNORE = [/.*swp/]
 
 EXPORT_DIR = ARGV[1]
