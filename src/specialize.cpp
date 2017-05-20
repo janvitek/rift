@@ -136,6 +136,7 @@ bool Specialize::genericEq() {
 }
 
 bool Specialize::genericGetElement() {
+#if VERSION >= 19 
     Value * src = ins->getOperand(0);
     Value * idx = ins->getOperand(1);
     AType * srcType = state().get(src);
@@ -153,6 +154,10 @@ bool Specialize::genericGetElement() {
         return true;
     }
     return false;
+#endif //VERSION
+#if VERSION < 19
+    return false;
+#endif //VERSION
 }
 
 bool Specialize::genericC() {

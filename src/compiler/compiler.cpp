@@ -275,7 +275,6 @@ void Compiler::visit(ast::IndexAssignment * n) {
    and branch on that. PHI ns have to be inserted when control flow
    merges after the conditional. */
 void Compiler::visit(ast::IfElse * n) {
-#if VERSION >= 5
     // Create the basic blocks we will need
     BasicBlock * ifTrue = BasicBlock::Create(
             context(), "trueCase", cur.f, nullptr);
@@ -283,6 +282,13 @@ void Compiler::visit(ast::IfElse * n) {
             context(), "falseCase", cur.f, nullptr);
     BasicBlock * merge = BasicBlock::Create(
             context(), "afterIf", cur.f, nullptr);
+    Value * trueResult;
+    Value * falseResult;
+#if VERSION < 5
+    //TODO
+    assert(false);
+#endif //VERSION
+#if VERSION >= 5
     // compile the condition
     n->guard->accept(this);
     Value * guard = RUNTIME_CALL(toBoolean, result);
@@ -292,16 +298,17 @@ void Compiler::visit(ast::IfElse * n) {
     // the merge block at the end
     cur.b->SetInsertPoint(ifTrue);
     n->ifClause->accept(this);
-    Value * trueResult = result;
+    trueResult = result;
     ifTrue = cur.b->GetInsertBlock();
     cur.b->CreateBr(merge);
     // flip the basic block to ifFalse, compile the else case and jump to
     // the merge block at the end
     cur.b->SetInsertPoint(ifFalse);
     n->elseClause->accept(this);
-    Value * falseResult = result;
+    falseResult = result;
     ifFalse = cur.b->GetInsertBlock();
     cur.b->CreateBr(merge);
+#endif //VERSION
     // Set BB to merge point and emit a phi n for the then-else results
     cur.b->SetInsertPoint(merge);
     auto phi = cur.b->CreatePHI(type::ptrValue, 2, "ifPhi");
@@ -309,11 +316,6 @@ void Compiler::visit(ast::IfElse * n) {
     phi->addIncoming(falseResult, ifFalse);
     // return the result of the phi n
     result = phi;
-#endif //VERSION
-#if VERSION < 5
-    //TODO
-    assert(false);
-#endif //VERSION
 }
 
 /** While. A loop always returns zero, so no need to worry about PHI nodes. */

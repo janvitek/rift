@@ -8,4 +8,9 @@
 
    5 : ex 3           : compiler solution
 
-  11 : day 2          : adds specialiced runtime, analysis and optimizations
+  12 : day 2          : adds specialiced runtime, analysis and optimizations
+
+  18 : ex 4           : analysis solution
+
+  19 : ex 5           : specialize solution
+
