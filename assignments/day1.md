@@ -5,6 +5,7 @@
   * doubleGetElement
      * tests `c(1,2)[1]`, `c(1,2,3)[c(1,2)]`
 3. Fix the holes in compiler.cpp
+  * implement visit(ast::SimpleAssignment * n)
   * implement visit(ast::UserCall * n)
     * tests:
       `f <- function(){1}  f()`

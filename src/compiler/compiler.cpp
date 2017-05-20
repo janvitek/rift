@@ -261,13 +261,8 @@ void Compiler::visit(ast::Index * n) {
 
 /** Assign a variable. */
 void Compiler::visit(ast::SimpleAssignment * n) {
-#if VERSION >= 5
     n->rhs->accept(this);
     RUNTIME_CALL(envSet, cur.env, fromInt(n->name->symbol), result);
-#endif //VERSION
-#if VERSION < 5
-    assert(false);
-#endif //VERSION
 }
 
 /** Assign into a vector at an index. */
