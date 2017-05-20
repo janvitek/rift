@@ -77,12 +77,6 @@ public:
                (isFun() && other->isFun());
     }
 
-    /** Order, < returns true if this is strictly smaller than other. */
-    bool operator < (AType * other)  {
-        AType* m = this->merge(other);
-        return  m == other;
-    }
-
 private:
     friend ostream & operator << (ostream & s, AType & m);
     AType(const string name) : name(name) {}
@@ -108,7 +102,7 @@ public:
     AType* update(llvm::Value * v, AType* t) {
         auto prev = get(v);
         if (prev == t) return prev;
-        assert(prev < t);
+        assert(prev->merge(t) == t);
         vals[v] = t;
         changed = true;
         return t;
