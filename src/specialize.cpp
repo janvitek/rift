@@ -45,7 +45,7 @@ void Specialize::updateCharOp(Function * fun,
     ins->replaceAllUsesWith(res);
 }
 
-bool Specialize::genericAdd() {
+void Specialize::genericAdd() {
     // first check if we are dealing with character add
     Value * lhs = ins->getOperand(0);
     Value * rhs = ins->getOperand(1);
@@ -53,58 +53,52 @@ bool Specialize::genericAdd() {
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
         updateDoubleOp(Compiler::doubleAdd(m), lhs, rhs, lhsType->merge(rhsType));
-        return true;
+        changed_ = true;
     } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
         Value * l = CAST(lhs, ptrCharacterVector); 
         Value * r = CAST(rhs, ptrCharacterVector); 
         Value * res = RUNTIME_CALL(characterAdd, l, r);
         state().update(res, AType::CV);
         ins->replaceAllUsesWith(res);
-        return true;
+        changed_ = true;
     }
-    return false;
 }
  
-bool Specialize::genericArithmetic(Function * fop) {
+void Specialize::genericArithmetic(Function * fop) {
     Value * lhs = ins->getOperand(0);
     Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
         updateDoubleOp(fop, lhs, rhs, lhsType->merge(rhsType));
-        return true;
+        changed_ = true;
     }
-    return false;
 }
 
-bool Specialize::genericRelational(Function * fop) {
+void Specialize::genericRelational(Function * fop) {
     Value * lhs = ins->getOperand(0);
     Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
         updateDoubleOp(fop, lhs, rhs, lhsType->merge(rhsType));
-        return true;
+        changed_ = true;
     }
-
-    return false;
 }
 
-bool Specialize::genericComparison(Value * lhs, Value * rhs,
+void Specialize::genericComparison(Value * lhs, Value * rhs,
                                    AType * lhsType, AType * rhsType,
                                    Function * dop, Function * cop) {
     if (lhsType->isDouble() and rhsType->isDouble()) {
         updateDoubleOp(dop, lhs, rhs, lhsType->merge(rhsType));
-        return true;
-    }
-    if (lhsType->isCharacter() and rhsType->isCharacter()) {
+        changed_ = true;
+    } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
         updateCharOp(cop, lhs, rhs, AType::DV);
-        return true;
+        changed_ = true;
     }
-    return false;
 }
 
-bool Specialize::genericNeq() {
+void Specialize::genericNeq() {
     Value * lhs = ins->getOperand(0);
     Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
@@ -113,14 +107,15 @@ bool Specialize::genericNeq() {
     if (not lhsType->isSimilar(rhsType)) {
         Value * res = ConstantFP::get(Compiler::context(), APFloat(1.0));
         updateDoubleScalar(res);
-        return true;
-    }
-    return genericComparison(lhs, rhs, lhsType, lhsType,
+        changed_ = true;
+    } else {
+        genericComparison(lhs, rhs, lhsType, lhsType,
             Compiler::doubleNeq(m), Compiler::characterNeq(m));
+    }
 }
 
 
-bool Specialize::genericEq() {
+void Specialize::genericEq() {
     Value * lhs = ins->getOperand(0);
     Value * rhs = ins->getOperand(1);
     AType * lhsType = state().get(lhs);
@@ -129,13 +124,14 @@ bool Specialize::genericEq() {
     if (not lhsType->isSimilar(rhsType)) {
         Value * res = ConstantFP::get(Compiler::context(), APFloat(0.0));
         updateDoubleScalar(res);
-        return true;
-    }
-    return genericComparison(lhs, rhs, lhsType, lhsType,
+        changed_ = true;
+    } else {
+        genericComparison(lhs, rhs, lhsType, lhsType,
             Compiler::doubleEq(m), Compiler::characterEq(m));
+    }
 }
 
-bool Specialize::genericGetElement() {
+void Specialize::genericGetElement() {
     Value * src = ins->getOperand(0);
     Value * idx = ins->getOperand(1);
     AType * srcType = state().get(src);
@@ -143,19 +139,18 @@ bool Specialize::genericGetElement() {
 
     if (srcType->isDouble() && idxType->isDouble()) {
         updateDoubleOp(Compiler::doubleGetElement(m), src, idx, AType::DV);
-        return true;
+        changed_ = true;
     } else if (srcType->isCharacter() and idxType->isDouble()) {
         src = CAST(src, ptrCharacterVector);
         idx = CAST(idx, ptrDoubleVector);
         Value * res = RUNTIME_CALL(characterGetElement, src, idx);
         state().update(res, AType::CV);
         ins->replaceAllUsesWith(res);
-        return true;
+        changed_ = true;
     }
-    return false;
 }
 
-bool Specialize::genericC() {
+void Specialize::genericC() {
     // if all are double, or all are character, we can do special versions
     CallInst * ci = reinterpret_cast<CallInst*>(ins);
     bool canBeDV = true;
@@ -165,7 +160,7 @@ bool Specialize::genericC() {
         canBeDV = canBeDV and t->isDouble();
         canBeCV = canBeCV and t->isCharacter();
         if (not canBeDV and not canBeCV)
-            return false;
+            return; // can't do anything
     }
     vector<Value *> args;
     args.push_back(ci->getArgOperand(0)); // size
@@ -184,10 +179,10 @@ bool Specialize::genericC() {
         state().update(res, AType::CV);
     }
     ins->replaceAllUsesWith(res);
-    return true;
+    changed_ = true;
 }
 
-bool Specialize::genericEval() {
+void Specialize::genericEval() {
     Value * arg = ins->getOperand(1);
     AType * argType = state().get(arg);
     if (argType->isCharacter()) {
@@ -195,53 +190,45 @@ bool Specialize::genericEval() {
         Value * res = RUNTIME_CALL(characterEval, ins->getOperand(0), arg);
         state().update(res, AType::T);
         ins->replaceAllUsesWith(res);
-        return true;
+        changed_ = true;
     }
-    return false;
 }
 
 bool Specialize::runOnFunction(Function & f) {
     m = f.getParent();
     ta = &getAnalysis<TypeAnalysis>();
+    changed_ = false;
     for (auto & b : f) {
         auto i = b.begin();
         while (i != b.end()) {
             ins = &*i;
-            bool erase = false;
             if (CallInst * ci = dyn_cast<CallInst>(ins)) {
                 StringRef s = ci->getCalledFunction()->getName();
                 if (s == "genericAdd") {
-                    erase = genericAdd();
+                    genericAdd();
                 } else if (s == "genericSub") {
-                    erase = genericArithmetic(Compiler::doubleSub(m));
+                    genericArithmetic(Compiler::doubleSub(m));
                 } else if (s == "genericMul") {
-                    erase = genericArithmetic(Compiler::doubleMul(m));
+                    genericArithmetic(Compiler::doubleMul(m));
                 } else if (s == "genericDiv") {
-                    erase = genericArithmetic(Compiler::doubleDiv(m));
+                    genericArithmetic(Compiler::doubleDiv(m));
                 } else if (s == "genericLt") {
-                    erase = genericRelational(Compiler::doubleLt(m));
+                    genericRelational(Compiler::doubleLt(m));
                 } else if (s == "genericGt") {
-                    erase = genericRelational(Compiler::doubleGt(m));
+                    genericRelational(Compiler::doubleGt(m));
                 } else if (s == "genericEq") {
-                    erase = genericEq();
+                    genericEq();
                 } else if (s == "genericNeq") {
-                    erase = genericNeq();
+                    genericNeq();
                 } else if (s == "genericGetElement") {
-                    erase = genericGetElement();
+                    genericGetElement();
                 } else if (s == "c") {
-                    erase = genericC();
+                    genericC();
                 } else if (s == "genericEval") {
-                    erase = genericEval();
+                    genericEval();
                 }
             }
-            if (erase) {
-                Instruction * v = &*i;
-                ++i;
-                state().erase(v);
-                v->eraseFromParent();
-            } else {
-                ++i;
-            }
+            ++i;
         }
     }
     if (DEBUG) {
@@ -249,7 +236,7 @@ bool Specialize::runOnFunction(Function & f) {
         f.dump();
         state().print(cout);
     }
-    return false;
+    return changed_;
 }
 
 

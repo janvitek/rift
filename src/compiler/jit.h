@@ -12,6 +12,7 @@
 #include "specializedRuntime.h"
 #include "type_analysis.h"
 #include "specialize.h"
+#include "die.h"
 #endif //VERSION
 
 namespace rift {
@@ -176,6 +177,7 @@ RUNTIME_FUNCTIONS
                            (new llvm::legacy::FunctionPassManager(m));
         pm->add(new TypeAnalysis());
         pm->add(new Specialize());
+        pm->add(new DeadInstructionElimination());
         // Optimize each function of this module
         for (llvm::Function & f : *m) {
             if (not f.empty()) {
@@ -185,7 +187,7 @@ RUNTIME_FUNCTIONS
                 }
                 pm->run(f);
                 if (DEBUG) {
-                    cout << "After LLVM's constant propagation: --------------------------" << endl;
+                    cout << "After all passes: --------------------------" << endl;
                     f.dump();
                 }
             }

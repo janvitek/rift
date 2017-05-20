@@ -44,25 +44,25 @@ protected:
                       llvm::Value * arg1, llvm::Value * arg2,
                       AType * res);
 
-    bool genericAdd();
+    void genericAdd();
 
-    bool genericArithmetic(llvm::Function * fop);
+    void genericArithmetic(llvm::Function * fop);
 
-    bool genericRelational(llvm::Function * fop);
+    void genericRelational(llvm::Function * fop);
 
-    bool genericComparison(llvm::Value * lhs, llvm::Value * rhs,
+    void genericComparison(llvm::Value * lhs, llvm::Value * rhs,
                            AType * lhsType, AType * rhsType,
                            llvm::Function * fop, llvm::Function * cop);
 
-    bool genericEq();
+    void genericEq();
 
-    bool genericNeq();
+    void genericNeq();
 
-    bool genericGetElement();
+    void genericGetElement();
 
-    bool genericC();
+    void genericC();
 
-    bool genericEval();
+    void genericEval();
 
     /** Rift module currently being optimized, obtained from the function.
 
@@ -75,6 +75,9 @@ protected:
     State & state() { return ta->state; }
 
     llvm::Instruction * ins;
+
+    // did the code change during optimization?
+    bool changed_;
 
 };
 
