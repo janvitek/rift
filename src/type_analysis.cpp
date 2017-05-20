@@ -106,7 +106,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     } else if (s == "genericEval") {
                         state.update(ci, AType::T);
                     } else if (s == "envGet") {
-                        state.update(ci, AType::T);
+                        state.update(ci, AType::T);
                     }
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                     AType * first = state.get(phi->getOperand(0));
