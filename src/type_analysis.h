@@ -90,57 +90,46 @@ private:
 };
 
 /**
- The AbstractState represents the abstact state of the function being
- analyzed. It's role is to maintain a mapping between LLVM values and the
- abstract information computed by the analysis.
- Analysis can attach metadata to LLVM values for later use. The metadata
- is not part of the abstract state, but merely associated information for
- later use, e.g. for the optimization.
- */
+ State is the abstact state of the function being analyzed. It maps
+ LLVM values and the abstract information.
+ */
 class State {
 
 public:
+    /** get returns the atype of v, if it exists. If it doesn't, return bottom. */
     AType* get(llvm::Value * v) {
-        if (type.count(v)) return type.at(v);
-        changed = true;
-        auto n = AType::B;
-        type[v] = n;
-        return n;
+        if (vals.count(v)) return vals.at(v);
+        else return AType::B;
     }
 
-    AType* initialize(llvm::Value * v, AType* t) {
-        type[v] = t;
+    /** Set the atype of v to t, if t is larger than v's current state. 
+        Note
+     */
+    AType* update(llvm::Value * v, AType* t) {
+        auto prev = get(v);
+        if (prev == t) return prev;
+        assert(prev < t);
+        vals[v] = t;
+        changed = true;
         return t;
     }
 
-    AType* update(llvm::Value * v, AType* t) {
-        auto prev = get(v);
-        if (prev < t) {
-            type[v] = t;
-            changed = true;
-            return t;
-        }
-        return prev;
-    }
+    /** Clear the abstract state. */
+    void clear() { vals.clear(); }
 
-    void clear() {
-        type.clear();
-    }
+    /** Remove v from the state. */
+    void erase(llvm::Value * v) { vals.erase(v); }
 
-    void erase(llvm::Value * v) {
-        type.erase(v);
-    }
+    /** Reset changed flag. */
+    void iterationStart() { changed = false; }
 
-    void iterationStart() {
-        changed = false;
-    }
+    /** Return true if there were no changes to the state. */
+    bool hasReachedFixpoint() { return !changed; }
 
-    bool hasReachedFixpoint() {
-        return !changed;
-    }
-
+    /** Constructor, defaults to unchanged. */
     State() : changed(false) {}
 
+    /** Debug */
     void print(ostream & s) {
         s << "Abstract State: " << "\n";
         struct cmpByName {
@@ -163,13 +152,13 @@ public:
         };
         
         set<llvm::Value*, cmpByName> sorted;
-        for (auto const & v : type) {
+        for (auto const & v : vals) {
             auto pos = v.first;
             sorted.insert(pos);
         }
         
         for (auto pos : sorted) {
-            auto st = type.at(pos);
+            auto st = vals.at(pos);
             llvm::raw_os_ostream ss(s);
             pos->printAsOperand(ss, false);
             ss.flush();
@@ -179,8 +168,10 @@ public:
     }
     
 private:
+    /** True if any mapping was modified. */
     bool changed;
-    map<llvm::Value*, AType*> type;
+    /** Maps values to abstract types. */
+    map<llvm::Value*, AType*> vals;
 };
 
 
