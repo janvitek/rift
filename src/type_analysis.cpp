@@ -7,7 +7,7 @@
 using namespace llvm;
 
 namespace rift {
-
+/// Initializing our singletons...
 AType * AType::T  = new AType("R");
 AType * AType::B  = new AType("??");
 AType * AType::D1 = new AType("D1");
@@ -15,7 +15,9 @@ AType * AType::DV = new AType("DV");
 AType * AType::CV = new AType("CV");
 AType * AType::F  = new AType("F");
 
+/// ID is required by LLVM
 char TypeAnalysis::ID = 0;
+
 
 void TypeAnalysis::genericArithmetic(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
@@ -121,11 +123,11 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
     return false;
 }
 
+/// Debug
 ostream & operator << (ostream & s, AType & t) {
     s << t.name;
     return s;
 }
-
 } // namespace rift
 
 #endif //VERSION
