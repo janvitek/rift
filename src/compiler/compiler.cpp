@@ -10,20 +10,25 @@ using namespace llvm;
 
 namespace {
 
-    /* Declares function with given name and signature. 
+    /* Declares a symbol for a runtime function with given name and signature
      */
-    Function * declareFunction(char const * name, FunctionType * signature, Module * m) {
+    Function * declareFunction(
+            char const * name, FunctionType * signature, Module * m) {
         return Function::Create(signature, Function::ExternalLinkage, name, m);
     }
 
-    /* Declares functon with given name and signature and marks it as pure (ReadNone in LLVM's jargon). 
+    /* Declares a symbol for a runtime function with given name and signature
+     * and marks it as pure (ReadNone in LLVM's jargon). This is used for
+     * example in dead instruction removal to know if a call can be eliminated. 
      */
-    Function * declarePureFunction(char const * name, FunctionType * signature, Module * m) {
+    Function * declarePureFunction(
+            char const * name, FunctionType * signature, Module * m) {
         Function * f = declareFunction(name, signature, m);
         AttributeSet as;
         AttrBuilder b;
         b.addAttribute(Attribute::ReadNone);
-        as = AttributeSet::get(rift::Compiler::context(),AttributeSet::FunctionIndex, b);
+        as = AttributeSet::get(
+                rift::Compiler::context(),AttributeSet::FunctionIndex, b);
         f->setAttributes(as);
         return f;
     }
@@ -68,7 +73,8 @@ int Compiler::compile(ast::Fun * n) {
 #endif //VERSION
 
 #if VERSION > 0
-/* Createas a function that checks if given function is present in the module, and if not appends it, returning the declared function. 
+/* Using the RUNTIME_FUNCTIONS macro we declare getters for llmv function
+ * declarations for all the runtime functions in the system. 
  */
 #define FUN_PURE(NAME, SIGNATURE) Function * Compiler::NAME(Module * m) { \
     Function * result = m->getFunction(#NAME); \
@@ -76,18 +82,12 @@ int Compiler::compile(ast::Fun * n) {
         result = declarePureFunction(#NAME, SIGNATURE, m); \
     return result; \
 }
-
-/* Createas a function that checks if given function is present in the module, and if not appends it, returning the declared function. 
- */
 #define FUN(NAME, SIGNATURE) Function * Compiler::NAME(Module * m) { \
     Function * result = m->getFunction(#NAME); \
     if (result == nullptr) \
         result = declareFunction(#NAME, SIGNATURE, m); \
     return result; \
 }
-
-/* We now call the RUNTIME_FUNCTIONS macro which will expand the two macros above and create proper functions for all runtime functions we have. 
- */
 RUNTIME_FUNCTIONS
 #undef FUN_PURE
 #undef FUN
@@ -137,7 +137,7 @@ void Compiler::visit(ast::Exp * n) {
     throw "Unexpected: You are missing a visit() method.";
 }
 
-/** Get  double, box it into a vector of length 1, box that into a Rift Value. */
+/** Get double, box it into a vector of length 1, box that into a Rift Value. */
 void Compiler::visit(ast::Num * n) {
     result = RUNTIME_CALL(doubleVectorLiteral, fromDouble(n->value));
 }
