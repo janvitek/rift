@@ -2,19 +2,22 @@
 #include "compiler.h"
 #include "pool.h"
 
+using namespace llvm;
 
 /** Shorthand for calling runtime functions.  */
-
-using namespace llvm;
 #define RUNTIME_CALL(NAME, ...) cur.b->CreateCall(                 \
         NAME(m.get()), vector<Value*>({ __VA_ARGS__ }), "")
 
 namespace {
 
+    /* Declares function with given name and signature. 
+     */
     Function * declareFunction(char const * name, FunctionType * signature, Module * m) {
         return Function::Create(signature, Function::ExternalLinkage, name, m);
     }
 
+    /* Declares functon with given name and signature and marks it as pure (ReadNone in LLVM's jargon). 
+     */
     Function * declarePureFunction(char const * name, FunctionType * signature, Module * m) {
         Function * f = declareFunction(name, signature, m);
         AttributeSet as;
@@ -65,6 +68,8 @@ int Compiler::compile(ast::Fun * n) {
 #endif //VERSION
 
 #if VERSION > 0
+/* Createas a function that checks if given function is present in the module, and if not appends it, returning the declared function. 
+ */
 #define FUN_PURE(NAME, SIGNATURE) Function * Compiler::NAME(Module * m) { \
     Function * result = m->getFunction(#NAME); \
     if (result == nullptr) \
@@ -72,12 +77,17 @@ int Compiler::compile(ast::Fun * n) {
     return result; \
 }
 
+/* Createas a function that checks if given function is present in the module, and if not appends it, returning the declared function. 
+ */
 #define FUN(NAME, SIGNATURE) Function * Compiler::NAME(Module * m) { \
     Function * result = m->getFunction(#NAME); \
     if (result == nullptr) \
         result = declareFunction(#NAME, SIGNATURE, m); \
     return result; \
 }
+
+/* We now call the RUNTIME_FUNCTIONS macro which will expand the two macros above and create proper functions for all runtime functions we have. 
+ */
 RUNTIME_FUNCTIONS
 #undef FUN_PURE
 #undef FUN

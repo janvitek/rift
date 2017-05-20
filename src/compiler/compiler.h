@@ -26,6 +26,8 @@ public:
     }
 
 #if VERSION > 0
+    /* Declares helper functions that check for each runtime function if there is a corresponding declaration in the module and add it if not. 
+     */
 #define FUN_PURE(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
 #define FUN(NAME, SIGNATURE) static llvm::Function * NAME(llvm::Module * m);
 RUNTIME_FUNCTIONS
@@ -70,6 +72,7 @@ private:
 
     unique_ptr<llvm::Module> m;
 
+    /* Context for the compiler, i.e. which fuction and basic block should the instructions be added. */
     struct FunctionContext {
         FunctionContext() : f(nullptr), env(nullptr), b(nullptr) {}
         FunctionContext(string name, llvm::Module* m);
