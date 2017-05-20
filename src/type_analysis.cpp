@@ -22,7 +22,7 @@ char TypeAnalysis::ID = 0;
 void TypeAnalysis::genericArithmetic(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
     AType * rhs = state.get(ci->getOperand(1));
-    state.update(ci, lhs->merge(rhs));
+    state.update(ci, lhs->lub(rhs));
 }
 
 void TypeAnalysis::genericRelational(CallInst * ci) {
@@ -107,7 +107,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                         // make sure the types to c are correct
                         AType * t1 = state.get(ci->getArgOperand(1));
                         for (unsigned i = 2; i < ci->getNumArgOperands(); ++i)
-                            t1 = t1->merge(state.get(ci->getArgOperand(i)));
+                            t1 = t1->lub(state.get(ci->getArgOperand(i)));
                         if (t1->isDoubleScalar())
                             // concatenation of scalars is a vector
                             t1 = AType::DV;
@@ -120,7 +120,7 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
                     AType * first = state.get(phi->getOperand(0));
                     AType * second = state.get(phi->getOperand(1));
-                    AType * result = first->merge(second);
+                    AType * result = first->lub(second);
                     state.update(phi, result);
                 }
             }

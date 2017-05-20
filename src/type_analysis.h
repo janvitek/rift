@@ -39,7 +39,7 @@ public:
     //////////////////// Abstract Operations //////////////////
 
     /** Returns the AType that is the least upper bound of this and a.*/
-    AType * merge(AType  *  a)  {
+    AType * lub(AType  *  a)  {
         if (this == a) return this;
 
         if (a == T || this == T) return T;
@@ -96,13 +96,11 @@ public:
         else return AType::B;
     }
 
-    /** Set the atype of v to t, if t is larger than v's current state. 
-        Note
-     */
+    /** Set the atype of v to t, if t is larger than v's current state.   */
     AType* update(llvm::Value * v, AType* t) {
         auto prev = get(v);
         if (prev == t) return prev;
-        assert(prev->merge(t) == t);
+        assert(prev->lub(t) == t);
         vals[v] = t;
         changed = true;
         return t;

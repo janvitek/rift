@@ -52,7 +52,7 @@ void Specialize::genericAdd() {
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        updateDoubleOp(Compiler::doubleAdd(m), lhs, rhs, lhsType->merge(rhsType));
+        updateDoubleOp(Compiler::doubleAdd(m), lhs, rhs, lhsType->lub(rhsType));
         changed_ = true;
     } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
         Value * l = CAST(lhs, ptrCharacterVector); 
@@ -70,7 +70,7 @@ void Specialize::genericArithmetic(Function * fop) {
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        updateDoubleOp(fop, lhs, rhs, lhsType->merge(rhsType));
+        updateDoubleOp(fop, lhs, rhs, lhsType->lub(rhsType));
         changed_ = true;
     }
 }
@@ -81,7 +81,7 @@ void Specialize::genericRelational(Function * fop) {
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        updateDoubleOp(fop, lhs, rhs, lhsType->merge(rhsType));
+        updateDoubleOp(fop, lhs, rhs, lhsType->lub(rhsType));
         changed_ = true;
     }
 }
@@ -90,7 +90,7 @@ void Specialize::genericComparison(Value * lhs, Value * rhs,
                                    AType * lhsType, AType * rhsType,
                                    Function * dop, Function * cop) {
     if (lhsType->isDouble() and rhsType->isDouble()) {
-        updateDoubleOp(dop, lhs, rhs, lhsType->merge(rhsType));
+        updateDoubleOp(dop, lhs, rhs, lhsType->lub(rhsType));
         changed_ = true;
     } else if (lhsType->isCharacter() and rhsType->isCharacter()) {
         updateCharOp(cop, lhs, rhs, AType::DV);
