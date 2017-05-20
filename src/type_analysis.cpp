@@ -65,8 +65,10 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                         // when creating literal from a double, it is
                         // always double scalar
                         state.update(ci, AType::D1);
+#if VERSION >= 18
                     } else if (s == "characterVectorLiteral") {
                         state.update(ci, AType::CV);
+#endif //VERSION
                     } else if (s == "genericGetElement") {
                         genericGetElement(ci);
                     } else if (s == "genericSetElement") {
@@ -89,9 +91,14 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     } else if (s == "genericGt") {
                         genericRelational(ci);
                     } else if (s == "length") {
+#if VERSION < 18
+                        // TODO
+#endif //VERSION
+#if VERSION >= 18
                         // result of length operation is always 
                         // double scalar
                         state.update(ci, AType::D1);
+#endif //VERSION
                     } else if (s == "type") {
                         // result of type operation is always 
                         // character vector
