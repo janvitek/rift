@@ -1,4 +1,4 @@
-1. Run `git pull`(!)
+1. Run `git pull`(!). `cmake` needs to be rerun after that.
 
 2. fix a hole in type analysis
   * Run the example `function() {c(type(1),type("a"))}()` in debug mode.
