@@ -102,7 +102,7 @@ void Specialize::genericNeq() {
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
 
-    if (not lhsType->isSimilar(rhsType)) {
+    if (lhsType->notSimilar(rhsType)) {
         Value * res = ConstantFP::get(Compiler::context(), APFloat(1.0));
         updateDoubleScalar(res);
         changed_ = true;
@@ -119,7 +119,7 @@ void Specialize::genericEq() {
     AType * lhsType = state().get(lhs);
     AType * rhsType = state().get(rhs);
 
-    if (not lhsType->isSimilar(rhsType)) {
+    if (lhsType->notSimilar(rhsType)) {
         Value * res = ConstantFP::get(Compiler::context(), APFloat(0.0));
         updateDoubleScalar(res);
         changed_ = true;
@@ -148,6 +148,9 @@ void Specialize::genericGetElement() {
         changed_ = true;
     }
 #endif //VERSION
+#if VERSION < 19 
+    // TODO
+#endif // VERSION
 }
 
 void Specialize::genericC() {

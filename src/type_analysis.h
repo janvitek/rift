@@ -61,9 +61,14 @@ public:
     /** Is this a function? */
     bool isFun() const { return this == F; }
     /** Two ATypes are similar if they have the same kind */
-    bool isSimilar(AType * other) {
-        auto m = this->lub(other);
-        return m != B and m != T;
+    bool notSimilar(AType * other) {
+        return
+            (isCharacter() && !other->isCharacter()) ||
+            (!isCharacter() && other->isCharacter()) ||
+            (isDouble() && !other->isDouble()) ||
+            (!isDouble() && other->isDouble()) ||
+            (isFun() && !other->isFun()) ||
+            (!isFun() && other->isFun());
     }
 
 private:

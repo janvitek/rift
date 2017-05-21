@@ -66,16 +66,16 @@ void TypeAnalysis::analyzeCallInst(CallInst* ci, StringRef s) {
     } else if (s=="genericEq" || s=="genericNeq" || s=="genericLt" || s=="genericGt") {
         genericRelational(ci);
     } else if (s == "length") {
+        // length() returns a scalar
+        state.update(ci, AType::D1);
+    } else if (s == "type") {
 #if VERSION < 18
         // TODO
 #endif //VERSION
 #if VERSION >= 18
-        // length() returns a scalar
-        state.update(ci, AType::D1);
-#endif //VERSION
-    } else if (s == "type") {
         // type() returns a character vector
         state.update(ci, AType::CV);
+#endif //VERSION
     } else if (s == "c") {
         // make sure the types to c are correct
         AType * t1 = state.get(ci->getArgOperand(1));
@@ -85,6 +85,8 @@ void TypeAnalysis::analyzeCallInst(CallInst* ci, StringRef s) {
             t1 = AType::DV;
         state.update(ci, t1);
     } else if (s == "genericEval" || s == "envGet") {
+        state.update(ci, AType::T);
+    } else {
         state.update(ci, AType::T);
     }
 }
