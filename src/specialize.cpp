@@ -1,8 +1,6 @@
 #if VERSION > 10
 
 #include <iostream>
-
-
 #include "specialize.h"
 #include "rift.h"
 #include "compiler/compiler.h"
@@ -240,8 +238,6 @@ bool Specialize::runOnFunction(Function & f) {
     }
     return changed_;
 }
-
-
 } // namespace rift
 
 #endif //VERSION

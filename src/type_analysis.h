@@ -168,6 +168,8 @@ private:
     void genericArithmetic(llvm::CallInst * ci);
     void genericRelational(llvm::CallInst * ci);
     void genericGetElement(llvm::CallInst * ci);
+
+    void analyzeCallInst(llvm::CallInst * ci, llvm::StringRef s);
 };
 } // namespace rift
 
