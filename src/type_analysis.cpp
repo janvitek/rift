@@ -9,11 +9,11 @@ using namespace llvm;
 namespace rift {
 /// Initializing our singletons...
 AType * AType::T  = new AType("R");
-AType * AType::B  = new AType("??");
 AType * AType::D1 = new AType("D1");
 AType * AType::DV = new AType("DV");
 AType * AType::CV = new AType("CV");
 AType * AType::F  = new AType("F");
+AType * AType::B  = new AType("??");
 
 /// ID is required by LLVM
 char TypeAnalysis::ID = 0;
@@ -100,10 +100,11 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                     StringRef s = ci->getCalledFunction()->getName();
                     analyzeCallInst(ci, s);
                 } else if (PHINode * phi = dyn_cast<PHINode>(&i)) {
-                    AType * first = state.get(phi->getOperand(0));
-                    AType * second = state.get(phi->getOperand(1));
-                    AType * result = first->lub(second);
-                    state.update(phi, result);
+                    AType * l = state.get(phi->getOperand(0));
+                    AType * r = state.get(phi->getOperand(1));
+                    state.update(phi, l->lub(r));
+                } else {
+                    // ignore control flow operations
                 }
             }
         }
