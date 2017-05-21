@@ -2,8 +2,8 @@
 
 2. fix a hole in type analysis
   * Run the example `function() {c(type(1),type("a"))}()`
-  * Type returns a character (the length). Therefore a characterc instruction should be emited.
-    But we only see genericc.
+  * Type returns a character vector (the name of the type). Therefore a `characterc` instruction should be emited.
+    But we only see generic `c`.
   * Fix the analysis to remember that "c" returns a character (there is a TODO in `type_analysis.cpp`).
 
 3. fix a second hole in type analysis
