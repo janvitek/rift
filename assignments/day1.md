@@ -16,6 +16,7 @@
   * implement visit(ast::IfElse * n)
     * tests
       `(function(){if(1){1}else{2}})()`
+      `(function(){if(1){if(1){1}else{2}}else{2}})()`
     * The function has to return something.
       That’s why the phi node for the result is there.
       Implement the condition checking, true/false bodies.
