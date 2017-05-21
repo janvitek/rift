@@ -16,14 +16,10 @@
 #endif //VERSION
 
 namespace rift {
-
 /** A just in time compiler using LLVM. The main entry point is
  the compile() static function which takes a reference to an AST
  node representing a function definition, and returns a pointer.
- 
- This use the LLVM ORC JIT interface.
- 
- */
+ This use the LLVM ORC JIT interface. */
 class JIT {
 private:
     // shorter names...
@@ -33,14 +29,11 @@ private:
     typedef llvm::orc::IRTransformLayer<CompileLayer, OptimizeModule> OptimizeLayer;
     typedef llvm::orc::CompileOnDemandLayer<OptimizeLayer> CompileOnDemandLayer;
 public:
-    /** Externally, the JIT uses this type to refer to a module that has been passed to it. 
-     */
+    /** Externally, the JIT uses this type to refer to a module that has been passed to it.  */
     typedef CompileOnDemandLayer::ModuleSetHandleT ModuleHandle;
 
-    /** Compiles a function and returns a pointer to the native code.  JIT
-      compilation in LLVM finalizes the module, this function can only be
-      called once.
-     */
+    /** Compiles a function and returns a pointer to the native code.  JIT compilation
+        finalizes the module, this function can only be called once.  */
     static FunPtr compile(ast::Fun * f) {
         Compiler c;
         unsigned start = Pool::functionsCount();
@@ -56,29 +49,22 @@ public:
         return Pool::getFunction(result)->code;
     }
 
-    /** If the last module is no longer needed, i.e. if it only contains a top-level expression, deletes the module and frees up the resources. 
-
-    Does nothing if the last module also defines functions that are still callable. 
-     */
+    /** If a module is no longer needed, if it only contains a top-level
+          expression, deletes it and frees resources. Don't if the module
+          contains callable functions.  */
     static void removeLastModule() {
         // TODO: llvm bug: removing a module corrupts the eh section and
-        // subsequent C++ exception crash while unwinding the stack. Therefore
-        // we disable deleting modules for now.
-        if (false && lastModuleDeletable_) {
+        // subsequent C++ exception crash while unwinding the stack. Disabled.
+        if (false && lastModuleDeletable_)
             singleton().removeModule(lastModule_);
-        }
     }
 
 private:
-
-    /* Last module handle so that we can delete it later */
+    /* Last module handle */
     static ModuleHandle lastModule_;
-    /* Determines whether the last added module can be deleted after it executes. 
-     */
+    /* Is it safe to delete the last module after it returns?   */
     static bool lastModuleDeletable_;
-
-    /* Creates the jit object and initializes the JIT layers. 
-     */
+    /* Create JIT and initializes layers. */
     JIT():
         arch(llvm::EngineBuilder().selectTarget()),
         layout(arch->createDataLayout()),
@@ -100,15 +86,12 @@ private:
             llvm::orc::createLocalIndirectStubsManagerBuilder(
                 arch->getTargetTriple()))
         {
-            // this loads the host process itself, making
-            // the symbols in it available for execution
+            // load the host process itself, making symbols available
             llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
     }
 
-    /* Submits the llvm module to the JIT. 
-
-    The module is consumed by the JIT and ModuleHandle is reuturned for future reference. 
-     */
+    /* Submits the LLVM module to the JIT. The module is consumed by 
+        the JIT and a ModuleHandle is returned for future reference.  */
     ModuleHandle addModule(unique_ptr<llvm::Module> m) {
         auto resolver = llvm::orc::createLambdaResolver(
             // the first lambda looks in symbols in the JIT itself
@@ -117,7 +100,6 @@ private:
                     return s;
                 return llvm::JITSymbol(nullptr);
             },
-
             // the second lamba looks for symbols in the host process
             [](string const & name) {
                 if (auto symAddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
@@ -126,20 +108,16 @@ private:
           });
 
         m->setDataLayout(layout);
-
         // Build a singleton module set to hold our module.
         vector<unique_ptr<llvm::Module>> ms;
         ms.push_back(move(m));
-
-        // Add the set to the JIT with the resolver we created above and a newly
-        // created SectionMemoryManager.
+        // Add it to the JIT with above-created resolver and a new SectionMemoryManager
         return cod.addModuleSet(move(ms),
             llvm::make_unique<llvm::SectionMemoryManager>(),
             move(resolver));
     }
 
-    /* Finds the symbol in the dynamically linked code. 
-     */
+    /* Finds the symbol in the dynamically linked code.   */
     llvm::JITSymbol findSymbol(const string name) {
         string mangled;
         llvm::raw_string_ostream mangledStream(mangled);
@@ -147,30 +125,28 @@ private:
         return cod.findSymbol(mangledStream.str(), true);
     }
 
-    /* Removes the module from memory and releases its resources. 
-     */
+    /* Remove the module from memory and release resources.  */
     void removeModule(ModuleHandle m) {
         cod.removeModuleSet(m);
     }
 
-    /* Resolves calls to runtime functions to their C functions since these are not part of the dynamically linked space, but are needed by the code. 
-     */
+    /* Resolve calls to runtime functions since these are not part of 
+        the dynamically linked space, but are needed by the code. */
     static llvm::JITSymbol fallbackHostSymbolResolver(string const & name) {
-
 #define FUN_PURE(NAME, ...) if (name == #NAME) \
-    return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
+    return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME),\
+                           llvm::JITSymbolFlags::Exported);
 #define FUN(NAME, ...) if (name == #NAME) \
-    return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), llvm::JITSymbolFlags::Exported);
+    return llvm::JITSymbol(reinterpret_cast<uint64_t>(::NAME), \
+                           llvm::JITSymbolFlags::Exported);
 RUNTIME_FUNCTIONS
 #undef FUN_PURE
 #undef FUN
         return llvm::JITSymbol(nullptr);
     }
 
-    /** Optimize on the bitcode before native code generation. The
-      TypeAnalysis, Unboxing and BoxingRemoval are Rift passes, the rest is
-      from LLVM.
-      */
+    /** Optimize on the bitcode before native code generation. TypeAnalysis, 
+        Unboxing and BoxingRemoval are Rift passes, the rest is from LLVM.   */
     static void optimizeModule(llvm::Module * m) {
 #if VERSION > 10
         auto pm = unique_ptr<llvm::legacy::FunctionPassManager>
@@ -197,7 +173,6 @@ RUNTIME_FUNCTIONS
 
     /** Return the one and only JIT object */
     static JIT & singleton();
-
     // arch holds the platform for which we generate code
     unique_ptr<llvm::TargetMachine> arch;
     // arch specific data layout
@@ -210,9 +185,8 @@ RUNTIME_FUNCTIONS
     OptimizeLayer optimizer;
     // produces stub functions
     unique_ptr<llvm::orc::JITCompileCallbackManager> callbackManager;
-    /* called by stub functions, extracts the function from its module into a new one and submits it to the lower layers
-     */
+    /* called by stub functions, extracts function from its module into a new one and 
+        submits it to lower layers */
     CompileOnDemandLayer cod;
 };
-
 }

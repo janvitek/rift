@@ -39,42 +39,31 @@ public:
     //////////////////// Abstract Operations //////////////////
 
     /** Returns the AType that is the least upper bound of this and a.*/
-    AType * lub(AType  *  a)  {
+    AType * lub(AType  *  a)   {
         if (this == a) return this;
-
         if (a == T || this == T) return T;
         if (this == B) return a;
         if (a == B) return this;
-
         if (this == D1 and a == DV) return DV;
         if (this == DV and a == D1) return DV;
-
         return T;
     }
-
     /** Is it the top of the lattice? */
     bool isTop() const { return this == T; }
-
     /** Is it the bottom of the lattice? */
     bool isBottom() const { return this == B; }
-
     /** Is this a scalar numeric value? */
     bool isDoubleScalar() const { return this == D1; }
-
     /** Is this a double? */
     bool isDouble() const { return this == D1 || this == DV; }
-
     /** Is this a string? */
     bool isCharacter() const { return this == CV; }
-
     /** Is this a function? */
     bool isFun() const { return this == F; }
-    
     /** Two ATypes are similar if they have the same kind */
-    bool isSimilar(AType * other) const {
-        return (isCharacter() && other->isCharacter()) ||
-               (isDouble() && other->isDouble()) ||
-               (isFun() && other->isFun());
+    bool isSimilar(AType * other) {
+        auto m = this->lub(other);
+        return m != B and m != T;
     }
 
 private:
@@ -108,7 +97,6 @@ public:
 
     /** Clear the abstract state. */
     void clear() { vals.clear(); }
-
     /** Remove v from the state. */
     void erase(llvm::Value * v) { vals.erase(v); }
 
@@ -148,7 +136,6 @@ public:
             auto pos = v.first;
             sorted.insert(pos);
         }
-        
         for (auto pos : sorted) {
             auto st = vals.at(pos);
             llvm::raw_os_ostream ss(s);
@@ -181,6 +168,8 @@ private:
     void genericArithmetic(llvm::CallInst * ci);
     void genericRelational(llvm::CallInst * ci);
     void genericGetElement(llvm::CallInst * ci);
+
+    void analyzeCallInst(llvm::CallInst * ci, llvm::StringRef s);
 };
 } // namespace rift
 
