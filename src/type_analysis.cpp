@@ -18,7 +18,6 @@ AType * AType::F  = new AType("F");
 /// ID is required by LLVM
 char TypeAnalysis::ID = 0;
 
-
 void TypeAnalysis::genericArithmetic(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
     AType * rhs = state.get(ci->getOperand(1));

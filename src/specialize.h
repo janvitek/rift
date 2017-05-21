@@ -78,10 +78,6 @@ protected:
 
     // did the code change during optimization?
     bool changed_;
-
 };
-
 } // namespace rift
-
-
 #endif //VERSION
