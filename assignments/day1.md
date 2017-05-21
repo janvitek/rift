@@ -6,14 +6,16 @@
      * tests `c(1,2)[1]`, `c(1,2,3)[c(1,2)]`
 3. Fix the holes in compiler.cpp
   * implement visit(ast::SimpleAssignment * n)
+    * tests:
+      `a <- 1`
   * implement visit(ast::UserCall * n)
     * tests:
-      `f <- function(){1}  f()`
-      `f <- function(a){a}  f(1)`
+      `(function(){1})()`
+      `(function(a){a})(1)`
     * see runtime.cpp::call to figure out the rift ABI.
   * implement visit(ast::IfElse * n)
     * tests
-      `f <- function(){if(1){1}else{2}} f()`
+      `(function(){if(1){1}else{2}})()`
     * The function has to return something.
       That’s why the phi node for the result is there.
       Implement the condition checking, true/false bodies.
